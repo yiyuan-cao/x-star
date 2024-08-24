@@ -1,0 +1,416 @@
+(33, 8) |- app nil (app m n) = app (app nil m) n #
+(35, 8) |- !m n. app nil (app m n) = app (app nil m) n #
+(37, 8) !m n. app t (app m n) = app (app t m) n
+|- !m n. app t (app m n) = app (app t m) n #
+(43, 8) !m n. app t (app m n) = app (app t m) n
+|- cons h (app (app t m) n) = app (cons h t) (app m n) #
+(49, 8) !m n. app t (app m n) = app (app t m) n
+|- app (cons h t) (app m n) = app (app (cons h t) m) n #
+(53, 8) !m n. app t (app m n) = app (app t m) n
+|- !m n. app (cons h t) (app m n) = app (app (cons h t) m) n #
+(54, 8) |- !h t.
+       (!m n. app t (app m n) = app (app t m) n)
+       ==> (!m n. app (cons h t) (app m n) = app (app (cons h t) m) n) #
+(65, 6) l = nil
+|- l = nil #
+(71, 6) l = nil
+|- repr (Vptr null) l = pure T #
+(72, 6) l = nil
+|- repr (Vptr null) l = pure (l = nil) #
+(74, 6) l = cons h t
+|- l = cons h t #
+(76, 6) |- entailment (fieldpointsto (Vptr null) 0 (Vint h)) hfalse #
+(77, 6) |- entailment
+   (sepconj
+    (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+    (fieldpointsto (Vptr null) 1 q))
+   (repr q t))
+   hfalse #
+(79, 6) |- entailment
+   (hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)))
+   hfalse #
+(80, 6) |- hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)) =
+   hfalse #
+(82, 6) |- ~(nil = cons h t) #
+(89, 6) l = cons h t
+|- pure (l = nil) = hfalse #
+(99, 6) ?h t. l = cons h t
+|- repr (Vptr null) l = pure (l = nil) #
+(110, 6) |- lseg p q nil = pure (p = q) #
+(111, 6) |- entailment (sepconj (lseg p q nil) (repr q l2))
+   (sepconj (pure (p = q)) (repr q l2)) #
+(112, 6) |- entailment (sepconj (pure (p = q)) (repr q l2)) (repr p l2) #
+(113, 6) |- entailment (repr p l2) (repr p (app nil l2)) #
+(114, 6) |- !l2 p q.
+       entailment (sepconj (lseg p q nil) (repr q l2)) (repr p (app nil l2)) #
+(116, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2)) #
+(118, 6) |- sepconj (lseg p q (cons h t)) (repr q l2) =
+   sepconj (hexists (\r. sepconj (store_list_cell p h r) (lseg r q t)))
+   (repr q l2) #
+(119, 6) |- entailment
+   (sepconj (hexists (\r. sepconj (store_list_cell p h r) (lseg r q t)))
+   (repr q l2))
+   (hexists
+   (\x. sepconj (sepconj (store_list_cell p h x) (lseg x q t)) (repr q l2))) #
+(121, 6) |- entailment
+   (sepconj (sepconj (store_list_cell p h s) (lseg s q t)) (repr q l2))
+   (sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2))) #
+(122, 6) |- entailment
+   (hexists
+   (\s. sepconj (sepconj (store_list_cell p h s) (lseg s q t)) (repr q l2)))
+   (hexists
+   (\s. sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2)))) #
+(124, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2)))
+   (sepconj (store_list_cell p h s) (repr s (app t l2))) #
+(125, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (hexists
+   (\s. sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2))))
+   (hexists (\s. sepconj (store_list_cell p h s) (repr s (app t l2)))) #
+(127, 6) |- entailment
+   (hexists (\q. sepconj (store_list_cell p h q) (repr q (app t l2))))
+   (repr p (cons h (app t l2))) #
+(128, 6) |- entailment
+   (hexists (\q. sepconj (store_list_cell p h q) (repr q (app t l2))))
+   (repr p (app (cons h t) l2)) #
+(130, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (hexists
+   (\q'. sepconj (sepconj (store_list_cell p h q') (lseg q' q t)) (repr q l2)))
+   (repr p (app (cons h t) l2)) #
+(132, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+   (repr p (app (cons h t) l2)) #
+(134, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- !l2 p q.
+       entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+       (repr p (app (cons h t) l2)) #
+(135, 6) |- !h t.
+       (!l2 s q.
+            entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2)))
+       ==> (!l2 p q.
+                entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+                (repr p (app (cons h t) l2))) #
+(137, 6) |- !x l2 s q.
+       entailment (sepconj (lseg s q x) (repr q l2)) (repr s (app x l2)) #
+(201, 6) x = Vptr null
+|- entailment (repr x s1) (repr (Vptr null) s1) #
+(202, 6) |- entailment (sepconj (pure (x = Vptr null)) (repr x s1))
+   (repr (Vptr null) s1) #
+(65, 6) l = nil
+|- l = nil #
+(71, 6) l = nil
+|- repr (Vptr null) l = pure T #
+(72, 6) l = nil
+|- repr (Vptr null) l = pure (l = nil) #
+(74, 6) l = cons h t
+|- l = cons h t #
+(76, 6) |- entailment (fieldpointsto (Vptr null) 0 (Vint h)) hfalse #
+(77, 6) |- entailment
+   (sepconj
+    (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+    (fieldpointsto (Vptr null) 1 q))
+   (repr q t))
+   hfalse #
+(79, 6) |- entailment
+   (hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)))
+   hfalse #
+(80, 6) |- hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)) =
+   hfalse #
+(82, 6) |- ~(nil = cons h t) #
+(89, 6) l = cons h t
+|- pure (l = nil) = hfalse #
+(99, 6) ?h t. l = cons h t
+|- repr (Vptr null) l = pure (l = nil) #
+(203, 6) |- entailment (sepconj (pure (x = Vptr null)) (repr x s1)) (pure (s1 = nil)) #
+(204, 6) |- entailment
+   (sepconj (sepconj (pure (x = Vptr null)) (repr x s1)) (repr y s2))
+   (sepconj (pure (s1 = nil)) (repr y s2)) #
+(206, 6) s1 = nil
+|- app s1 s2 = s2 #
+(207, 6) app s1 s2 = s2
+|- repr y s2 = repr y (app s1 s2) #
+(208, 6) |- app s1 s2 = s2 ==> entailment (repr y s2) (repr y (app s1 s2)) #
+(209, 6) |- entailment (sepconj (pure (s1 = nil)) (repr y s2)) (repr y (app s1 s2)) #
+(211, 6) |- entailment
+   (sepconj (sepconj (pure (x = Vptr null)) (repr x s1)) (repr y s2))
+   (repr y (app s1 s2)) #
+(220, 6) |- entailment (sepconj (store_list_cell x m y) (repr y s2))
+   (hexists (\y. sepconj (store_list_cell x m y) (repr y s2))) #
+(221, 6) |- entailment (hexists (\q. sepconj (store_list_cell x m q) (repr q s2)))
+   (repr x (cons m s2)) #
+(222, 6) |- entailment (sepconj (store_list_cell x m y) (repr y s2))
+   (repr x (cons m s2)) #
+(224, 6) cons m nil = s1
+|- cons m s2 = app s1 s2 #
+(225, 6) |- entailment
+   (sepconj (pure (cons m nil = s1))
+   (sepconj (store_list_cell x m y) (repr y s2)))
+   (repr x (app s1 s2)) #
+(226, 6) |- entailment
+   (sepconj (sepconj (pure (cons m nil = s1)) (store_list_cell x m y))
+   (repr y s2))
+   (repr x (app s1 s2)) #
+(229, 6) |- entailment
+   (hexists
+   (\m. sepconj (sepconj (pure (cons m nil = s1)) (store_list_cell x m y))
+        (repr y s2)))
+   (repr x (app s1 s2)) #
+(238, 6) |- entailment (pure (x = t)) (lseg x t nil) #
+(239, 6) |- app nil (cons m r) = cons m r #
+(240, 6) |- entailment (pure (cons m r = s1)) (pure (app nil (cons m r) = s1)) #
+(242, 6) |- entailment (sepconj (pure (cons m r = s1)) (pure (x = t)))
+   (sepconj (pure (app nil (cons m r) = s1)) (lseg x t nil)) #
+(243, 6) |- entailment (pure (cons m r = s1 /\ x = t))
+   (sepconj (pure (app nil (cons m r) = s1)) (lseg x t nil)) #
+(245, 6) |- entailment
+   (sepconj
+    (sepconj
+     (sepconj (pure (cons m r = s1 /\ x = t)) (store_list_cell t m u))
+    (repr u r))
+   (repr y s2))
+   (sepconj
+    (sepconj
+     (sepconj (sepconj (pure (app nil (cons m r) = s1)) (lseg x t nil))
+     (store_list_cell t m u))
+    (repr u r))
+   (repr y s2)) #
+(247, 6) |- entailment
+   (sepconj
+    (sepconj
+     (sepconj (pure (cons m r = s1 /\ x = t)) (store_list_cell t m u))
+    (repr u r))
+   (repr y s2))
+   (hexists
+   (\m. hexists
+        (\r. sepconj
+             (sepconj
+              (sepconj
+               (sepconj (pure (app nil (cons m r) = s1)) (lseg x t nil))
+              (store_list_cell t m u))
+             (repr u r))
+             (repr y s2)))) #
+(248, 6) |- entailment
+   (hexists
+   (\m. hexists
+        (\r. sepconj
+             (sepconj
+              (sepconj (pure (cons m r = s1 /\ x = t))
+              (store_list_cell t m u))
+             (repr u r))
+             (repr y s2))))
+   (hexists
+   (\m. hexists
+        (\r. sepconj
+             (sepconj
+              (sepconj
+               (sepconj (pure (app nil (cons m r) = s1)) (lseg x t nil))
+              (store_list_cell t m u))
+             (repr u r))
+             (repr y s2)))) #
+(250, 6) |- entailment
+   (hexists
+   (\m. hexists
+        (\r. sepconj
+             (sepconj
+              (sepconj (pure (cons m r = s1 /\ x = t))
+              (store_list_cell t m u))
+             (repr u r))
+             (repr y s2))))
+   (hexists
+   (\l. hexists
+        (\m. hexists
+             (\r. sepconj
+                  (sepconj
+                   (sepconj
+                    (sepconj (pure (app l (cons m r) = s1)) (lseg x t l))
+                   (store_list_cell t m u))
+                  (repr u r))
+                  (repr y s2))))) #
+(259, 6) |- entailment (sepconj (pure (u = Vptr null)) (repr u r))
+   (repr (Vptr null) r) #
+(65, 6) l = nil
+|- l = nil #
+(71, 6) l = nil
+|- repr (Vptr null) l = pure T #
+(72, 6) l = nil
+|- repr (Vptr null) l = pure (l = nil) #
+(74, 6) l = cons h t
+|- l = cons h t #
+(76, 6) |- entailment (fieldpointsto (Vptr null) 0 (Vint h)) hfalse #
+(77, 6) |- entailment
+   (sepconj
+    (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+    (fieldpointsto (Vptr null) 1 q))
+   (repr q t))
+   hfalse #
+(79, 6) |- entailment
+   (hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)))
+   hfalse #
+(80, 6) |- hexists
+   (\q. sepconj
+        (sepconj (fieldpointsto (Vptr null) 0 (Vint h))
+        (fieldpointsto (Vptr null) 1 q))
+        (repr q t)) =
+   hfalse #
+(82, 6) |- ~(nil = cons h t) #
+(89, 6) l = cons h t
+|- pure (l = nil) = hfalse #
+(99, 6) ?h t. l = cons h t
+|- repr (Vptr null) l = pure (l = nil) #
+(260, 6) |- entailment (sepconj (pure (u = Vptr null)) (repr u r)) (pure (r = nil)) #
+(262, 6) |- entailment (sepconj (store_list_cell t m y) (repr y s2))
+   (hexists (\y. sepconj (store_list_cell t m y) (repr y s2))) #
+(263, 6) |- entailment (hexists (\q. sepconj (store_list_cell t m q) (repr q s2)))
+   (repr t (cons m s2)) #
+(264, 6) |- entailment
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))
+   (sepconj (lseg x t l) (repr t (cons m s2))) #
+(110, 6) |- lseg p q nil = pure (p = q) #
+(111, 6) |- entailment (sepconj (lseg p q nil) (repr q l2))
+   (sepconj (pure (p = q)) (repr q l2)) #
+(112, 6) |- entailment (sepconj (pure (p = q)) (repr q l2)) (repr p l2) #
+(113, 6) |- entailment (repr p l2) (repr p (app nil l2)) #
+(114, 6) |- !l2 p q.
+       entailment (sepconj (lseg p q nil) (repr q l2)) (repr p (app nil l2)) #
+(116, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2)) #
+(118, 6) |- sepconj (lseg p q (cons h t)) (repr q l2) =
+   sepconj (hexists (\r. sepconj (store_list_cell p h r) (lseg r q t)))
+   (repr q l2) #
+(119, 6) |- entailment
+   (sepconj (hexists (\r. sepconj (store_list_cell p h r) (lseg r q t)))
+   (repr q l2))
+   (hexists
+   (\x. sepconj (sepconj (store_list_cell p h x) (lseg x q t)) (repr q l2))) #
+(121, 6) |- entailment
+   (sepconj (sepconj (store_list_cell p h s) (lseg s q t)) (repr q l2))
+   (sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2))) #
+(122, 6) |- entailment
+   (hexists
+   (\s. sepconj (sepconj (store_list_cell p h s) (lseg s q t)) (repr q l2)))
+   (hexists
+   (\s. sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2)))) #
+(124, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2)))
+   (sepconj (store_list_cell p h s) (repr s (app t l2))) #
+(125, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (hexists
+   (\s. sepconj (store_list_cell p h s) (sepconj (lseg s q t) (repr q l2))))
+   (hexists (\s. sepconj (store_list_cell p h s) (repr s (app t l2)))) #
+(127, 6) |- entailment
+   (hexists (\q. sepconj (store_list_cell p h q) (repr q (app t l2))))
+   (repr p (cons h (app t l2))) #
+(128, 6) |- entailment
+   (hexists (\q. sepconj (store_list_cell p h q) (repr q (app t l2))))
+   (repr p (app (cons h t) l2)) #
+(130, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment
+   (hexists
+   (\q'. sepconj (sepconj (store_list_cell p h q') (lseg q' q t)) (repr q l2)))
+   (repr p (app (cons h t) l2)) #
+(132, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+   (repr p (app (cons h t) l2)) #
+(134, 6) !l2 s q. entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2))
+|- !l2 p q.
+       entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+       (repr p (app (cons h t) l2)) #
+(135, 6) |- !h t.
+       (!l2 s q.
+            entailment (sepconj (lseg s q t) (repr q l2)) (repr s (app t l2)))
+       ==> (!l2 p q.
+                entailment (sepconj (lseg p q (cons h t)) (repr q l2))
+                (repr p (app (cons h t) l2))) #
+(137, 6) |- !x l2 s q.
+       entailment (sepconj (lseg s q x) (repr q l2)) (repr s (app x l2)) #
+(266, 6) |- entailment (sepconj (lseg x t l) (repr t (cons m s2)))
+   (repr x (app l (cons m s2))) #
+(278, 6) r = nil
+|- cons m s2 = app (cons m r) s2 #
+(279, 6) r = nil
+|- app l (cons m s2) = app l (app (cons m r) s2) #
+(33, 8) |- app nil (app m n) = app (app nil m) n #
+(35, 8) |- !m n. app nil (app m n) = app (app nil m) n #
+(37, 8) !m n. app t (app m n) = app (app t m) n
+|- !m n. app t (app m n) = app (app t m) n #
+(43, 8) !m n. app t (app m n) = app (app t m) n
+|- cons h (app (app t m) n) = app (cons h t) (app m n) #
+(49, 8) !m n. app t (app m n) = app (app t m) n
+|- app (cons h t) (app m n) = app (app (cons h t) m) n #
+(53, 8) !m n. app t (app m n) = app (app t m) n
+|- !m n. app (cons h t) (app m n) = app (app (cons h t) m) n #
+(54, 8) |- !h t.
+       (!m n. app t (app m n) = app (app t m) n)
+       ==> (!m n. app (cons h t) (app m n) = app (app (cons h t) m) n) #
+(287, 6) r = nil, app l (cons m r) = s1
+|- app l (cons m s2) = app s1 s2 #
+(289, 6) |- entailment
+   (sepconj (pure (r = nil))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (repr t (cons m s2)))))
+   (repr x (app s1 s2)) #
+(290, 6) |- entailment
+   (sepconj (sepconj (pure (u = Vptr null)) (repr u r))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (repr t (cons m s2)))))
+   (repr x (app s1 s2)) #
+(291, 6) |- entailment
+   (sepconj (sepconj (pure (u = Vptr null)) (repr u r))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))))
+   (repr x (app s1 s2)) #
+(293, 6) |- entailment
+   (sepconj (sepconj (pure (u = Vptr null)) (repr u r))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))))
+   (repr x (app s1 s2)) #
+(296, 6) |- entailment
+   (sepconj (sepconj (repr u r) (pure (u = Vptr null)))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))))
+   (repr x (app s1 s2)) #
+(297, 6) |- entailment
+   (sepconj (sepconj (repr u r) (pure (u = Vptr null)))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))))
+   (repr x (app s1 s2)) #
+(300, 6) |- entailment
+   (sepconj (sepconj (repr u r) (pure (u = Vptr null)))
+   (sepconj (pure (app l (cons m r) = s1))
+   (sepconj (lseg x t l) (sepconj (store_list_cell t m y) (repr y s2)))))
+   (repr x (app s1 s2)) #
+(301, 6) |- entailment
+   (hexists
+   (\l. hexists
+        (\m. hexists
+             (\r. sepconj (sepconj (repr u r) (pure (u = Vptr null)))
+                  (sepconj (pure (app l (cons m r) = s1))
+                  (sepconj (lseg x t l)
+                  (sepconj (store_list_cell t m y) (repr y s2))))))))
+   (repr x (app s1 s2)) #
