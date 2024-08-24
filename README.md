@@ -47,20 +47,7 @@ This CStar IDE works for */.cst file. It has the following language features:
     - cstaride.path
     - cstaride.bdwgcflag
 - Hol-Lite Repo
-  - lsp Branch
-  - due to the error of t_of_yojson, please ensure that package.json and action.ml are consistent.
-    - usedocker
-    ```sh
-    line 9: let usedocker = ref UseDocker.Yes
-    ```
-    - serverroot
-    ```sh
-    line 11: let serverroot = ref {HolLitePath.path = "/mnt/d/ZGC_Lab/hol-lite/"}
-    ```
-    - bdwgcflag
-    ```sh
-    line 13: let bdwgcflag = ref {BDWGCFlag.flags = "-lgc -lpthread -ldl"}
-    ```
+  - use the lsp Branch
 - Press ▷ to run the launch config (F5).
 ### Start Hol-Lite Server
 - Press `right-hand button` to see `start hol-lite server in docker`.

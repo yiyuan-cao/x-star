@@ -48,7 +48,7 @@
 					"default": "Yes",
 					"description": "Use Docker or not."
 				},
-				"cstaride.path": {
+				"cstaride.hollitepath": {
 					"type": "string",
 					"default": "/mnt/d/ZGC_Lab/hol-lite/",
 					"description": "Path to hol-lite (branch: lsp)."

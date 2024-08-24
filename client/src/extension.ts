@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { workspace, ExtensionContext, Position } from 'vscode';
 
 import {
+	integer,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -16,6 +17,11 @@ import {
 import { exec, execSync, spawn  } from 'child_process';
 
 let client: LanguageClient;
+
+interface PostResult {
+	linenum: integer;
+    ghostlines: string[];
+}
 
 export function activate(context: ExtensionContext) {
 	// The server is implemented in node
@@ -35,7 +41,7 @@ export function activate(context: ExtensionContext) {
 
 	// CStar
 	const config = workspace.getConfiguration('cstaride');
-	const lsppath = config.get<string>('path');
+	const lsppath = config.get<string>('hollitepath');
 	const executable = {command: lsppath + "cstarc/_build/default/cstarlsp/cstarlsp.exe" };
 	const cstarserverOptions: ServerOptions = {
 		run: executable,
@@ -73,13 +79,17 @@ export function activate(context: ExtensionContext) {
 
 	// registerCommand showpost
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpost', function () {
-		vscode.window.showInformationMessage('Hello CStar!');
-		// const editor = vscode.window.activeTextEditor;
 		if(!editor) return;
-		client.sendRequest("cstar/showpost", {document: editor.document.getText(), uri: editor.document.uri.path, line: editor.selection.end.line + 1 });
-		// create decoration
-		render();
+		client.sendNotification("cstar/showpost", {uri: editor.document.uri.path, line: editor.selection.end.line});
+		// client.sendRequest("cstar/showpost", {document: editor.document.getText(), uri: editor.document.uri.path, line: editor.selection.end.line + 1 });
+		render(ghostlines);
 	}));
+
+	// onNotification
+	client.onNotification("cstar/postResult", (postresult: PostResult) => {
+		// create decoration
+		render(postresult.ghostlines);
+	});
 
 	// registerCommand hidepost
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.hidepost', () => {
@@ -103,7 +113,7 @@ export function activate(context: ExtensionContext) {
 	}));
 
 	// render function
-	function render() {
+	function render(ghostlines) {
 		// init
 		decorations = [];
 		let curlineofghost = 0;
@@ -126,7 +136,7 @@ export function activate(context: ExtensionContext) {
 		editor.edit((editBuilder) => {
 			editBuilder.replace(new vscode.Range(0, 0, cstarlines.length, 0), newText);
 		});
-		editor.document.save();
+		// editor.document.save();
 
 		// insert ghostlines
 		for (const line of ghostlines) {
