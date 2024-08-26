@@ -73,19 +73,19 @@ Hover `Theorem Value` :
   - Update LexCache (almost in an instant)
 - Move your cursor to the `Theorem Value`.
 
-![logs](./assest/hover.png "logs")
+![hover](./assest/hover.png "hover")
 
 ### Show Post File
 - Press `right-hand button` to see `CStar Show PostFile Here`, or
 - Press `Ctrl + Alt + Right`
 
-![logs](./assest/showtext.png "logs")
+![showtext](./assest/showtext.png "showtext")
 
 ### Show Post
 - Press `right-hand button` to see `CStar Show Post Here`, or
 - Press `Alt + Right`
 
-![logs](./assest/ghostlines.png "logs")
+![ghostlines](./assest/ghostlines.png "ghostlines")
 
 ### Hide Post
 - Press `right-hand button` to see `CStar Hide Post Once`, or
