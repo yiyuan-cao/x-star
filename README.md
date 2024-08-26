@@ -63,21 +63,29 @@ docker logs cstar
 
 ### Hover
 Hover `Theorem Value` :
-- make sure the [Hol-Lite Server](#start-hol-lite-server) is running.
 - open your .csv file.
-- save the file, and wait for the fllowing things:
+- make sure the [Hol-Lite Server](#start-hol-lite-server) is running, and you should restart [Hol-Lite Server](#start-hol-lite-server) when some difination changed or the opened file changed.
+- save the new file or the changed file, and wait for the fllowing things:
   - cstaride.path/cstar_output:
-    - FILE_NAME.output.c
-    - FILE_NAME
-    - FILE_NAME_log.csv
+    - YOUR_FILE_NAME.output.c
+    - YOUR_FILE_NAME
+    - YOUR_FILE_NAME_log.csv
   - Update LexCache (almost in an instant)
 - Move your cursor to the `Theorem Value`.
 
 ![logs](./assest/hover.png "logs")
 
+### Show PostFile
+- Press `right-hand button` to see `CStar Show PostFile Here`, or
+- Press `Ctrl + Alt + Right`
+
+![logs](./assest/showtext.png "logs")
+
 ### Show Post
 - Press `right-hand button` to see `CStar Show Post Here`, or
 - Press `Alt + Right`
+
+![logs](./assest/ghostlines.png "logs")
 
 ### Hide Post
 - Press `right-hand button` to see `CStar Hide Post Once`, or

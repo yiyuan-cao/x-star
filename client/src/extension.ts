@@ -6,6 +6,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { workspace, ExtensionContext, Position } from 'vscode';
+import {PostResult, PostfileResult} from './types';
 
 import {
 	integer,
@@ -17,11 +18,6 @@ import {
 import { exec, execSync, spawn  } from 'child_process';
 
 let client: LanguageClient;
-
-interface PostResult {
-	linenum: integer;
-    ghostlines: string[];
-}
 
 export function activate(context: ExtensionContext) {
 	// The server is implemented in node
@@ -80,9 +76,9 @@ export function activate(context: ExtensionContext) {
 	// registerCommand showpost
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpost', function () {
 		if(!editor) return;
-		client.sendNotification("cstar/showpost", {uri: editor.document.uri.path, line: editor.selection.end.line});
+		client.sendNotification("cstar/showpost", {filepath: editor.document.uri.path, line: editor.selection.end.line});
 		// client.sendRequest("cstar/showpost", {document: editor.document.getText(), uri: editor.document.uri.path, line: editor.selection.end.line + 1 });
-		render(ghostlines);
+		// render(ghostlines);
 	}));
 
 	// onNotification
@@ -99,6 +95,21 @@ export function activate(context: ExtensionContext) {
 			editor.setDecorations(decorationType_top, decorations);
 		}
 	}));
+
+	// registerCommand showpostfile
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpostfile', () => {
+		client.sendNotification("cstar/showpostfile", {filepath: editor.document.uri.path});
+	}));
+
+	// onNotification
+	client.onNotification("cstar/postfileResult", (postresult: PostfileResult) => {
+		const uri = vscode.Uri.file(postresult.filepath);
+		vscode.window.showTextDocument(uri, {
+			viewColumn: vscode.ViewColumn.Two,
+			preserveFocus: true
+		});
+	});
+
 
 	// registerCommand starthollite
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.starthollite', () => {

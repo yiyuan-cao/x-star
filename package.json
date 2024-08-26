@@ -76,6 +76,10 @@
 			{
 				"command": "cstar.stophollite",
 				"title": "stop hol-lite server"
+			},
+			{
+				"command": "cstar.showpostfile",
+				"title": "CStar Show Post File"
 			}
 		],
 		"keybindings": [
@@ -89,6 +93,12 @@
 				"command": "cstar.hidepost",
 				"key": "alt+left",
 				"mac": "alt+left",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "cstar.showpostfile",
+				"key": "ctrl+alt+right",
+				"mac": "ctrl+alt+right",
 				"when": "editorTextFocus"
 			}
 		],
@@ -105,14 +115,19 @@
 					"group": "navigation"
 				},
 				{
+					"when": "editorFocus",
+					"command": "cstar.showpostfile",
+					"group": "navigation"
+				},
+				{
                     "when": "editorFocus",
                     "command": "cstar.starthollite",
-                    "group": "navigation"
+                    "group": "hollite"
                 },
 				{
                     "when": "editorFocus",
                     "command": "cstar.stophollite",
-                    "group": "navigation"
+                    "group": "hollite"
                 }
 			]
 		},
