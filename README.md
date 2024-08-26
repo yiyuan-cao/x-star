@@ -6,11 +6,11 @@
 
 This CStar IDE works for */.cst file. It has the following language features:
 - [Hover](#hover)
+- [Show Post File](#show-postfile)
 - [Show Post](#show-post)
 - [Hide Post](#hide-post)
 - [Start Hol-Lite Server](#start-hol-lite-server)
 - [Stop Hol-Lite Server](#stop-hol-lite-server)
-
 
 ## Structure
 
@@ -75,7 +75,7 @@ Hover `Theorem Value` :
 
 ![logs](./assest/hover.png "logs")
 
-### Show PostFile
+### Show Post File
 - Press `right-hand button` to see `CStar Show PostFile Here`, or
 - Press `Ctrl + Alt + Right`
 
