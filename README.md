@@ -6,7 +6,7 @@
 
 This CStar IDE works for */.cst file. It has the following language features:
 - [Hover](#hover)
-- [Show Post File](#show-postfile)
+- [Show Post File](#show-post-file)
 - [Show Post](#show-post)
 - [Hide Post](#hide-post)
 - [Start Hol-Lite Server](#start-hol-lite-server)
