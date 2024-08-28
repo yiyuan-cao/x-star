@@ -6,7 +6,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { workspace, ExtensionContext, Position } from 'vscode';
-import {PostResult, PostfileResult} from './types';
+import {PostResult, PostfileResult, HoverfileResult, HoverfileResult_} from './types';
+import * as fs from 'fs';
 
 import {
 	integer,
@@ -19,32 +20,24 @@ import { exec, execSync, spawn  } from 'child_process';
 
 let client: LanguageClient;
 
+function convertStringToUTCDate(dateString: string): Date {
+	const localDate = new Date(dateString);
+	const utcDate = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
+	return utcDate;
+}
+
 export function activate(context: ExtensionContext) {
-	// The server is implemented in node
-	const serverModule = context.asAbsolutePath(
-		path.join('server', 'out', 'server.js')
-	);
+	/************************* CStar Client ******************************/
 
-	// If the extension is launched in debug mode then the debug server options are used
-	// Otherwise the run options are used
-	const serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
-		}
-	};
-
-	// CStar
+	// CStar config
 	const config = workspace.getConfiguration('cstaride');
 	const lsppath = config.get<string>('hollitepath');
 	const executable = {command: lsppath + "cstarc/_build/default/cstarlsp/cstarlsp.exe" };
 	const cstarserverOptions: ServerOptions = {
 		run: executable,
 		debug: executable,
-	};
+	};	
 	
-
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
@@ -63,6 +56,9 @@ export function activate(context: ExtensionContext) {
 		cstarserverOptions,
 		clientOptions
 	);
+
+	/************************* params def ******************************/
+
 	// activeTextEditor
 	let editor = vscode.window.activeTextEditor;
 
@@ -73,6 +69,11 @@ export function activate(context: ExtensionContext) {
 	let decorations: vscode.DecorationOptions[] = []; // post lines, recreate everytime
 	const decorationType_stack: vscode.TextEditorDecorationType[] = []; // stack
 
+	// .csv file changetime
+	const hoverfile: HoverfileResult = {filepath:"", lasttime: new Date(0)};
+
+	/************************* command and communication ******************************/
+
 	// registerCommand showpost
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpost', function () {
 		if(!editor) return;
@@ -81,7 +82,7 @@ export function activate(context: ExtensionContext) {
 		// render(ghostlines);
 	}));
 
-	// onNotification
+	// onNotification postResult
 	client.onNotification("cstar/postResult", (postresult: PostResult) => {
 		// create decoration
 		render(postresult.ghostlines);
@@ -101,13 +102,19 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification("cstar/showpostfile", {filepath: editor.document.uri.path});
 	}));
 
-	// onNotification
+	// onNotification postfileResult
 	client.onNotification("cstar/postfileResult", (postresult: PostfileResult) => {
 		const uri = vscode.Uri.file(postresult.filepath);
 		vscode.window.showTextDocument(uri, {
 			viewColumn: vscode.ViewColumn.Two,
 			preserveFocus: true
 		});
+	});
+
+	// onNotification hoverfileTime
+	client.onNotification("cstar/hoverfileTime", (params: HoverfileResult_) => {
+		hoverfile.filepath = params.filepath;
+		hoverfile.lasttime = convertStringToUTCDate(params.lasttime);
 	});
 
 
@@ -122,6 +129,8 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.stophollite', () => {
 		const output = exec("docker stop cstar");
 	}));
+
+	/************************* functions ******************************/
 
 	// render function
 	function render(ghostlines) {
@@ -165,6 +174,26 @@ export function activate(context: ExtensionContext) {
 		editor.setDecorations(decorationType, decorations);
 	}
 
+	function checkFileUpdate(filePath: string): boolean {
+		try {
+			const stats = fs.statSync(filePath);
+			const lastModifiedTime = stats.mtime;
+			if (lastModifiedTime.getTime() > hoverfile.lasttime.getTime() + 3000) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (error) {
+			if (error.code === 'ENOENT') {
+				return false;
+			} else {
+				throw error;
+			}
+		}
+	}
+
+	/************************* window event ******************************/
+
 	// change editor
 	vscode.window.onDidChangeActiveTextEditor(neweditor => {
 		editor = neweditor;
@@ -172,6 +201,45 @@ export function activate(context: ExtensionContext) {
 		// if (editor) {render();}
 		// delete blank lines
 		// sendRequest("find blank lines in functions",editor.document).then(delete(result));
+	}, null, context.subscriptions);
+
+	// save file to get hover_file(.csv)
+	vscode.workspace.onDidSaveTextDocument(document => {
+
+		// const checkIsFinished = () => {
+		// 	if (checkFileUpdate(hoverfile.filepath)) {
+		// 		console.log("[CStar Client] Hover Files Generated!");
+		// 		clearInterval(intervalId);
+		// 	} else {
+		// 		console.log("[CStar Client] Hover Files Generating...");
+		// 	}
+		// };
+	
+		// const intervalId = setInterval(checkIsFinished, 3000); // check every 3 sec
+		vscode.window.showInformationMessage('[CStar IDE] Generating Theorem Logs For Hover');
+
+		const checkIsFinished = () => {
+			return new Promise<void>((resolve, reject) => {
+				if (checkFileUpdate(hoverfile.filepath)) {
+					console.log("[CStar Client] Hover Files Generated!");
+					resolve();
+				} else {
+					console.log("[CStar Client] Hover Files Generating...");
+					setTimeout(() => {
+						checkIsFinished().then(resolve).catch(reject);
+					}, 3000);
+				}
+			});
+		};
+
+		checkIsFinished().then(() => {
+			console.log("[CStar IDE] Generated!");
+			vscode.window.showInformationMessage('[CStar IDE] Generated!');
+		}).catch((error) => {
+			console.error("[CStar IDE] Generating Error: ", error);
+			vscode.window.showErrorMessage('[CStar IDE] Generating Error');
+		});
+		
 	}, null, context.subscriptions);
 
 	// Start the client. This will also launch the server
@@ -184,3 +252,4 @@ export function deactivate(): Thenable<void> | undefined {
 	}
 	return client.stop();
 }
+

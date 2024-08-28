@@ -9,3 +9,13 @@ export interface PostResult {
 export interface PostfileResult {
 	filepath: string;
 }
+
+export interface HoverfileResult {
+	filepath: string;
+	lasttime: Date;
+}
+// for receive
+export interface HoverfileResult_ {
+	filepath: string;
+	lasttime: string;
+}

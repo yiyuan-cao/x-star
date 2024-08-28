@@ -70,10 +70,14 @@ Hover `Theorem Value` :
     - YOUR_FILE_NAME.output.c
     - YOUR_FILE_NAME
     - YOUR_FILE_NAME_log.csv
-  - Update LexCache (almost in an instant)
+  - update LexCache (almost in an instant).
+  - and you can see the Notification.
+
+  ![notif](./assest/Notification.png "notif")
+
 - Move your cursor to the `Theorem Value`.
 
-![hover](./assest/hover.png "hover")
+  ![hover](./assest/hover.png "hover")
 
 ### Show Post File
 - Press `right-hand button` to see `CStar Show PostFile Here`, or
