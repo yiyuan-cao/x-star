@@ -206,40 +206,32 @@ export function activate(context: ExtensionContext) {
 	// save file to get hover_file(.csv)
 	vscode.workspace.onDidSaveTextDocument(document => {
 
-		// const checkIsFinished = () => {
-		// 	if (checkFileUpdate(hoverfile.filepath)) {
-		// 		console.log("[CStar Client] Hover Files Generated!");
-		// 		clearInterval(intervalId);
-		// 	} else {
-		// 		console.log("[CStar Client] Hover Files Generating...");
-		// 	}
-		// };
+		if (document.languageId === 'cstar') {
+			vscode.window.showInformationMessage('[CStar IDE] Generating Theorem Logs For Hover');
+
+			const checkIsFinished = () => {
+				return new Promise<void>((resolve, reject) => {
+					if (checkFileUpdate(hoverfile.filepath)) {
+						console.log("[CStar Client] Hover Files Generated!");
+						resolve();
+					} else {
+						console.log("[CStar Client] Hover Files Generating...");
+						setTimeout(() => {
+							checkIsFinished().then(resolve).catch(reject);
+						}, 3000);
+					}
+				});
+			};
 	
-		// const intervalId = setInterval(checkIsFinished, 3000); // check every 3 sec
-		vscode.window.showInformationMessage('[CStar IDE] Generating Theorem Logs For Hover');
-
-		const checkIsFinished = () => {
-			return new Promise<void>((resolve, reject) => {
-				if (checkFileUpdate(hoverfile.filepath)) {
-					console.log("[CStar Client] Hover Files Generated!");
-					resolve();
-				} else {
-					console.log("[CStar Client] Hover Files Generating...");
-					setTimeout(() => {
-						checkIsFinished().then(resolve).catch(reject);
-					}, 3000);
-				}
+			checkIsFinished().then(() => {
+				console.log("[CStar IDE] Generated!");
+				vscode.window.showInformationMessage('[CStar IDE] Generated!');
+			}).catch((error) => {
+				console.error("[CStar IDE] Generating Error: ", error);
+				vscode.window.showErrorMessage('[CStar IDE] Generating Error');
 			});
-		};
+		}
 
-		checkIsFinished().then(() => {
-			console.log("[CStar IDE] Generated!");
-			vscode.window.showInformationMessage('[CStar IDE] Generated!');
-		}).catch((error) => {
-			console.error("[CStar IDE] Generating Error: ", error);
-			vscode.window.showErrorMessage('[CStar IDE] Generating Error');
-		});
-		
 	}, null, context.subscriptions);
 
 	// Start the client. This will also launch the server

@@ -1,184 +1,206 @@
 {
-  "name": "cstar",
-  "description": "A CStar IDE Prototype",
-  "author": "CStar Teamworkers",
-  "license": "MIT",
-  "version": "1.0.0",
-  "publisher": "CStar Teamworkers",
-  "categories": [],
-  "keywords": [
-    "multi-root ready"
-  ],
-  "engines": {
-    "vscode": "^1.75.0"
-  },
-  "activationEvents": [
-    "onLanguage"
-  ],
-  "main": "./client/out/extension",
-  "contributes": {
-		"languages": [{
-      "id": "cstar",
-      "aliases": ["CStar", "cstar"],
-      "extensions": [".cst"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "cstar",
-      "scopeName": "source.cst",
-      "path": "./syntaxes/cstar.tmLanguage.json"
-    }],
-    "configuration": {
-      "type": "object",
-      "title": "CStar IDE",
-      "properties": {
-        "cstar.maxNumberOfProblems": {
-          "scope": "resource",
-          "type": "number",
-          "default": 100,
-          "description": "Controls the maximum number of problems produced by the server."
-        },
-        "cstar.trace.server": {
-          "scope": "window",
-          "type": "string",
-          "enum": [
-            "off",
-            "messages",
-            "verbose"
-          ],
-          "default": "verbose",
-          "description": "Traces the communication between VS Code and the language server."
-        },
-        "cstaride.usedocker": {
-          "scope": "window",
-          "type": "string",
-          "enum": [
-            "Yes",
-            "No"
-          ],
-          "default": "Yes",
-          "description": "Use Docker or not."
-        },
-        "cstaride.hollitepath": {
-          "type": "string",
-          "default": "/mnt/d/ZGC_Lab/hol-lite/",
-          "description": "Path to hol-lite (branch: lsp)."
-        },
-        "cstaride.bdwgcflag": {
-          "type": "string",
-          "default": "-lgc -lpthread -ldl",
-          "description": "Run 'pkg-config --libs --cflags bdw-gc' in your shell."
-        }
-      }
-    },
-    "commands": [
-      {
-        "command": "cstar.showpost",
-        "title": "CStar Show Post Here"
-      },
-      {
-        "command": "cstar.hidepost",
-        "title": "CStar Hide Post Once"
-      },
-      {
-        "command": "cstar.starthollite",
-        "title": "start hol-lite server in docker"
-      },
-      {
-        "command": "cstar.stophollite",
-        "title": "stop hol-lite server"
-      },
-      {
-        "command": "cstar.showpostfile",
-        "title": "CStar Show Post File"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "cstar.showpost",
-        "key": "alt+right",
-        "mac": "alt+right",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "cstar.hidepost",
-        "key": "alt+left",
-        "mac": "alt+left",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "cstar.showpostfile",
-        "key": "ctrl+alt+right",
-        "mac": "ctrl+alt+right",
-        "when": "editorTextFocus"
-      }
-    ],
-    "menus": {
-      "editor/context": [
-        {
-          "when": "editorFocus",
-          "command": "cstar.showpost",
-          "group": "navigation"
-        },
-        {
-          "when": "editorFocus",
-          "command": "cstar.hidepost",
-          "group": "navigation"
-        },
-        {
-          "when": "editorFocus",
-          "command": "cstar.showpostfile",
-          "group": "navigation"
-        },
-        {
-          "when": "editorFocus",
-          "command": "cstar.starthollite",
-          "group": "hollite"
-        },
-        {
-          "when": "editorFocus",
-          "command": "cstar.stophollite",
-          "group": "hollite"
-        }
-      ]
-    },
-    "colors": [
-      {
-        "id": "cstar.inlineGhostBackgroundColor",
-        "description": "Specifies the background color of the inline ghost texts.",
-        "defaults": {
-          "dark": "#00000000",
-          "light": "#00000000",
-          "highContrast": "#00000000"
-        }
-      },
-      {
-        "id": "cstar.inlineGhostForegroundColor",
-        "description": "Specifies the foreground color of the inline ghost texts.",
-        "defaults": {
-          "dark": "#cdcdcdb5",
-          "light": "#00000097",
-          "highContrast": "#e3e3e3"
-        }
-      }
-    ]
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -b",
-    "watch": "tsc -b -w",
-    "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
-    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-    "test": "sh ./scripts/e2e.sh"
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^18.14.6",
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
-    "@typescript-eslint/parser": "^7.1.0",
-    "eslint": "^8.57.0",
-    "mocha": "^10.3.0",
-    "typescript": "^5.3.3",
-		"glob": "^11.0.0"
-  }
+	"name": "cstar",
+	"description": "CStar IDE",
+	"author": "CStar Teamworkers",
+	"license": "MIT",
+	"version": "1.1.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Wybxc/hol-lite"
+	},
+	"icon": "assets/logo.png",
+	"publisher": "kevinx",
+	"categories": [
+		"Programming Languages"
+	],
+	"keywords": [
+		"cstar",
+		"theorem prover",
+		"proof assistant"
+	],
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"activationEvents": [
+		"onLanguage:cstar"
+	],
+	"main": "./client/out/extension",
+	"contributes": {
+		"languages": [
+			{
+			  "id": "cstar",
+			  "aliases": [
+				"CStar",
+				"Cstar"
+			  ],
+			  "extensions": [
+				".cst"
+			  ],
+			  "configuration": "./language-configuration.json",
+			  "icon": {
+				"light": "./assets/logo.png",
+				"dark": "./assets/logo.png"
+			  }
+			}
+		],
+		"grammars": [{
+			"language": "cstar",
+			"scopeName": "source.cst",
+			"path": "./syntaxes/cstar.tmLanguage.json"
+		}],
+		"viewsContainers": {
+			"activitybar": [
+			  {
+				"id": "cstar-sidebar",
+				"title": "CStar Assistant",
+				"icon": "./assets/logo.svg"
+			  }
+			]
+		},
+		"configuration": {
+			"type": "object",
+			"title": "CStar IDE",
+			"properties": {
+				"cstar.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "verbose",
+					"description": "Traces the communication between VS Code and the language server."
+				},
+				"cstaride.usedocker": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"Yes",
+						"No"
+					],
+					"default": "Yes",
+					"description": "Use Docker or not."
+				},
+				"cstaride.hollitepath": {
+					"type": "string",
+					"default": "/mnt/d/ZGC_Lab/hol-lite/",
+					"description": "Path to hol-lite (branch: lsp)."
+				},
+				"cstaride.bdwgcflag": {
+					"type": "string",
+					"default": "-lgc -lpthread -ldl",
+					"description": "Run 'pkg-config --libs --cflags bdw-gc' in your shell."
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "cstar.showpost",
+				"title": "CStar Show Post Here"
+			},
+			{
+				"command": "cstar.hidepost",
+				"title": "CStar Hide Post Once"
+			},
+			{
+				"command": "cstar.starthollite",
+				"title": "start hol-lite server in docker"
+			},
+			{
+				"command": "cstar.stophollite",
+				"title": "stop hol-lite server"
+			},
+			{
+				"command": "cstar.showpostfile",
+				"title": "CStar Show Post File"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "cstar.showpost",
+				"key": "alt+right",
+				"mac": "alt+right",
+				"when": "editorTextFocus && editorLangId == cstar"
+			},
+			{
+				"command": "cstar.hidepost",
+				"key": "alt+left",
+				"mac": "alt+left",
+				"when": "editorTextFocus && editorLangId == cstar"
+			},
+			{
+				"command": "cstar.showpostfile",
+				"key": "ctrl+alt+right",
+				"mac": "ctrl+alt+right",
+				"when": "editorTextFocus && editorLangId == cstar"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"when": "editorFocus && editorLangId == cstar",
+					"command": "cstar.showpost",
+					"group": "navigation"
+				},
+				{
+					"when": "editorFocus && editorLangId == cstar",
+					"command": "cstar.hidepost",
+					"group": "navigation"
+				},
+				{
+					"when": "editorFocus && editorLangId == cstar",
+					"command": "cstar.showpostfile",
+					"group": "navigation"
+				},
+				{
+                    "when": "editorFocus && editorLangId == cstar",
+                    "command": "cstar.starthollite",
+                    "group": "hollite"
+                },
+				{
+                    "when": "editorFocus && editorLangId == cstar",
+                    "command": "cstar.stophollite",
+                    "group": "hollite"
+                }
+			]
+		},
+		"colors": [
+			{
+			  "id": "cstar.inlineGhostBackgroundColor",
+			  "description": "Specifies the background color of the inline ghost texts.",
+			  "defaults": {
+				"dark": "#00000000",
+				"light": "#00000000",
+				"highContrast": "#00000000"
+			  }
+			},
+			{
+			  "id": "cstar.inlineGhostForegroundColor",
+			  "description": "Specifies the foreground color of the inline ghost texts.",
+			  "defaults": {
+				"dark": "#cdcdcdb5",
+				"light": "#00000097",
+				"highContrast": "#e3e3e3"
+			  }
+			}
+		  ]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -b",
+		"watch": "tsc -b -w",
+		"lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test": "sh ./scripts/e2e.sh"
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.6",
+		"@types/node": "^18.14.6",
+		"@typescript-eslint/eslint-plugin": "^7.1.0",
+		"@typescript-eslint/parser": "^7.1.0",
+		"eslint": "^8.57.0",
+		"mocha": "^10.3.0",
+		"typescript": "^5.3.3"
+	}
 }

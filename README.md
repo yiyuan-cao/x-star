@@ -56,7 +56,7 @@ This CStar IDE works for */.cst file. It has the following language features:
 docker logs cstar
 ```
 
-![logs](./assest/logs.png "logs")
+![logs](./assets/logs.png "logs")
 
 ### Stop Hol-Lite Server
 - Press `right-hand button` to see `stop hol-lite server`
@@ -73,23 +73,23 @@ Hover `Theorem Value` :
   - update LexCache (almost in an instant).
   - and you can see the Notification.
 
-  ![notif](./assest/Notification.png "notif")
+  ![notif](./assets/Notification.png "notif")
 
 - Move your cursor to the `Theorem Value`.
 
-  ![hover](./assest/hover.png "hover")
+  ![hover](./assets/hover.png "hover")
 
 ### Show Post File
 - Press `right-hand button` to see `CStar Show PostFile Here`, or
 - Press `Ctrl + Alt + Right`
 
-![showtext](./assest/showtext.png "showtext")
+![showtext](./assets/showtext.png "showtext")
 
 ### Show Post
 - Press `right-hand button` to see `CStar Show Post Here`, or
 - Press `Alt + Right`
 
-![ghostlines](./assest/ghostlines.png "ghostlines")
+![ghostlines](./assets/ghostlines.png "ghostlines")
 
 ### Hide Post
 - Press `right-hand button` to see `CStar Hide Post Once`, or
