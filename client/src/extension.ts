@@ -130,6 +130,14 @@ export function activate(context: ExtensionContext) {
 		const output = exec("docker stop cstar");
 	}));
 
+	context.subscriptions.push(workspace.onDidChangeConfiguration(event => {
+		if(event.affectsConfiguration('cstaride')) {
+			const newconfig = workspace.getConfiguration('cstaride');
+			client.sendNotification("workspace/didChangeConfiguration", {settings: newconfig});
+		}
+		
+	}));
+
 	/************************* functions ******************************/
 
 	// render function
