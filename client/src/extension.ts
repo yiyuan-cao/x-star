@@ -33,6 +33,7 @@ export function activate(context: ExtensionContext) {
 	const config = workspace.getConfiguration('cstaride');
 	const lsppath = config.get<string>('hollitepath');
 	const executable = {command: lsppath + "cstarc/_build/default/cstarlsp/cstarlsp.exe" };
+	// const executable = {command: "/mnt/d/ZGC_Lab/cstar-ide/vscode-extension-samples/lsp-sample/cstarserver/cstarlsp.exe"};
 	const cstarserverOptions: ServerOptions = {
 		run: executable,
 		debug: executable,
@@ -103,12 +104,27 @@ export function activate(context: ExtensionContext) {
 	}));
 
 	// onNotification postfileResult
-	client.onNotification("cstar/postfileResult", (postresult: PostfileResult) => {
-		const uri = vscode.Uri.file(postresult.filepath);
-		vscode.window.showTextDocument(uri, {
-			viewColumn: vscode.ViewColumn.Two,
-			preserveFocus: true
-		});
+	client.onNotification("cstar/postfileResult", async (postresult: PostfileResult) => {
+		const filepath = postresult.filepath;
+		const uri = vscode.Uri.file(filepath);
+		const fileExists = await vscode.workspace.fs.stat(uri).then(() => true, () => false);
+		if (fileExists) {
+			vscode.window.showTextDocument(uri, {
+				viewColumn: vscode.ViewColumn.Two,
+				preserveFocus: true
+			});
+		} else {
+			const checkInterval = setInterval(() => {
+				vscode.workspace.fs.stat(uri).then(() => {
+					clearInterval(checkInterval);
+					vscode.window.showTextDocument(uri, {
+						viewColumn: vscode.ViewColumn.Two,
+						preserveFocus: true
+					});
+					console.log("[CStar IDE] Post File Generated!");
+				}, () => {console.log("[CStar IDE] Post File Generating!");});
+			}, 1000);
+		}
 	});
 
 	// onNotification hoverfileTime
