@@ -107,6 +107,7 @@ export function activate(context: ExtensionContext) {
 	client.onNotification("cstar/postfileResult", async (postresult: PostfileResult) => {
 		const filepath = postresult.filepath;
 		const uri = vscode.Uri.file(filepath);
+		vscode.window.showInformationMessage('[CStar IDE] Symbolic Executing...');
 		const fileExists = await vscode.workspace.fs.stat(uri).then(() => true, () => false);
 		if (fileExists) {
 			vscode.window.showTextDocument(uri, {
