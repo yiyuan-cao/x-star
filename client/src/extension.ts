@@ -137,7 +137,7 @@ export function activate(context: ExtensionContext) {
 
 	// registerCommand starthollite
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.starthollite', () => {
-		exec("docker run --rm -v " + lsppath + ":/hol-lite --name cstar wybxc/hol-lite /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1");
+		exec("docker run --rm -v " + lsppath + ":/hol-lite --name cstar kevinshing/cstar-ide /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1");
 	}));
 	// docker run --rm -v /mnt/d/ZGC_Lab/hol-lite/:/hol-lite --name cstar wybxc/hol-lite /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1
 	// docker logs cstar
