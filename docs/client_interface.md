@@ -27,3 +27,8 @@ See [README.md](../README.md)
 - [Development strategy](https://blog.haoji.me/vscode-plugin-overview.html)
 - [vscode extension repo](https://github.com/microsoft/vscode-extension-samples/tree/main)
 - [visualstudio](https://code.visualstudio.com/api/ux-guidelines/overview)
+
+# Publish
+- version
+- vsce package
+- vsce publish
