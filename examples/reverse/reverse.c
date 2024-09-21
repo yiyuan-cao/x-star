@@ -12,9 +12,9 @@ datatype(
   (Cons, int, List *)
 );
 
-#define LIST(list)  ((List *)(List[]){list})
+#define LIST(list)  alloc_list(list)
 #define CONS(h, t)  LIST(Cons(h, t))
-#define NIL()       LIST(Nil())
+#define NIL         LIST(Nil())
 
 List *alloc_list(List list) {
     List *res = malloc(sizeof(*res));
@@ -24,7 +24,7 @@ List *alloc_list(List list) {
 }
 
 
-[[ghosttest]]
+[[ghost::test]]
 void printList(const List *l) {
   match (*l) {
     of(Nil) printf("Nil");
@@ -36,24 +36,24 @@ void printList(const List *l) {
   }
 }
 
-[[ghostfunction]]
+[[ghost::function]]
 List *app(const List *l, const List *m) {
   match (*l) {
     of(Nil) return m;
     of(Cons, h, t) {
-      List *n = alloc_list(Cons(*h, app(*t, m)));
+      List *n = CONS(*h, app(*t, m));
       return n;
     }
   }
 }
 
-[[ghostfunction]]
+[[ghost::function]]
 List *rev(const List *l) {
   match (*l) {
-    of(Nil) return alloc_list(Nil());
+    of(Nil) return NIL;
     of(Cons, h, t) {
       List *m = rev(*t);
-      List *n = alloc_list(*app(m, alloc_list(Cons(*h, alloc_list(Nil())))));
+      List *n = LIST(*app(m, CONS(*h, NIL)));
       return n;
     }
   }
@@ -64,49 +64,77 @@ struct ListNode {
 	struct ListNode * tail;
 };
 
-[[ghostrepresentation]]
+[[ghost::representation]]
 hprop list_repr(struct ListNode * ln, const List * l) {
 	match (*l) {
     of(Nil) return pure(ln == NULL);
     of(Cons, x, xs) {
-      struct ListNode * y = ln->tail;
       // hexist y, (ln->tail ~> y sep Top) sepand (ln->tail ~> y sep Q)
+      struct ListNode * y = ln->tail;
       return (ln->head == *x) SEP (ln->tail == y) SEP list_repr(y, *xs);
-      //return (*ln == (struct ListNode){*x, y}) * list_repr(y, *xs);
+      // return (*ln == (struct ListNode){*x, y}) * list_repr(y, *xs);
     }
   }
 }
 
-struct ListNode * reverse(struct ListNode * ln, [[ghostparam]] const List * l) /*@ With l : lst*/
-  // [[ghostrequire(list_repr(ln, l))]]
-  [[ghostensure(list_repr(__result, rev(l)))]]
+List * listHead (const List * l) {
+  match (*l) {
+    of(Nil) assert(0);
+    of(Cons, x, xs) return *x;
+  }
+}
+
+List * listTail (const List * l) {
+  match (*l) {
+    of(Nil) assert(0);
+    of(Cons, x, xs) return *xs;
+  }
+}
+
+bool eqList(const List * l1, const List * l2) {
+  match (*l1) {
+    of(Nil) {
+      match (*l2) {
+        of(Nil) return true;
+        otherwise return false;
+      }
+    }
+    of(Cons, x, xs) {
+      match (*l2) {
+        of(Nil) return false;
+        of(Cons, y, ys) return *x == *y && eqList(*xs, *ys);
+      }
+    }
+  }
+}
+
+struct ListNode * reverse(struct ListNode * ln, [[ghost::param]] const List * l) /*@ With l : lst*/
+  [[ghost::requires(list_repr(ln, l))]]
+  [[ghost::ensures(list_repr(__result, rev(l)))]]
 {
-  assert(list_repr(ln, l));
-  [[ghostlocalvar]] List *l_acc = (List *)NIL();
+  require(list_repr(ln, l));
+  [[ghost::localvar]] List *l1 = (List *)NIL, *l2 = l;
 	struct ListNode * prev = NULL;
-  // [[ghost: logic("forall p. is_prime(p)")]]
-	while(ln != NULL)
+	while (ln != NULL)
   {
 		struct ListNode * next = ln -> tail;
 		ln -> tail = prev;
-		[[ghostcommand]] l_acc = alloc_list(Cons(ln -> head, l_acc));
+		[[ghost::command]] l1 = CONS(ln -> head, l1);
 		prev = ln;
 		ln = next;
-    [[ghostcommand]] assert(list_repr(prev, l_acc));
+    [[ghost::command]] l2 = listTail(l2);
+    [[ghost::command]] assert(pure(eqList(app(rev(l1), l2), l)) SEP list_repr(prev, l1) SEP list_repr(next, l2));
 	}
   ensure(list_repr(prev, rev(l)));
 	return prev;
 }
 
 int main() {
-  struct List * ln1 = 
-    app(CONS(1, CONS(2, NIL())), CONS(3, CONS(4, NIL())));
-  // printList(rev(ln1));
-  // puts("");
-  struct ListNode * ln2 = 
+  struct ListNode * ln = 
     reverse(
-      &(struct ListNode){1, &(struct ListNode){2, NULL}}, 
-      CONS(1, CONS(2, NIL()))
+      &(struct ListNode){1, &(struct ListNode){2, &(struct ListNode){4, NULL}}}, 
+      CONS(1, CONS(2, CONS(4, NIL)))
     );
+  puts("Correct");
   return 0;
 }
