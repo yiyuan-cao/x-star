@@ -1,0 +1,9 @@
+hol_native
+hol_native_snap
+compile_flags.txt
+*.a
+*.o
+*.so
+*.cm*
+*.sw[po]
+*.exe
