@@ -1,3 +1,4 @@
+// linked with LCF lib, extracted from reverse.c.
 #include <stdio.h>
 typedef thm;
 extern void define_type(string);
@@ -27,6 +28,7 @@ void ghost_def() {
   );
 }
 
+// VST-IDE annotated C syntax.
 struct ListNode * reverse(struct ListNode * ln) 
 	/*@ require(list_repr(ln, l)) @*/
   /*@ ensure(list_repr(\result, rev(l))) @*/
@@ -52,4 +54,9 @@ void app_nil_r() {
 int main() {
   ghost_def();
   return 0;
+}
+
+// prove which-implies #1
+thm p1() {
+  // 
 }
