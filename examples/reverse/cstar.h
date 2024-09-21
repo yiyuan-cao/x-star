@@ -4,6 +4,7 @@
 typedef bool hprop; 
 #define pure(p) (p)
 #define require assert 
-#define ensure assert 
+#define ensure assert
+#define SEP &&
 
 #endif // CSTAR_H
