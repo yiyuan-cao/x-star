@@ -1,23 +1,9 @@
-cmake_minimum_required(VERSION 3.11.4)
+cmake_minimum_required(VERSION 3.20)
 project(reverse LANGUAGES C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(FetchContent)
-
-FetchContent_Declare(
-    datatype99
-    URL https://github.com/Hirrolot/datatype99/archive/refs/tags/v1.6.4.tar.gz
-)
-
-FetchContent_MakeAvailable(datatype99)
+include_directories(include)
 
 add_executable(reverse reverse.c)
-target_link_libraries(reverse datatype99)
-
-# Disable full macro expansion backtraces for Metalang99.
-if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(reverse PRIVATE -fmacro-backtrace-limit=1)
-elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-  target_compile_options(reverse PRIVATE -ftrack-macro-expansion=0)
-endif()
+add_executable(reverse_test test/reverse_test.c include/src/reverse_datatype.c include/cstar.h)
