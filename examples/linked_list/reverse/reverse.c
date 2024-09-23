@@ -77,7 +77,7 @@ hprop list_repr(struct ListNode * ln, const List * l) {
   }
 }
 
-List * listHead (const List * l) {
+int listHead (const List * l) {
   match (*l) {
     of(Nil) assert(0);
     of(Cons, x, xs) return *x;
