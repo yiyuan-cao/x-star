@@ -9,7 +9,7 @@ struct list_cell {
 
 HProp list_repr(struct list_cell *p, List l) { // Here p actually serve as a pair of a Ptr and an
                                                // field offset mapping for struct list_cell (used in field acesssing)
-    LET_SEP(&p, Ptr p_val)                     // added only when we have addressable stack locations
+    LET_SEP(&p, Ptr p_val)                     // added only when we have addressable stack locations; can be emitted by C* compiler.
     // hexists p_val : Ptr. data_at(&p, p_val)      NB. exists is at the SL level in VST-IDE
     if (list_is_nil(l)) {
         return PURE(p_val EQ VAL(NULL)) SEPAND EMP;
