@@ -1,8 +1,6 @@
 // run with dynamically checked ghost code
-#include "cstar.h"
+#include "cstar_test.h"
 #include "reverse_datatype.h"
-#include <assert.h>
-#include <stddef.h>
 
 struct list_cell {
     int head;
@@ -10,18 +8,31 @@ struct list_cell {
 };
 
 HProp list_repr(struct list_cell *p, List l) { // Here p actually serve as a pair of a Ptr and an
-                                               // field offset mapping for struct list_cell
+                                               // field offset mapping for struct list_cell (used in field acesssing)
+    LET_SEP(&p, Ptr p_val)                     // added only when we have addressable stack locations
+    // hexists p_val : Ptr. data_at(&p, p_val)      NB. exists is at the SL level in VST-IDE
     if (list_is_nil(l)) {
-        return PURE(p EQ VAL(NULL));
+        return PURE(p_val EQ VAL(NULL)) SEPAND EMP;
+        // we generate:
+        //     hexists p_val : Ptr.
+        //       data_at(&p, p_val) **
+        //       (if is_nil(l) then pure(p_val EQ 0) SEPAND EMP else <...to be filled below...>)
     }
     if (list_is_cons(l)) {
-        Z head = list_cons_head(l);    // generates a universally quantified variable and a pure constraint
+        Z head = list_cons_head(l); // generates a universally quantified variable and a pure constraint
+        // we generate:
+        //     ...
+        //       (if is_cons(l) then
+        //         hexists head. (pure(head(l) EQ head) SEPAND
+        //                        <... ...>)
+        //       else <...to be filled further below, but actually absent...>)
         List tail = list_cons_tail(l); // same as above
-        LET_SEP(Z, p_head, p->head)    // generates a exists and a data_at. A field access actually
+        LET_SEP(&p->head, Z p_head)    // generates a exists and a data_at. A field access actually
                                        // requires a data_at with field offset and size information.
-        LET_SEP(struct list_cell *, p_tail, p->tail) // same as above
-        return PURE(p_head EQ head) SEP list_repr(p_tail, tail);
+        LET_SEP(&p->tail, Ptr p_tail)  // same as above
+        return PURE(p_head EQ head) SEP list_repr((struct list_cell *)p_tail, tail);
     }
+    return BOT;
 }
 
 // declare the original function without a body
@@ -40,6 +51,28 @@ List list_reverse(List list) {
     return list_append(rev_tail, list_cons(head, list_nil()));
 }
 
+// the subset of C features that can be supported by extraction:
+// - local variables (of extractable (ghost) data types)
+// - for loop
+// - if statement
+// - return statement
+// - ?: operator
+// - function call
+
+// extraction can use the constraint generation approach or multiple functions (continuation points) approach
+
+// a possible substitute for list_reverse
+List list_reverse_with_local_var_and_for_loop(List list) {
+    List rev_list = list_nil();
+    List rem_list = list;
+    for (; rem_list != list_nil();) {
+        Z head = list_cons_head(rem_list);
+        rem_list = list_cons_tail(rem_list);
+        rev_list = list_cons(head, rev_list);
+    }
+    return rev_list;
+}
+
 struct list_cell *reverse(struct list_cell *p, List l) {
     require(list_repr(p, l));
     struct list_cell *__result = reverse_original(p, l);
@@ -49,21 +82,19 @@ struct list_cell *reverse(struct list_cell *p, List l) {
     return __result;
 }
 
-struct list_cell *reverse_original(struct list_cell *p, const List l) {
-    struct list_cell *rev_prefix;
-    struct list_cell *rem_suffix;
-    rev_prefix = NULL;
-    List l1 = list_nil(); // ghost local variable (feed to VST-IDE like a non-address-taken variable)
-    rem_suffix = p;
-    List l2 = l; // same as above
+struct list_cell *reverse_original(struct list_cell *p,
+                                   const List l) { // ghost level variables cannot be mutated except
+                                                   //  on ghost local variables
+    struct list_cell *rev_prefix = NULL, *rem_suffix = p;
+    List l1 = list_nil(), l2 = l; // ghost local variable (feed to VST-IDE)
 #define INV                                                                                                            \
     (PURE(list_equal(list_append(list_reverse(l1), l2), l))                                                            \
-         SEPAND (list_repr(rev_prefix, l1) SEP list_repr(rem_suffix, l2) SEP DATA_AT_EXISTS(VAL(&p))))
+         SEPAND (list_repr(rev_prefix, l1) SEP list_repr(rem_suffix, l2) SEP DATA_AT_ANY(&p)))
     for (assert(INV); rem_suffix != NULL; assert(INV)) {
-        // invariant is checked at the begining and at the end of each loop body using for loop
+        // Trick: using for-loop to ensure invariant is checked at the begining and at the end of each loop body
 #undef INV
         struct list_cell *t;
-        assert(rem_suffix != NULL); // tell VST-IDE that rem_suffix is not NULL (unfold the cell)
+        assert(rem_suffix != NULL); // Possible hint: tell VST-IDE that rem_suffix is not NULL (unfold the cell)
         t = rem_suffix->tail;
         rem_suffix->tail = rev_prefix;
         rev_prefix = rem_suffix;
@@ -74,6 +105,7 @@ struct list_cell *reverse_original(struct list_cell *p, const List l) {
     return rev_prefix;
 }
 
+// debug only
 void test_list_reverse() {
     List l1 = list_cons(1, list_cons(2, list_cons(3, list_nil())));
     List l1_rev = list_cons(3, list_cons(2, list_cons(1, list_nil())));
@@ -84,7 +116,7 @@ void test_list_reverse() {
 }
 
 int main() {
-    test_list_reverse();
+    test_list_reverse(); // debug only
     struct list_cell *p = &(struct list_cell){1, &(struct list_cell){2, &(struct list_cell){3, NULL}}};
     List l = list_cons(1, list_cons(2, list_cons(3, list_nil())));
     reverse(p, l);

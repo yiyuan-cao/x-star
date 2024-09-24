@@ -5,9 +5,10 @@
  */
 
 #include "reverse_datatype.h"
-#include "cstar.h"
+#include "cstar_test.h"
 #include <stdio.h>
 #include <stdlib.h>
+
 // we can also use datatype99 to ease the process of generating this file
 struct list_block {
     enum { list_nil_tag, list_cons_tag } tag;
@@ -30,8 +31,7 @@ List list_nil() {
 
 List list_cons(Z head, List tail) {
     List list = malloc(sizeof(struct list_block));
-    *list =
-        (struct list_block){.tag = list_cons_tag, .list_cons_head = head, .list_cons_tail = tail};
+    *list = (struct list_block){.tag = list_cons_tag, .list_cons_head = head, .list_cons_tail = tail};
     return list;
 }
 
@@ -59,7 +59,7 @@ void list_print_sexp(List list) {
     if (list_is_nil(list)) {
         printf("nil");
     } else {
-        printf("(cons %d ", list_cons_head(list));
+        printf("(cons %lld ", list_cons_head(list));
         list_print_sexp(list_cons_tail(list));
         printf(")");
     }

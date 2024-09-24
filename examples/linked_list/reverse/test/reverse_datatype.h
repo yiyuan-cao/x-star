@@ -7,8 +7,7 @@
 #ifndef REVERSE_DATATYPE_H
 #define REVERSE_DATATYPE_H
 
-#include "cstar.h"
-#include <stdbool.h>
+#include "cstar_test.h"
 
 /** datatype */
 struct list_block;
