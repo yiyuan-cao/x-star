@@ -5,67 +5,66 @@
  */
 
 #include "reverse_datatype.h"
-#include "cstar_test.h"
 #include <stdio.h>
 #include <stdlib.h>
 
+
 // we can also use datatype99 to ease the process of generating this file
-struct list_block {
-    enum { list_nil_tag, list_cons_tag } tag;
+struct i32_list_block {
+    enum { nil_tag, cons_tag } tag;
     union {
         struct {
             char list_nil_dummy;
         };
         struct {
-            int list_cons_head;
-            List list_cons_tail;
+            int32_t head;
+            i32_list tail;
         };
     };
 };
 
-List list_nil() {
-    List list = malloc(sizeof(struct list_block));
-    *list = (struct list_block){.tag = list_nil_tag};
-    return list;
+i32_list nil() {
+    i32_list l = malloc(sizeof(struct i32_list_block));
+    *l = (struct i32_list_block){.tag = nil_tag};
+    return l;
 }
 
-List list_cons(Z head, List tail) {
-    List list = malloc(sizeof(struct list_block));
-    *list = (struct list_block){.tag = list_cons_tag, .list_cons_head = head, .list_cons_tail = tail};
-    return list;
+i32_list cons(int32_t head, i32_list tail) {
+    i32_list l = malloc(sizeof(struct i32_list_block));
+    *l = (struct i32_list_block){.tag = cons_tag, .head = head, .tail = tail};
+    return l;
 }
 
-Z list_cons_head(List list) { return list->list_cons_head; }
+int32_t head(i32_list l) { return l->head; }
 
-List list_cons_tail(List list) { return list->list_cons_tail; }
+i32_list tail(i32_list l) { return l->tail; }
 
-Bool list_is_nil(List list) { return list->tag == list_nil_tag; }
+bool is_nil(i32_list l) { return l->tag == nil_tag; }
 
-Bool list_is_cons(List list) { return list->tag == list_cons_tag; }
+bool is_cons(i32_list l) { return l->tag == cons_tag; }
 
-Bool list_equal(List list1, List list2) {
-    if (list_is_nil(list1) AND list_is_nil(list2)) {
+bool i32_list_eq(i32_list l1, i32_list l2) {
+    if (is_nil(l1) && is_nil(l2)) {
         return true;
     }
-    if (list_is_cons(list1) AND list_is_cons(list2)) {
-        return list1->list_cons_head EQ list2->list_cons_head AND list_equal(list1->list_cons_tail,
-                                                                             list2->list_cons_tail);
+    if (is_cons(l1) && is_cons(l2)) {
+        return (l1->head == l2->head) && i32_list_eq(l1->tail, l2->tail);
     }
     return false;
 }
 
 // debug only
-void list_print_sexp(List list) {
-    if (list_is_nil(list)) {
+void i32_list_print_aux(i32_list l) {
+    if (is_nil(l)) {
         printf("nil");
     } else {
-        printf("(cons %lld ", list_cons_head(list));
-        list_print_sexp(list_cons_tail(list));
+        printf("(cons %d ", l->head);
+        i32_list_print_aux(l->tail);
         printf(")");
     }
 }
 
-void list_println_sexp(List list) {
-    list_print_sexp(list);
+void i32_list_print(i32_list l) {
+    i32_list_print_aux(l);
     printf("\n");
 }

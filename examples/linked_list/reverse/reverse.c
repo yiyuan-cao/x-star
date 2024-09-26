@@ -38,7 +38,7 @@ bool i32_ll_repr(i32_ll p, i32_list l) {
     if (is_nil(l)) {
         return (p == NULL) && EMP;
         // PURE is automatically added; && is same as SEPAND (write SEPAND explicitly for disambiguation).
-        // `==` compares primitive program values. (Use EQ for comparing ghost datatypes defined.)
+        // `==` compares primitive program values. (Use generated `i32_list_eq` for comparing ghost datatypes.)
         // return FACT(p == NULL); // This is another way to write `PURE(p == NULL) SEPAND EMP`.
     } else {
         int32_t h = head(l); // similar to LET binding
@@ -47,7 +47,7 @@ bool i32_ll_repr(i32_ll p, i32_list l) {
         // binding them to new existentially quantified variables `p_head` and `p_tail`
         LET_DATA_AT(&p->value, int32_t value)
         LET_DATA_AT(&p->next, i32_ll p_next)
-        return (p_value == h) && i32_ll_repr(p_next, t); // programmer can also use SEP for explicit separation; SEP has higher precedence than && (SEPAND).
+        return (p_value == h) && i32_ll_repr(p_next, t); // programmer can also use SEP for explicit separation; SEP has the same precedence of && (SEPAND).
     }
 }
 )]];
@@ -122,8 +122,8 @@ i32_ll i32_ll_reverse(i32_ll p)
     [[ghost::invariant(
         (i32_list_eq(append(reverse(l1), l2), l)) &&
         (i32_ll_repr(rev_prefix, l1) SEP
-        i32_ll_repr(rem_suffix, l2) SEP
-        DATA_AT_ANY(&p)))]] // no `;` so this invariant is attached to the while loop below
+         i32_ll_repr(rem_suffix, l2) SEP
+         DATA_AT_ANY(&p)))]] // no `;` so this invariant is attached to the while loop below
     while (rem_suffix != NULL) {
         i32_ll t;
         [[ghost::assert(is_cons(l2))]]; // Programmer hint to tell VST-IDE that rem_suffix is not NULL.
@@ -158,6 +158,7 @@ int main() {
     print_i32_ll(p);
 #endif
     [[ghost::localvar(i32_list l = cons(1, cons(2, cons(3, nil()))))]];
+    [[ghost::debug(i32_list_print(l))]];
     i32_ll q;
     // attached to the function call, used to pass ghost arguments
     [[ghost::argument(l)]] q = i32_ll_reverse(p);

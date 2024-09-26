@@ -7,31 +7,32 @@
 #ifndef REVERSE_DATATYPE_H
 #define REVERSE_DATATYPE_H
 
-#include "cstar_test.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 /** datatype */
-struct list_block;
-typedef struct list_block *List;
+struct i32_list_block;
+typedef struct i32_list_block *i32_list;
 
 // users should only use the following functions to create and access List values
 // all functions are appended a type name prefix to avoid name clashes
 
 /** constructors */
-List list_nil();
-List list_cons(Z head, List tail);
+i32_list nil();
+i32_list cons(int32_t head, i32_list tail);
 
 /** accessors */
-Z list_cons_head(List list);
-List list_cons_tail(List list);
+int32_t head(i32_list l);
+i32_list tail(i32_list l);
 
 /** discriminators */
-Bool list_is_nil(List list);
-Bool list_is_cons(List list);
+bool is_nil(i32_list l);
+bool is_cons(i32_list l);
 
 /** equality */
-Bool list_equal(List list1, List list2);
+bool i32_list_eq(i32_list l1, i32_list l2);
 
 /** debug only */
-void list_println_sexp(List list);
+void i32_list_print(i32_list l);
 
 #endif
