@@ -1,5 +1,6 @@
 // Cstar extraction configuration file for standard library, used by default.
 
+
 // ignore this for now, this is automatically generated
 {
     "proof": {

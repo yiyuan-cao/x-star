@@ -1,0 +1,8 @@
+{
+  "goals": [
+    {
+      "goal": "list_repr(p, l) => list_repr(p, list_reverse(l))",
+      "proof": "list_repr(p, l) => list_repr(p, list_reverse(l))"
+    }
+  ]
+}
