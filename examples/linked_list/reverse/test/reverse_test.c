@@ -38,17 +38,18 @@ i32_list append(i32_list l1, i32_list l2) {
 i32_list reverse(i32_list l) {
     if (is_nil(l)) {
         return l;
+    } else {
+        i32 h = head(l);
+        i32_list rev_tail = reverse(tail(l));
+        return append(rev_tail, cons(h, nil()));
     }
-    i32 h = head(l);
-    i32_list rev_tail = reverse(tail(l));
-    return append(rev_tail, cons(h, nil()));
 }
 
 // a possible substitute for list_reverse
 i32_list reverse_with_local_var_and_for_loop(i32_list list) {
     i32_list rev_list = nil();
     i32_list rem_list = list;
-    for (; rem_list != nil();) {
+    for (; is_cons(rem_list);) {
         i32 h = head(rem_list);
         rem_list = tail(rem_list);
         rev_list = cons(h, rev_list);

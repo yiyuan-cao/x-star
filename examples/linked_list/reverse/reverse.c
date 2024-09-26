@@ -1,7 +1,8 @@
 // This is the C* source code for the `reverse` example, the only source file the PROGRAMMER writes.
 //   - C* source code = C + ghost code (also written in C language)
 //   - Ghost code is used for executable specifications and imperative-style proof hints.
-// C* code is directly compilable by C2X compatible compilers, because all ghost code is embedded in [[attribute]] syntax.
+//   - This file can be extracted in two ways: testing mode and proof mode.
+//   - This file is also directly compilable by C2X compatible compilers because all ghost code is embedded in [[attribute]] syntax.
 
 // TODO: Requirements and syntax for ghost code.
 
@@ -26,36 +27,34 @@ typedef struct i32_ll_node *i32_ll;
 // Generates structural equality (`i32_list_eq`), accessors, constructors, and discriminators (`is_nil`, `is_cons`) that can be used in ghost code.
 // - In testing, the datatype is implemented as tagged unions using `enum`, `union`, and `struct` in C.
 //     - Generates `i32_list_print` for debugging purposes.
-// - In symbolic execution, the ghost datatype is deemed as primitive program values.
+// - In symbolic execution, values of a ghost datatype is deemed as primitive program values in ghost code.
 //   - Constructors are primitive data constructors.
 //   - Accessors and discriminators have (pure) pre/post-specifications.
 // - In proof, the datatype is translated to HOL inductive type definition.
 //   - Accessors (partially-defined total functions) and discriminators are translated to HOL functions with respect to the inductive type.
 
-[[ghost::representation( // signifies the return type is `Hprop` for extraction to proof mode.
+[[ghost::representation( // signifies the return type is `hprop` for extraction to proof mode.
 bool i32_ll_repr(i32_ll p, i32_list l) {
     // We will do type checking before extracting to reverse_proof.c
     if (is_nil(l)) {
         return (p == NULL) && EMP;
-        // PURE is automatically added; && is same as SEPAND (write SEPAND explicitly for disambiguation).
+        // PURE is automatically added; && is the same as SEPAND in this context (write SEPAND explicitly for disambiguation).
         // `==` compares primitive program values. (Use generated `i32_list_eq` for comparing ghost datatypes.)
         // return FACT(p == NULL); // This is another way to write `PURE(p == NULL) SEPAND EMP`.
     } else {
-        int32_t h = head(l); // similar to LET binding
+        int32_t h = head(l); // similar to a LET-binding
         i32_list t = tail(l);
-        // introduce the `LET_DATA_AT` syntax for claiming the ownership of struct fields `&p->head` and `&p->tail`
-        // binding them to new existentially quantified variables `p_head` and `p_tail`
+        // introduce the `LET_DATA_AT` syntax for claiming the ownership of struct fields at the addresses `&p->value` and `&p->next`
+        // bind them to existentially quantified variables `p_value` and `p_next`
         LET_DATA_AT(&p->value, int32_t value)
-        LET_DATA_AT(&p->next, i32_ll p_next)
-        return (p_value == h) && i32_ll_repr(p_next, t); // programmer can also use SEP for explicit separation; SEP has the same precedence of && (SEPAND).
+        LET_DATA_AT(&p->next, i32_ll next)
+        return (value == h) && i32_ll_repr(next, t); // programmer can also use SEP for explicit separation; SEP has the same precedence as SEPAND.
     }
 }
 )]];
 
-// For the basic extraction support, in a ghost function, we require:
-//   - each `if` statement to have a `else` branch
-//   - a `return` statement for each execution branch
-// Beware: the order of definitions and in expressions are important
+// For the basic extraction support of ghost functions, we require purely functional code and no loops.
+// - Each execution branch must have a return statement.
 
 // For future support
 // - `while` loop and `for` iteration
@@ -63,15 +62,19 @@ bool i32_ll_repr(i32_ll p, i32_list l) {
 // - `return` in other places
 // - mutable local variables
 //   - note that mutation of a local var is just a `let`-rebind without single branch `if` and loops
+// other data structures (arrays, structs, etc.)
 
 // In principle, any C code that is observationally pure can be extracted to proof mode.
 //   - Observationally pure: the output of the function is a pure function of the input (if no errors occur) and no divergence.
+//     Moreover, the code must not interfere with original program code. (This is also a requirement for ghost commands.)
 
-// two ways to extract function definitions: 1. Similar to SMT encoding 2. Multiple functions (continuation points)
+// Two ways to extract function definitions:
+// 1. Similar to an SMT encoding or Characteristic Formula
+// 2. Multiple functions for each program point
 
 [[ghost::function(
 i32_list append(i32_list l1, i32_list l2) {
-    return is_nil(l1) ? l2 : cons(head(l1), append(tail(l1), l2)); // we can use ?: operator
+    return is_nil(l1) ? l2 : cons(head(l1), append(tail(l1), l2)); // support the ternary operator `?:`
 }
 )]];
 
@@ -79,8 +82,7 @@ i32_list append(i32_list l1, i32_list l2) {
 i32_list reverse(i32_list l) {
     if (is_nil(l)) {
         return l;
-    }
-    else {
+    } else {
         int32_t h = head(l);
         i32_list rev_t = reverse(tail(l));
         return append(rev_t, cons(h, nil()));
@@ -88,12 +90,12 @@ i32_list reverse(i32_list l) {
 }
 )]];
 
-// Another version of reverse, possible supported in the future.
+// Another version of reverse, possibly supported in the future.
 [[ghost::function(
 i32_list reverse_with_local_var_and_for_loop(i32_list l) {
     i32_list rev_list = nil();
     i32_list rem_list = l;
-    for (; rem_list != nil();) {
+    for (; is_cons(rem_list);) {
         int32_t head = head(rem_list);
         rem_list = tail(rem_list);
         rev_list = cons(head, rev_list);
@@ -118,7 +120,6 @@ i32_ll i32_ll_reverse(i32_ll p)
     i32_ll rev_prefix = NULL, rem_suffix = p;
     [[ghost::localvar(i32_list l1 = nil(), l2 = l)]];
     // ghost local variable must be initialized
-    // their symbolic execution is translated to manipulation of stack variables that have primitive datatype values (needs support from VST-IDE).
     [[ghost::invariant(
         (i32_list_eq(append(reverse(l1), l2), l)) &&
         (i32_ll_repr(rev_prefix, l1) SEP
