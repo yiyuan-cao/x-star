@@ -2,15 +2,13 @@
 
 ```mermaid
 graph LR
-    C_COMPILER(("C Compiler"))
-    CSTAR_COMPILER((C* Compiler))
+    CSTAR_EXTRACTOR((C* Extractor))
     CSTAR_CONFIG_JSON[["cstar_config.json"]]
     
-    CSTAR_CONFIG_JSON -->|"provides configuration for"| CSTAR_COMPILER
+    CSTAR_CONFIG_JSON --> CSTAR_EXTRACTOR
     
-    subgraph Programmer
-        REVERSE_C --o|"contains"| REVERSE_C_IMPL
-        REVERSE_C --o|"contains"| REVERSE_C_GHOST
+    subgraph "C* Source Code"
+        REVERSE_C --o REVERSE_C_IMPL & REVERSE_C_GHOST
         
         REVERSE_C["reverse.c"]
         REVERSE_C_IMPL("Implementation C Code")
@@ -18,37 +16,43 @@ graph LR
         REVERSE(["reverse"])
     end
 
-    REVERSE_C -->|"is input to"| C_COMPILER -->|"produces"| REVERSE
-    REVERSE_C -->|"is input to"| CSTAR_COMPILER -->|"produces"| REVERSE_TEST_C & REVERSE_GHOST_C & REVERSE_DEFS_JSON & REVERSE_SE_C
+    REVERSE_C ==> REVERSE
+    REVERSE_C --> CSTAR_EXTRACTOR --> REVERSE_TEST_C & REVERSE_GHOST_C & REVERSE_DEFS_JSON & REVERSE_SE_C
 
-    subgraph Dynamic Test Mode
+    subgraph "Dynamic Test Mode"
         REVERSE_TEST_C["reverse_test.c"]
         REVERSE_GHOST_C["reverse_ghost.c"]
         REVERSE_TEST(["reverse_test"])
     end
 
-    REVERSE_TEST_C & REVERSE_GHOST_C -->|"is input to"| C_COMPILER -->|"produces"| REVERSE_TEST
+    REVERSE_TEST_C & REVERSE_GHOST_C ==> REVERSE_TEST
 
-    subgraph Static Symbolic Execution
-        SE_ENGINE((Symbolic Execution Engine))
+    subgraph "Static Symbolic Executor"
+        SE_ENGINE((SE Engine))
         REVERSE_SE_C["reverse_se.c"]
-        REVERSE_SE_JSON[("reverse_se.json")]
+        REVERSE_SE_JSON[["reverse_se.json"]]
     end
 
-    REVERSE_SE_C & REVERSE_DEFS_JSON -->|"is input to"| SE_ENGINE -->|"produces"| REVERSE_SE_JSON
+    REVERSE_SE_C & REVERSE_DEFS_JSON --> SE_ENGINE --> REVERSE_SE_JSON
 
-    subgraph Theory Development and Discharge Proof Obligations
-        REVERSE_SE_JSON & REVERSE_DEFS_JSON -->|"is input to"| REVERSE_PROOF
-        REVERSE_DEFS_JSON --o|"contains"| A("Type Definitions") & B("Function Definitions") & C("Predicate Definitions")
+    %%  "Programmable Theory Development and Discharge Proof Obligations"
+    subgraph Programmable Proof Mode
+        REVERSE_SE_JSON & REVERSE_DEFS_JSON --> REVERSE_PROOF
+        REVERSE_THMS_JSON --> REVERSE_PROOF --> REVERSE_THMS_JSON
+        REVERSE_DEFS_JSON --o TYPE_DEFS & FUN_DEFS
+        REVERSE_THMS_JSON --o THMS
 
+        TYPE_DEFS("Type Definitions")
+        FUN_DEFS("Function Definitions")
+        THMS("Proved Theorems")
         REVERSE_PROOF_C["reverse_proof.c"]
         REVERSE_PROOF(["reverse_proof"])
-        REVERSE_DEFS_JSON[("reverse_defs.json")]
+        REVERSE_DEFS_JSON[["reverse_defs.json"]]
+        REVERSE_THMS_JSON[["reverse_thms.json"]]
         HOL_LIB[hol_lib.a]
-        
     end
     
-    REVERSE_PROOF_C & HOL_LIB -->|"is input to"| C_COMPILER -->|"produces"| REVERSE_PROOF
+    REVERSE_PROOF_C & HOL_LIB ==> REVERSE_PROOF
 ```
 
 This document summarizes the architecture and workflow of the C* compiler, using the `reverse` example. Under the directory `examples/linkedlist/reverse`, the files are organized as follows:
