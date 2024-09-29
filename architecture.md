@@ -5,33 +5,35 @@ graph TD
     CSTAR_EXTRACTOR((C* Extractor))
     CSTAR_CONFIG_JSON[["cstar_config.json"]]
     
-    subgraph "C* Source Code"
-        REVERSE_C --o REVERSE_C_IMPL & REVERSE_C_GHOST
-        REVERSE_C_GHOST --o TYPE_DEFS & FUN_DEFS & GHOST_COMMANDS
-        REVERSE_C_IMPL ==> REVERSE
-        
-        TYPE_DEFS("Type Definitions")
-        FUN_DEFS("Function Definitions")
-        GHOST_COMMANDS("Ghost Commands")
-        
-        REVERSE_C["reverse.c"]
-        REVERSE_C_IMPL("Implementation C Code")
-        REVERSE_C_GHOST("Specification Ghost C Code")
-        REVERSE(["reverse"])
+    subgraph "C Program Development"
+        %% subgraph "C Program Development"
+            REVERSE_C --o REVERSE_C_IMPL & REVERSE_C_GHOST
+            REVERSE_C_GHOST --o DEFINITIONS & GHOST_STATEMENTS_AND_CONTRACTS
+            REVERSE_C_IMPL ==> REVERSE
+            
+            DEFINITIONS("Datatype, Function and Predicate Definitions")
+            GHOST_STATEMENTS_AND_CONTRACTS("Behavioral Contracts and Ghost Statements")
+            
+            REVERSE_C["reverse.c"]
+            REVERSE_C_IMPL("Implementation C Code")
+            REVERSE_C_GHOST("Specification Ghost C Code")
+            REVERSE(["reverse"])
+        %% end
+
+        subgraph "Dynamic Checking"
+            REVERSE_TEST_C["reverse_test.c"]
+            REVERSE_DEFS_C["reverse_defs.c"]
+            REVERSE_TEST(["reverse_test"])
+
+            REVERSE_TEST_C & REVERSE_DEFS_C ==> REVERSE_TEST
+        end
+    
     end
 
     CSTAR_CONFIG_JSON --> CSTAR_EXTRACTOR
     REVERSE_C --> CSTAR_EXTRACTOR --> REVERSE_TEST_C & REVERSE_DEFS_C & REVERSE_DEFS_JSON & REVERSE_SE_C
-
-    subgraph "Dynamic Test Mode"
-        REVERSE_TEST_C["reverse_test.c"]
-        REVERSE_DEFS_C["reverse_defs.c"]
-        REVERSE_TEST(["reverse_test"])
-
-        REVERSE_TEST_C & REVERSE_DEFS_C ==> REVERSE_TEST
-    end
     
-    subgraph Programmable Proof Mode
+    subgraph "C Programmable Proof Devlopment"
         SE_ENGINE((SE Engine))
         REVERSE_SE_C["reverse_se.c"]
         REVERSE_SE_JSON[["reverse_se.json"]]
@@ -44,10 +46,9 @@ graph TD
         REVERSE_PROOF(["reverse_proof"])
         REVERSE_DEFS_JSON[["reverse_defs.json"]]
         REVERSE_THMS_JSON[["reverse_thms.json"]]
-        HOL_LIB[hol_lib.a]
+        %% LCF-Style
+        HOL_LIB([HOL C Interface])
     end
-    
-
 ```
 
 This document summarizes the architecture and workflow of the C* compiler, using the `reverse` example. Under the directory `examples/linkedlist/reverse`, the files are organized as follows:
