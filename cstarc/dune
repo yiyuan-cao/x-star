@@ -1,0 +1,12 @@
+(ocamllex
+ (modules lexer))
+
+(menhir
+ (modules parser)
+ (flags --no-stdlib --unused-token IMAGINARY -lg 1 -la 1 -v))
+
+(executable
+ (name main)
+ (modules main declarator context options lexer parser)
+ (libraries menhirLib))
+
