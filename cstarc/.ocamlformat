@@ -1,0 +1,4 @@
+profile = ocamlformat
+break-cases = fit
+margin = 77
+line-endings = lf
