@@ -8,4 +8,6 @@
 
 (package
  (name cstarc)
+ (maintainers "CStar Team")
+ (synopsis "CStar Compiler")
  (depends menhir core ppx_deriving))
