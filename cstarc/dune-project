@@ -1,5 +1,13 @@
-(lang dune 3.16)
+(lang dune 3.14)
 
 (name cstarc)
 
 (using menhir 3.0)
+
+(generate_opam_files)
+
+(package
+ (name cstarc)
+ (maintainers "CStar Team")
+ (synopsis "CStar Compiler")
+ (depends menhir core ppx_deriving))
