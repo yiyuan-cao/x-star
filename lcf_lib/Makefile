@@ -15,7 +15,7 @@ hol-light/hol_loader.cmo:
 runtime.o: eval.ml hol-light/hol_loader.cmo
 	ocamlfind ocamlc -linkall -output-complete-obj -linkpkg -o runtime.o \
 		-package compiler-libs.toplevel -package zarith -package camlp-streams \
-		-cclib -L/opt/homebrew/lib -cclib /opt/homebrew/lib/libgmp.a eval.ml hol-light/bignum.cmo hol-light/hol_loader.cmo
+		-cclib -L/usr/lib eval.ml hol-light/bignum.cmo hol-light/hol_loader.cmo
 
 compile_flags.txt:
 	echo $(CFLAGS) > compile_flags.txt
