@@ -1,3 +1,0 @@
-[submodule "lcf_lib/hol-light"]
-	path = lcf_lib/hol-light
-	url = git@github.com:jrh13/hol-light.git
