@@ -1,28 +1,17 @@
 (** The abstract syntax tree of a Cstar program. *)
 
-open Core
-
 (** Identifier. *)
-type ident = {id_string: string} [@@deriving show]
+type ident = string [@@deriving show]
 
 (** Source location information. *)
-type location = {line_no: int; col_no: int} [@@deriving show]
+type loc = {line_no: int; col_no: int} [@@deriving show]
 
 (** Source range information. *)
-type range = {start_p: location; end_p: location} [@@deriving show]
-
-type float_info =
-  { is_hex: bool
-  ; integer: string option
-  ; fraction: string option
-  ; exponent: string option
-  ; suffix: string option }
-[@@deriving show]
+type range = {start_p: loc; end_p: loc} [@@deriving show]
 
 (** Constants. *)
 type constant =
   | Cinteger of int  (** Overloaded integer literals: [int], [Z]. *)
-  | Cfloat of float_info
   | Cboolean of bool
       (** Overloaded boolean literals [true] and [false]: [_Bool], [bool], [prop], [hprop]. *)
   | Cnullval  (** [val nullval]. *)
@@ -37,9 +26,19 @@ type typ =
   | Tptr of typ  (** [<typ> *] *)
   | Tarray of typ * int option  (** [<typ> [<len>]] *)
   | Tstruct of ident  (** struct <ident> *)
+  | Tstructdecl of ident option * field list
+      (** struct <ident> { <field> ... } *)
   | Tunion of ident  (** union <ident> *)
+  | Tuniondecl of ident option * field list
+      (** union <ident> { <field> ... } *)
   | Tnamed of ident  (** [<ident>], type indentifiers of [indtype]s *)
 [@@deriving show]
+
+(** Typed parameter. *)
+and parameter = typ * ident [@@deriving show]
+
+(** Composite (struct or union) field. *)
+and field = parameter [@@deriving show]
 
 (** Unary operators. *)
 type unary_operator =
@@ -73,18 +72,13 @@ type binary_operator =
       (** [||]. Overloaded: [_Bool], [bool], [prop], [hprop]. Short-circuit behavior for [_Bool]. *)
   | Obitand  (** [&] bitwise AND *)
   | Obitor  (** [|] bitwise OR *)
+  | Obitxor  (** [^] bitwise XOR *)
   | Obitrsh  (** [>>] right shift *)
   | Obitlsh  (** [<<] left shift *)
   | Oassign  (** [=] *)
   | Ocomma
       (** [,] sequence effecful expressions, return the result of the latter *)
 [@@deriving show]
-
-(** Typed parameter. *)
-type parameter = typ * ident [@@deriving show]
-
-(** Composite (struct or union) field. *)
-type field = parameter [@@deriving show]
 
 (** function symbol prototype. *)
 type funsym = typ * ident * parameter list * range [@@deriving show]
@@ -110,10 +104,7 @@ and expr =
   | Esizeofexpr of expr
   | Esizeoftyp of typ
   | Ecast of typ * expr
-  | Econditional of
-      expr
-      * expr
-      * expr (* Overloaded: condition can be a [bool] or a [_Bool]. *)
+  | Econditional of expr * expr * expr
 [@@deriving show]
 
 (** Struct or union. *)
@@ -165,12 +156,10 @@ type stmt =
 and declaration =
   | Ddeclvar of typ * ident * init option * range
       (** variable declaration. *)
-  | Ddeclarray of typ * ident * constant * init option * range
-      (** array declaration. *)
   | Ddeclcomp of typ * range  (** composite type declaration. *)
   | Ddeclfun of funsym * annotations  (** function declaration. *)
-  | Ddefcomp of struct_or_union * ident * field list * range
-      (** composite type definition. *)
+  | Ddecltype of typ * range  (** type definition. *)
+  | Ddecltypedef of ident * typ * range  (** type definition. *)
   | Ddeffun of funsym * annotations * stmt  (** function definition. *)
 [@@deriving show]
 

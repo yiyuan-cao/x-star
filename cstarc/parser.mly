@@ -39,13 +39,43 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    https://gallium.inria.fr/~fpottier/menhir/manual.html *)
 
 %{
+  open Ast
   open Context
   open Declarator
+
+  let mk_loc { Lexing.pos_lnum; pos_cnum; pos_bol; _ } = { line_no = pos_lnum; col_no = pos_cnum - pos_bol }
+  let mk_range (start_p, end_p) = { start_p = mk_loc start_p; end_p = mk_loc end_p }
+
+  (* function composition *)
+  let ( *.* ) f g x = f (g x)
+  let id x = x
+
+  (* [a -? b] is [x] if [a] is [Some x], and [b] otherwise. *)
+  let ( -? ) a b = Option.value a ~default:b
+
+  type data_type = Dint | Dchar | Dshort | Dlong | Dfloat | Ddouble
+  type primitive_type = { data_type: data_type; signed: bool }
+  let typ_of_primitive { data_type; signed } = 
+    match data_type with
+    | Dint -> if signed then Tint else Tunsigned
+    | _ -> failwith "unsupported primitive type"
+
+  type type_specifier = 
+    | Sdata of data_type
+    | Ssigness of bool
+  let primitive_of_specifiers ss = 
+    let open Core in
+    let t = ref { data_type = Dint; signed = true } in
+    List.iter ss ~f:(function
+        | Sdata d -> t := { !t with data_type = d }
+        | Ssigness s -> t := { !t with signed = s });
+    !t
 %}
 
 %token<string> NAME
 %token VARIABLE TYPE
-%token CONSTANT STRING_LITERAL
+%token<Ast.constant> CONSTANT 
+%token STRING_LITERAL
 
 %token ALIGNAS "_Alignas"
 %token ALIGNOF "_Alignof"
@@ -145,7 +175,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %token EOF
 
-%type<context> save_context parameter_type_list function_definition1
+%type<context> save_context
 %type<string> typedef_name var_name general_identifier enumeration_constant
 %type<declarator> declarator direct_declarator
 
@@ -168,7 +198,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %nonassoc below_ELSE
 %nonassoc ELSE
 
-%start<unit> translation_unit_file
+%start<Ast.program> translation_unit_file
 
 %%
 
@@ -181,51 +211,61 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %inline ioption(X):
 | /* nothing */
-| X
-    {}
+    { None }
+| x=X
+    { Some x }
 
 option(X):
-| o = ioption(X)
+| o=ioption(X)
     { o }
 
 (* By convention, [X*] is syntactic sugar for [list(X)]. *)
 
 list(X):
 | /* nothing */
-| X list(X)
-    {}
+    { [] }
+| x=X xs=list(X)
+    { x::xs }
 
 (* A list of A's and B's that contains exactly one A: *)
 
 list_eq1(A, B):
-| A B*
-| B list_eq1(A, B)
-    {}
+| a=A bs=B*
+    { (a, bs) }
+| b=B xs=list_eq1(A, B)
+    { let (a, bs) = xs in (a, b::bs) }
 
 (* A list of A's and B's that contains at least one A: *)
 
 list_ge1(A, B):
-| A B*
-| A list_ge1(A, B)
-| B list_ge1(A, B)
-    {}
+| a=A bs=B*
+    { ([a], bs) }
+| a=A xs=list_ge1(A, B)
+    { let (a_s, bs) = xs in (a::a_s, bs) }
+| b=B xs=list_ge1(A, B)
+    { let (a_s, bs) = xs in (a_s, b::bs) }
 
 (* A list of A's, B's and C's that contains exactly one A and exactly one B: *)
 
 list_eq1_eq1(A, B, C):
-| A list_eq1(B, C)
-| B list_eq1(A, C)
-| C list_eq1_eq1(A, B, C)
-    {}
+| a=A xs=list_eq1(B, C)
+    { let (b, cs) = xs in (a, b, cs) }
+| b=B xs=list_eq1(A, C)
+    { let (a, cs) = xs in (a, b, cs) }
+| c=C xs=list_eq1_eq1(A, B, C)
+    { let (a, b, cs) = xs in (a, b, c::cs) }
 
 (* A list of A's, B's and C's that contains exactly one A and at least one B: *)
 
 list_eq1_ge1(A, B, C):
-| A list_ge1(B, C)
-| B list_eq1(A, C)
-| B list_eq1_ge1(A, B, C)
-| C list_eq1_ge1(A, B, C)
-    {}
+| a=A xs=list_ge1(B, C)
+    { let (bs, cs) = xs in (a, bs, cs) }
+| b=B xs=list_eq1(A, C)
+    { let (a, cs) = xs in (a, [b], cs) }
+| b=B xs=list_eq1_ge1(A, B, C)
+    { let (a, bs, cs) = xs in (a, b::bs, cs) }
+| c=C xs=list_eq1_ge1(A, B, C)
+    { let (a, bs, cs) = xs in (a, bs, c::cs) }
 
 (* Upon finding an identifier, the lexer emits two tokens. The first token,
    [NAME], indicates that a name has been found; the second token, either [TYPE]
@@ -233,23 +273,23 @@ list_eq1_ge1(A, B, C):
    performed only when the second token is demanded by the parser. *)
 
 typedef_name:
-| i = NAME TYPE
+| i=NAME TYPE
     { i }
 
 var_name:
-| i = NAME VARIABLE
+| i=NAME VARIABLE
     { i }
 
 (* [typedef_name_spec] must be declared before [general_identifier], so that the
    reduce/reduce conflict is solved the right way. *)
 
 typedef_name_spec:
-| typedef_name
-    {}
+| i=typedef_name
+    { i }
 
 general_identifier:
-| i = typedef_name
-| i = var_name
+| i=typedef_name
+| i=var_name
     { i }
 
 save_context:
@@ -257,7 +297,7 @@ save_context:
     { save_context () }
 
 scoped(X):
-| ctx = save_context x = X
+| ctx=save_context x=X
     { restore_context ctx; x }
 
 (* [declarator_varname] and [declarator_typedefname] are like [declarator]. In
@@ -265,11 +305,11 @@ scoped(X):
    a new variable or typedef name in the current context. *)
 
 declarator_varname:
-| d = declarator
+| d=declarator
     { declare_varname (identifier d); d }
 
 declarator_typedefname:
-| d = declarator
+| d=declarator
     { declare_typedefname (identifier d); d }
 
 (* Merge source-level string literals. *)
@@ -281,12 +321,16 @@ string_literal:
 (* End of the helpers, and beginning of the grammar proper: *)
 
 primary_expression:
-| var_name
-| CONSTANT
+| n=var_name
+    { Evar n }
+| c=CONSTANT
+    { Econst c }
 | string_literal
-| "(" expression ")"
+    { failwith "unsupported string literal" }
+| "(" e=expression ")"
+    { e }
 | generic_selection
-    {}
+    { failwith "unsupported generic selection" }
 
 generic_selection:
 | "_Generic" "(" assignment_expression "," generic_assoc_list ")"
@@ -303,122 +347,174 @@ generic_association:
     {}
 
 postfix_expression:
-| primary_expression
-| postfix_expression "[" expression "]"
-| postfix_expression "(" argument_expression_list? ")"
-| postfix_expression "." general_identifier
-| postfix_expression "->" general_identifier
+| e=primary_expression
+    { e }
+| e1=postfix_expression "[" e2=expression "]"
+    { Ebinary (Oindex, e1, e2) }
+| e=postfix_expression "(" es=argument_expression_list? ")"
+    { Ecall (e, es -? []) }
+| e=postfix_expression "." i=general_identifier
+    { Eunary (Odot i, e) }
+| e=postfix_expression "->" i=general_identifier
+    { Eunary (Oarrow i, e) }
 | postfix_expression "++"
 | postfix_expression "--"
-| "(" type_name ")" "{" initializer_list ","? "}"
-    {}
+    { failwith "unsupported postfix operator" }
+| "(" t=type_name ")" "{" i=initializer_list ","? "}"
+    { Ecomplit (t, i) }
 
 argument_expression_list:
-| assignment_expression
-| argument_expression_list "," assignment_expression
-    {}
+| e=assignment_expression
+    { [e] }
+| es=argument_expression_list "," e=assignment_expression
+    { es @ [e] }
 
 unary_expression:
-| postfix_expression
+| e=postfix_expression
+    { e }
 | "++" unary_expression
 | "--" unary_expression
-| unary_operator cast_expression
-| "sizeof" unary_expression
-| "sizeof" "(" type_name ")"
+    { failwith "unsupported unary operator" }
+| o=unary_operator e=cast_expression
+    { Eunary (o, e) }
+| "sizeof" e=unary_expression
+    { Esizeofexpr e }
+| "sizeof" "(" t=type_name ")"
+    { Esizeoftyp t }
 | "_Alignof" "(" type_name ")"
-    {}
+    { failwith "unsupported alignof" }
 
 unary_operator:
 | "&"
+    { Oaddrof }
 | "*"
+    { Oderef }
 | "+"
+    { Oplus }
 | "-"
+    { Ominus }
 | "~"
+    { Obitneg }
 | "!"
-    {}
+    { Olognot }
 
 cast_expression:
-| unary_expression
-| "(" type_name ")" cast_expression
-    {}
+| e=unary_expression
+    { e }
+| "(" t=type_name ")" e=cast_expression
+    { Ecast (t, e) }
 
 multiplicative_operator:
-  "*" | "/" | "%" {}
+| "*"
+    { Omul }
+| "/" 
+    { Odiv }
+| "%" 
+    { Omod }
 
 multiplicative_expression:
-| cast_expression
-| multiplicative_expression multiplicative_operator cast_expression
-    {}
+| e=cast_expression
+    { e }
+| e1=multiplicative_expression o=multiplicative_operator e2=cast_expression
+    { Ebinary (o, e1, e2) }
 
 additive_operator:
-  "+" | "-" {}
+| "+"
+    { Oadd }
+| "-"
+    { Osub }
 
 additive_expression:
-| multiplicative_expression
-| additive_expression additive_operator multiplicative_expression
-    {}
+| e=multiplicative_expression
+    { e }
+| e1=additive_expression o=additive_operator e2=multiplicative_expression
+    { Ebinary (o, e1, e2) }
 
 shift_operator:
-  "<<" | ">>" {}
+| "<<" 
+    { Obitlsh }
+| ">>" 
+    { Obitrsh }
 
 shift_expression:
-| additive_expression
-| shift_expression shift_operator additive_expression
-    {}
+| e=additive_expression
+    { e }
+| e1=shift_expression o=shift_operator e2=additive_expression
+    { Ebinary (o, e1, e2) }
 
 relational_operator:
-  "<" | ">" | "<=" | ">=" {}
+| "<"
+    { Olt }
+| ">" 
+    { Ogt }
+| "<=" 
+    { Ole }
+| ">=" 
+    { Oge }
 
 relational_expression:
-| shift_expression
-| relational_expression relational_operator shift_expression
-    {}
+| e=shift_expression
+    { e }
+| e1=relational_expression o=relational_operator e2=shift_expression
+    { Ebinary (o, e1, e2) }
 
 equality_operator:
-  "==" | "!=" {}
+| "==" 
+    { Oeq }
+| "!="
+    { One }
 
 equality_expression:
-| relational_expression
-| equality_expression equality_operator relational_expression
-    {}
+| e=relational_expression
+    { e }
+| e1=equality_expression o=equality_operator e2=relational_expression
+    { Ebinary (o, e1, e2) }
 
 and_expression:
-| equality_expression
-| and_expression "&" equality_expression
-    {}
+| e=equality_expression
+    { e }
+| e1=and_expression "&" e2=equality_expression
+    { Ebinary (Obitand, e1, e2) }
 
 exclusive_or_expression:
-| and_expression
-| exclusive_or_expression "^" and_expression
-    {}
+| e=and_expression
+    { e }
+| e1=exclusive_or_expression "^" e2=and_expression
+    { Ebinary (Obitxor, e1, e2) }
 
 inclusive_or_expression:
-| exclusive_or_expression
-| inclusive_or_expression "|" exclusive_or_expression
-    {}
+| e=exclusive_or_expression
+    { e }
+| e1=inclusive_or_expression "|" e2=exclusive_or_expression
+    { Ebinary (Obitor, e1, e2) }
 
 logical_and_expression:
-| inclusive_or_expression
-| logical_and_expression "&&" inclusive_or_expression
-    {}
+| e=inclusive_or_expression
+    { e }
+| e1=logical_and_expression "&&" e2=inclusive_or_expression
+    { Ebinary (Ologand, e1, e2) }
 
 logical_or_expression:
-| logical_and_expression
-| logical_or_expression "||" logical_and_expression
-    {}
+| e=logical_and_expression
+    { e }
+| e1=logical_or_expression "||" e2=logical_and_expression
+    { Ebinary (Ologor, e1, e2) }
 
 conditional_expression:
-| logical_or_expression
-| logical_or_expression "?" expression ":" conditional_expression
-    {}
+| e=logical_or_expression
+    { e }
+| e1=logical_or_expression "?" e2=expression ":" e3=conditional_expression
+    { Econditional (e1, e2, e3) }
 
 assignment_expression:
-| conditional_expression
-| unary_expression assignment_operator assignment_expression
-    {}
+| e=conditional_expression
+    { e }
+| e1=unary_expression o=assignment_operator e2=assignment_expression
+    { Ebinary (o, e1, e2) }
 
 assignment_operator:
 | "="
+    { Oassign }
 | "*="
 | "/="
 | "%="
@@ -429,12 +525,13 @@ assignment_operator:
 | "&="
 | "^="
 | "|="
-    {}
+    { failwith "unsupported assignment operator" }
 
 expression:
-| assignment_expression
-| expression "," assignment_expression
-    {}
+| e=assignment_expression
+    { e }
+| e1=expression "," e2=assignment_expression
+    { Ebinary (Ocomma, e1, e2) }
 
 
 constant_expression:
@@ -447,10 +544,21 @@ constant_expression:
    the context. *)
 
 declaration:
-| declaration_specifiers         init_declarator_list(declarator_varname)?     ";"
-| declaration_specifiers_typedef init_declarator_list(declarator_typedefname)? ";"
+| t=declaration_specifiers         ds=init_declarator_list(declarator_varname)?     ";"
+    { match ds with
+      | None -> [Ddecltype (t, mk_range $sloc)]
+      | Some ds -> Core.List.map ds ~f:(fun (d, i) -> 
+          if is_function_declarator d then
+            Ddeclfun ((declarator_type d t, identifier d, parameters d, mk_range $sloc), [])
+          else 
+            Ddeclvar (declarator_type d t, identifier d, i, mk_range $sloc) ) }
+| t=declaration_specifiers_typedef ds=init_declarator_list(declarator_typedefname)? ";"
+    { match ds with
+      | None -> [Ddecltype (t, mk_range $sloc)]
+      | Some ds -> Core.List.map ds ~f:(fun (d, _) -> 
+          Ddecltypedef (identifier d, declarator_type d t, mk_range $sloc) ) }
 | static_assert_declaration
-    {}
+    { failwith "unsupported static assert" }
 
 (* [declaration_specifier] corresponds to one declaration specifier in the C18
    standard, deprived of "typedef" and of type specifiers. *)
@@ -481,30 +589,34 @@ declaration_specifier:
    [declaration_specifiers] forbids the ["typedef"] keyword. *)
 
 declaration_specifiers:
-| list_eq1(type_specifier_unique,    declaration_specifier)
-| list_ge1(type_specifier_nonunique, declaration_specifier)
-    {}
+| xs=list_eq1(type_specifier_unique,    declaration_specifier)
+    { let (t, _) = xs in t }
+| xs=list_ge1(type_specifier_nonunique, declaration_specifier)
+    { let (ss, _) = xs in typ_of_primitive (primitive_of_specifiers ss) }
 
 (* [declaration_specifiers_typedef] is analogous to [declaration_specifiers],
    but requires the ["typedef"] keyword to be present (exactly once). *)
 
 declaration_specifiers_typedef:
-| list_eq1_eq1("typedef", type_specifier_unique,    declaration_specifier)
-| list_eq1_ge1("typedef", type_specifier_nonunique, declaration_specifier)
-    {}
+| xs=list_eq1_eq1("typedef", type_specifier_unique,    declaration_specifier)
+    { let (_, t, _) = xs in t }
+| xs=list_eq1_ge1("typedef", type_specifier_nonunique, declaration_specifier)
+    { let (_, ss, _) = xs in typ_of_primitive (primitive_of_specifiers ss) }
 
 (* The parameter [declarator] in [init_declarator_list] and [init_declarator]
    is instantiated with [declarator_varname] or [declarator_typedefname]. *)
 
 init_declarator_list(declarator):
-| init_declarator(declarator)
-| init_declarator_list(declarator) "," init_declarator(declarator)
-    {}
+| d=init_declarator(declarator)
+    { [d] }
+| ds=init_declarator_list(declarator) "," d=init_declarator(declarator)
+    { ds @ [d] }
 
 init_declarator(declarator):
-| declarator
-| declarator "=" c_initializer
-    {}
+| d=declarator
+    { (d, None) }
+| d=declarator "=" i=c_initializer
+    { (d, Some i) }
 
 (* [storage_class_specifier] corresponds to storage-class-specifier in the
    C18 standard, deprived of ["typedef"] (which receives special treatment). *)
@@ -521,65 +633,91 @@ storage_class_specifier:
 
 type_specifier_nonunique:
 | "char"
+    { Sdata Dchar }
 | "short"
+    { Sdata Dshort }
 | "int"
+    { Sdata Dint }
 | "long"
+    { Sdata Dlong }
 | "float"
+    { Sdata Dfloat }
 | "double"
+    { Sdata Ddouble }
 | "signed"
+    { Ssigness true}
 | "unsigned"
+    { Ssigness false }
 | "_Complex"
-    {}
+    { failwith "unsupported complex" }
 
 (* A type specifier which cannot appear together with other type specifiers. *)
 
 type_specifier_unique:
 | "void"
+    { Tvoid }
 | "_Bool"
+    { T_Bool }
 | atomic_type_specifier
-| struct_or_union_specifier
+    { failwith "unsupported atomic" }
+| t=struct_or_union_specifier
+    { t }
 | enum_specifier
-| typedef_name_spec
-    {}
+    { failwith "unsupported enum" }
+| i=typedef_name_spec
+    { Tnamed i }
 
 struct_or_union_specifier:
-| struct_or_union general_identifier? "{" struct_declaration_list "}"
-| struct_or_union general_identifier
-    {}
+| su=struct_or_union i=general_identifier? "{" fs=struct_declaration_list "}"
+    { match su with
+      | `Struct -> Tstructdecl (i, fs)
+      | `Union -> Tuniondecl (i, fs) }
+| su=struct_or_union i=general_identifier
+    { match su with
+      | `Struct -> Tstruct i
+      | `Union -> Tunion i }
 
 struct_or_union:
 | "struct"
+    { `Struct }
 | "union"
-    {}
+    { `Union }
 
 struct_declaration_list:
-| struct_declaration
-| struct_declaration_list struct_declaration
-    {}
+| f=struct_declaration
+    { f }
+| fs=struct_declaration_list f=struct_declaration
+    { fs @ f }
 
 struct_declaration:
-| specifier_qualifier_list struct_declarator_list? ";"
+| t=specifier_qualifier_list ds=struct_declarator_list? ";"
+    { match ds with
+      | None -> []
+      | Some ds -> Core.List.map ds ~f:(fun d -> (declarator_type d t, identifier d)) }
 | static_assert_declaration
-    {}
+    { failwith "unsupported static assert" }
 
 
 (* [specifier_qualifier_list] is as in the standard, except it also encodes the
    same constraint as [declaration_specifiers] (see above). *)
 
 specifier_qualifier_list:
-| list_eq1(type_specifier_unique,    type_qualifier | alignment_specifier {})
-| list_ge1(type_specifier_nonunique, type_qualifier | alignment_specifier {})
-    {}
+| xs=list_eq1(type_specifier_unique,    type_qualifier | alignment_specifier {})
+    { let (t, _) = xs in t }
+| xs=list_ge1(type_specifier_nonunique, type_qualifier | alignment_specifier {})
+    { let (ss, _) = xs in typ_of_primitive (primitive_of_specifiers ss) }
 
 struct_declarator_list:
-| struct_declarator
-| struct_declarator_list "," struct_declarator
-    {}
+| d=struct_declarator
+    { [d] }
+| ds=struct_declarator_list "," d=struct_declarator
+    { ds @ [d] }
 
 struct_declarator:
-| declarator
+| d=declarator
+    { d }
 | declarator? ":" constant_expression
-    {}
+    { failwith "unsupported bitfield" }
 
 enum_specifier:
 | "enum" general_identifier? "{" enumerator_list ","? "}"
@@ -592,18 +730,18 @@ enumerator_list:
     {}
 
 enumerator:
-| i = enumeration_constant
-| i = enumeration_constant "=" constant_expression
+| i=enumeration_constant
+| i=enumeration_constant "=" constant_expression
     { declare_varname i }
 
 enumeration_constant:
-| i = general_identifier
+| i=general_identifier
     { i }
 
 atomic_type_specifier:
 | "_Atomic" "(" type_name ")"
 | "_Atomic" ATOMIC_LPAREN type_name ")"
-    {}
+    { failwith "unsupported atomic" }
 
 type_qualifier:
 | "const"
@@ -622,8 +760,8 @@ alignment_specifier:
     {}
 
 declarator:
-| ioption(pointer) d = direct_declarator
-    { other_declarator d }
+| p=ioption(pointer) d=direct_declarator
+    { other_declarator d (p -? id) }
 
 (* The occurrences of [save_context] inside [direct_declarator] and
    [direct_abstract_declarator] seem to serve no purpose. In fact, they are
@@ -632,163 +770,215 @@ declarator:
    avenues in parallel and some of them do require saving the context. *)
 
 direct_declarator:
-| i = general_identifier
+| i=general_identifier
     { identifier_declarator i }
-| "(" save_context d = declarator ")"
+| "(" save_context d=declarator ")"
     { d }
-| d = direct_declarator "[" type_qualifier_list? assignment_expression? "]"
-| d = direct_declarator "[" "static" type_qualifier_list? assignment_expression "]"
-| d = direct_declarator "[" type_qualifier_list "static" assignment_expression "]"
-| d = direct_declarator "[" type_qualifier_list? "*" "]"
-    { other_declarator d }
-| d = direct_declarator "(" ctx = scoped(parameter_type_list) ")"
-    { function_declarator d ctx }
-| d = direct_declarator "(" save_context identifier_list? ")"
-    { other_declarator d }
+| d=direct_declarator "[" type_qualifier_list? e=assignment_expression? "]"
+    { other_declarator d (match e with
+      | Some (Econst (Cinteger i)) -> fun t -> Tarray (t, Some i)
+      | None -> fun t -> Tarray (t, None)
+      | _ -> failwith "unsupported array size") }
+| d=direct_declarator "[" "static" type_qualifier_list? e=assignment_expression "]"
+| d=direct_declarator "[" type_qualifier_list "static" e=assignment_expression "]"
+    { other_declarator d (match e with
+      | Econst (Cinteger i) -> fun t -> Tarray (t, Some i)
+      | _ -> failwith "unsupported array size") }
+| d=direct_declarator "[" type_qualifier_list? "*" "]"
+    { other_declarator d (fun t -> Tarray (t, None)) }
+| d=direct_declarator "(" ps=scoped(parameter_type_list) ")"
+    { let (ctx, ps) = ps in function_declarator d ctx ps }
+| d=direct_declarator "(" save_context is=identifier_list? ")"
+    { match is with
+      | None -> other_declarator d id
+      | Some _ -> failwith "unsupported function declarator" }
 
 pointer:
-| "*" type_qualifier_list? pointer?
-    {}
+| "*" type_qualifier_list? p=pointer?
+    { match p with
+      | None -> fun t -> Tptr t
+      | Some p -> fun t -> p (Tptr t) }
 
 type_qualifier_list:
 | type_qualifier_list? type_qualifier
     {}
 
 parameter_type_list:
-| parameter_list option("," "..." {}) ctx = save_context
-    { ctx }
+| ps=parameter_list option("," "..." {}) ctx=save_context
+    { (ctx, ps) }
 
 parameter_list:
-| parameter_declaration
-| parameter_list "," parameter_declaration
-    {}
+| p=parameter_declaration
+    { [p] }
+| ps=parameter_list "," p=parameter_declaration
+    { ps @ [p] }
 
 parameter_declaration:
-| declaration_specifiers declarator_varname
+| t=declaration_specifiers d=declarator_varname
+    { (declarator_type d t, identifier d) }
 | declaration_specifiers abstract_declarator?
-    {}
+    { failwith "unsupported abstract declarator" }
 
 identifier_list:
 | var_name
 | identifier_list "," var_name
     {}
 
+(* We treat declarator as `typ -> typ`, for example, when parsing a type `int*[]`,
+    we first parse `int` as a type, then parse `*[]` as a declarator, and finally
+    apply the declarator to the type. *)
+
 type_name:
-| specifier_qualifier_list abstract_declarator?
-    {}
+| t=specifier_qualifier_list d=abstract_declarator?
+    { (d -? id) t }
 
 abstract_declarator:
-| pointer
-| ioption(pointer) direct_abstract_declarator
-    {}
+| p=pointer
+    { p }
+| p=ioption(pointer) d=direct_abstract_declarator
+    { d *.* (p -? id) }
 
 direct_abstract_declarator:
 | "(" save_context abstract_declarator ")"
-| direct_abstract_declarator? "[" ioption(type_qualifier_list) assignment_expression? "]"
-| direct_abstract_declarator? "[" "static" type_qualifier_list? assignment_expression "]"
-| direct_abstract_declarator? "[" type_qualifier_list "static" assignment_expression "]"
-| direct_abstract_declarator? "[" "*" "]"
+    { failwith "unsupported abstract declarator" }
+| d=direct_abstract_declarator? "[" ioption(type_qualifier_list) e=assignment_expression? "]"
+    { (d -? id) *.* match e with
+      | Some (Econst (Cinteger i)) -> fun t -> Tarray (t, Some i)
+      | None -> fun t -> Tarray (t, None)
+      | _ -> failwith "unsupported array size" }
+| d=direct_abstract_declarator? "[" "static" type_qualifier_list? e=assignment_expression "]"
+| d=direct_abstract_declarator? "[" type_qualifier_list "static" e=assignment_expression "]"
+    { (d -? id) *.* match e with
+      | Econst (Cinteger i) -> fun t -> Tarray (t, Some i)
+      | _ -> failwith "unsupported array size" }
+| d=direct_abstract_declarator? "[" "*" "]"
+    { (d -? id) *.* fun t -> Tarray (t, None) }
 | ioption(direct_abstract_declarator) "(" scoped(parameter_type_list)? ")"
-    {}
+    { failwith "unsupported abstract declarator" }
 
 c_initializer:
-| assignment_expression
-| "{" initializer_list ","? "}"
-    {}
+| e=assignment_expression
+    { Init_single e }
+| "{" i=initializer_list ","? "}"
+    { i }
 
 initializer_list:
-| designation? c_initializer
-| initializer_list "," designation? c_initializer
-    {}
+| d=designation? i=c_initializer
+    { match d with
+      | None -> Init_array [i]
+      | Some d -> Init_struct [(d, i)] }
+| is=initializer_list "," d=designation? i=c_initializer
+    { match (is, d) with
+      | (Init_array is, None) -> Init_array (is @ [i])
+      | (Init_struct is, Some d) -> Init_struct (is @ [(d, i)])
+      | _ -> failwith "unsupported initializer list" }
 
 designation:
-| designator_list "="
-    {}
+| d=designator_list "="
+    { d }
 
 designator_list:
-| designator_list? designator
-    {}
+| ds=designator_list? d=designator
+    { match ds with
+      | None -> d
+      | Some _ -> failwith "unsupported designator list" }
 
 designator:
 | "[" constant_expression "]"
-| "." general_identifier
-    {}
+    { failwith "unsupported designator" }
+| "." i=general_identifier
+    { i }
 
 static_assert_declaration:
 | "_Static_assert" "(" constant_expression "," string_literal ")" ";"
     {}
 
 statement:
-| labeled_statement
-| scoped(compound_statement)
-| expression_statement
-| scoped(selection_statement)
-| scoped(iteration_statement)
-| jump_statement
-    {}
+| s=labeled_statement
+| s=scoped(compound_statement)
+| s=expression_statement
+| s=scoped(selection_statement)
+| s=scoped(iteration_statement)
+| s=jump_statement
+    { s }
 
 labeled_statement:
-| general_identifier ":" statement
-| "case" constant_expression ":" statement
-| "default" ":" statement
-    {}
+| general_identifier ":" s=statement
+| "case" constant_expression ":" s=statement
+| "default" ":" s=statement
+    { s }
 
 compound_statement:
-| "{" block_item_list? "}"
-    {}
+| "{" ss=block_item_list? "}"
+    { Sblock (ss -? [], mk_range $sloc) }
 
 block_item_list:
-| block_item_list? block_item
-    {}
+| ss=block_item_list? s=block_item
+    { (ss -? []) @ s }
 
 block_item:
-| declaration
-| statement
-    {}
+| d=declaration
+    { Core.List.map d ~f:(fun d -> Sdecl d) }
+| s=statement
+    { [s] }
 
 expression_statement:
-| expression? ";"
-    {}
+| e=expression? ";"
+    { match e with
+      | None -> Sskip (mk_range $sloc)
+      | Some e -> Sdo (e, mk_range $sloc) }
 
 selection_statement:
-| "if" "(" expression ")" scoped(statement) "else" scoped(statement)
-| "if" "(" expression ")" scoped(statement) %prec below_ELSE
+| "if" "(" e=expression ")" st=scoped(statement) "else" se=scoped(statement)
+    { Sif (e, st, Some se, mk_range $sloc) }
+| "if" "(" e=expression ")" st=scoped(statement) %prec below_ELSE
+    { Sif (e, st, None, mk_range $sloc) }
 | "switch" "(" expression ")" scoped(statement)
-    {}
+    { failwith "unsupported switch" }
 
 iteration_statement:
-| "while" "(" expression ")" scoped(statement)
+| "while" "(" e=expression ")" s=scoped(statement)
+    { Swhile (e, None, s, mk_range $sloc) }
 | "do" scoped(statement) "while" "(" expression ")" ";"
+    { failwith "unsupported do-while" }
 | "for" "(" expression? ";" expression? ";" expression? ")" scoped(statement)
 | "for" "(" declaration expression? ";" expression? ")" scoped(statement)
-    {}
+    { failwith "unsupported for" }
 
 jump_statement:
 | "goto" general_identifier ";"
+    { failwith "unsupported goto" }
 | "continue" ";"
+    { Scontinue (mk_range $sloc) }
 | "break" ";"
-| "return" expression? ";"
-    {}
+    { Sbreak (mk_range $sloc) }
+| "return" e=expression? ";"
+    { Sreturn (e, mk_range $sloc) }
 
 translation_unit_file:
-| external_declaration translation_unit_file
-| external_declaration EOF
-    {}
+| d=external_declaration ds=translation_unit_file 
+    { d @ ds }
+| d=external_declaration EOF
+    { d }
 
 external_declaration:
-| function_definition
-| declaration
-    {}
+| d=function_definition
+    { [d] }
+| d=declaration
+    { d }
 
 function_definition1:
-| declaration_specifiers d = declarator_varname
+| t=declaration_specifiers d=declarator_varname
     { let ctx = save_context () in
       reinstall_function_context d;
-      ctx }
+      (ctx, (declarator_type d t, identifier d, parameters d, mk_range $sloc)) }
 
 function_definition:
-| ctx = function_definition1 declaration_list? compound_statement
-    { restore_context ctx }
+| ctx=function_definition1 d=declaration_list? s=compound_statement
+    { let (ctx, f) = ctx in
+      restore_context ctx; match d with 
+      | None -> Ddeffun (f, [], s) 
+      | Some _ -> failwith "unsupported K&R function definition" }
 
 declaration_list:
 | declaration

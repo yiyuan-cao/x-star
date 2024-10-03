@@ -28,6 +28,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *)
 
+open Ast
 open Context
 
 (* We distinguish between three kinds of declarators: 1- identifiers,
@@ -38,38 +39,54 @@ open Context
 (* K&R function declarators are considered part of "other" declarators. *)
 
 type declarator_kind =
-| DeclaratorIdentifier
-| DeclaratorFunction of context
-| DeclaratorOther
+  | DeclaratorIdentifier
+  | DeclaratorFunction of context * (parameter list) * (typ -> typ)
+  | DeclaratorOther of (typ -> typ)
 
 (* With a declarator, we associate two pieces of information: 1- the
    identifier that is being declared; 2- the declarator's kind, as
    defined above. *)
 
-type declarator = {
-  identifier: string;
-  kind: declarator_kind
-}
+type declarator = {identifier: string; kind: declarator_kind}
 
 (* This accessor returns the identifier that is being declared. *)
 
-let identifier d =
-  d.identifier
+let identifier d = d.identifier
+
+let is_function_declarator d =
+  match d.kind with DeclaratorFunction _ -> true | _ -> false
+
+let declarator_type d t =
+  match d.kind with
+  | DeclaratorIdentifier -> t
+  | DeclaratorFunction (_, _, mk_type) -> mk_type t
+  | DeclaratorOther mk_type -> mk_type t
+
+let parameters d =
+  match d.kind with
+  | DeclaratorOther _ -> []
+  | DeclaratorFunction (_, params, _) -> params
+  | _ -> failwith "parameters: unexpected declarator"
 
 (* Three functions for constructing declarators. *)
 
-let identifier_declarator i =
-  { identifier = i; kind = DeclaratorIdentifier }
+let identifier_declarator i = {identifier= i; kind= DeclaratorIdentifier}
 
-let function_declarator d ctx =
+let function_declarator d ctx params =
   match d.kind with
-  | DeclaratorIdentifier -> { d with kind = DeclaratorFunction ctx }
-  | _                    ->   d
+  | DeclaratorIdentifier ->
+      {d with kind= DeclaratorFunction (ctx, params, fun t -> t)}
+  | _ -> d
 
-let other_declarator d =
+let other_declarator d mk_type =
   match d.kind with
-  | DeclaratorIdentifier -> { d with kind = DeclaratorOther }
-  | _                    ->   d
+  | DeclaratorIdentifier -> {d with kind= DeclaratorOther mk_type}
+  | DeclaratorFunction (ctx, params, mk_type_inner) ->
+      { d with
+        kind= DeclaratorFunction (ctx, params, fun t -> mk_type (mk_type_inner t)) }
+  | DeclaratorOther mk_type_inner ->
+      {d with kind= DeclaratorOther (fun t -> mk_type (mk_type_inner t))}
+
 
 (* A function for restoring the context that was saved in a function
    declarator and, on top of that, declaring the function itself as a
@@ -77,8 +94,8 @@ let other_declarator d =
 
 let reinstall_function_context d =
   match d.kind with
-  | DeclaratorFunction ctx ->
-      restore_context ctx;
+  | DeclaratorFunction (ctx, _, _) ->
+      restore_context ctx ;
       declare_varname d.identifier
   | _ ->
       (* If we are here, then we have encountered a declarator that is

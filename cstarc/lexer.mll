@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 (* Documentation for writting a mllex file: https://ocaml.org/manual/5.2/lexyacc.html *)
 
 {
+open Core
 open Lexing
 open Context
 open Parser
@@ -141,11 +142,11 @@ rule initial = parse
   | '\n'                          { new_line lexbuf; initial_linebegin lexbuf }
   | "/*"                          { multiline_comment lexbuf; initial lexbuf }
   | "//"                          { singleline_comment lexbuf; initial_linebegin lexbuf }
-  | integer_constant              { CONSTANT }
-  | decimal_floating_constant     { CONSTANT }
-  | hexadecimal_floating_constant { CONSTANT }
+  | integer_constant as c         { CONSTANT (Ast.Cinteger (int_of_string c)) }
+  | decimal_floating_constant     { failwith "unsupported" }
+  | hexadecimal_floating_constant { failwith "unsupported" }
   | preprocessing_number          { failwith "These characters form a preprocessor number, but not a constant" }
-  | (['L' 'u' 'U']|"") "'"        { char lexbuf; char_literal_end lexbuf; CONSTANT }
+  | (['L' 'u' 'U']|"") "'"        { char lexbuf; char_literal_end lexbuf; failwith "unsupported" }
   | (['L' 'u' 'U']|""|"u8") "\""  { string_literal lexbuf; STRING_LITERAL }
   | "..."                         { ELLIPSIS }
   | "+="                          { ADD_ASSIGN }

@@ -30,6 +30,7 @@
 
 (* Modified by Yiyuan Cao *)
 
+open Core
 open Lexer
 
 let parser = ref (fun _ _ -> assert false)
@@ -38,40 +39,49 @@ let set_std = function
   (* | "c89" | "c90" -> parser := Parser_ansi_compatible.translation_unit_file *)
   | "c23" -> parser := Parser.translation_unit_file
   | _ -> assert false
-;;
 
 let usage_msg =
   "\n\
-   This is a C23 compliant parser written in OCaml, specially designed for constructing C* ASTs.\n\
-   It reads a preprocessed C file in standard input and raises an exception if it contains invalid syntax.\n\
+   This is a C23 compliant parser written in OCaml, specially designed for \
+   constructing C* ASTs.\n\
+   It reads a preprocessed C file in standard input and raises an exception \
+   if it contains invalid syntax.\n\
    Options available:"
-;;
 
 let opts =
-  [ ( "-std"
-    , Arg.Symbol ([ "c23" ], set_std)
-    , " Sets which grammar to use." )
+  [ ("-std", Arg.Symbol (["c23"], set_std), " Sets which grammar to use.")
   ; ( "-atomic-permissive-syntax"
     , Arg.Clear Options.atomic_strict_syntax
-    , " An opening parenthesis after an _Atomic type qualifier is not a syntax error." )
-  ]
-;;
+    , " An opening parenthesis after an _Atomic type qualifier is not a \
+       syntax error." ) ]
 
 let opts = Arg.align ?limit:(Some 1000) opts
 
 let () =
-  parser
-  := fun _ _ ->
-       Printf.eprintf "No -std option specified.\n";
-       Arg.usage opts usage_msg;
-       exit 1
-;;
+  parser :=
+    fun _ _ ->
+      Printf.eprintf "No -std option specified.\n" ;
+      Arg.usage opts usage_msg ;
+      exit 1
+
+let print_position outx lexbuf =
+  Lexing.(
+    let pos = lexbuf.lex_curr_p in
+    fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+      (pos.pos_cnum - pos.pos_bol + 1) )
 
 let _ =
-  Arg.parse
-    opts
+  Arg.parse opts
     (fun o -> raise (Arg.Bad (Printf.sprintf "Unrecognized option \"%s\"" o)))
-    usage_msg;
-  let lexbuf = Lexing.from_channel stdin in
-  !parser lexer lexbuf
-;;
+    usage_msg ;
+  let lexbuf = Lexing.from_channel In_channel.stdin in
+  try
+    let ast = !parser lexer lexbuf in
+    Printf.printf "%s\n" (Ast.show_program ast)
+  with
+  | Parser.Error ->
+      fprintf stderr "%a: syntax error\n" print_position lexbuf ;
+      exit 1
+  | Failure s ->
+      fprintf stderr "%a: %s\n" print_position lexbuf s ;
+      exit 1
