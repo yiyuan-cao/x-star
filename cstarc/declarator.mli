@@ -28,6 +28,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *)
 
+open Ast
 open Context
 
 (* We distinguish between three kinds of declarators: 1- identifiers,
@@ -45,11 +46,17 @@ type declarator
 
 val identifier: declarator -> string
 
+val is_function_declarator: declarator -> bool
+
+val declarator_type: declarator -> typ -> typ
+
+val parameters: declarator -> parameter list
+
 (* Three functions for constructing declarators. *)
 
 val identifier_declarator: string -> declarator
-val function_declarator: declarator -> context -> declarator
-val other_declarator: declarator -> declarator
+val function_declarator: declarator -> context -> (parameter list) -> declarator
+val other_declarator: declarator -> (typ -> typ) -> declarator
 
 (* A function for restoring the context that was saved in a function
    declarator and, on top of that, declaring the function itself as a
