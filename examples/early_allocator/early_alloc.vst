@@ -1,0 +1,152 @@
+int PAGE_SIZE = 4096;
+
+int UINT_MAX = 1 << 31;
+
+int base;
+
+int end;
+
+int cur;
+
+/*@ Extern Coq (owned_array : Z->Z->Z->Assertion) */
+
+/*@ Extern Coq (zeroed_array : Z->Z->Z->Assertion) */
+
+int hyp_early_alloc_nr_pages()
+/*@ Require PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && base <= cur && emp
+  Ensure PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && __return == (cur - base) / PAGE_SIZE && emp
+  */
+{ return (cur - base) / PAGE_SIZE; }
+
+void clear_page(void* to)
+/*@ Require PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && owned_array(to,
+    0,
+    PAGE_SIZE)
+  Ensure PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && zeroed_array(to,
+    0,
+    PAGE_SIZE)
+  */
+{
+  int i = 0;
+  /*@ Assert Inv PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && i <= PAGE_SIZE && zeroed_array(to,
+      0,
+      i) * owned_array(to, i, PAGE_SIZE)
+    */
+  while (i < PAGE_SIZE) {
+    /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && i < PAGE_SIZE && zeroed_array(to,
+        0,
+        i) * undef_data_at((char*)((char*)to + i)) * owned_array(to,
+        i + 1,
+        PAGE_SIZE)
+      */
+    // *((char *)to + i) = 0;
+		/*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && i < PAGE_SIZE && zeroed_array(to,
+        0,
+        i) * data_at((char*)((char*)to + i), 0) * owned_array(to,
+        i + 1,
+        PAGE_SIZE)
+      */
+    int tmp = i + 1;
+    i = tmp;
+  }
+  return;
+}
+
+void* hyp_early_alloc_page(void* arg)
+/*@ Require PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && 0 <= cur && cur + PAGE_SIZE <= end && owned_array(cur,
+    0,
+    end - cur)
+  Ensure PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && __return + PAGE_SIZE == cur && zeroed_array(__return,
+    0,
+    PAGE_SIZE) * owned_array(cur, 0, end - cur)
+  */
+{
+  int ret = cur;
+  int tmp = cur + PAGE_SIZE;
+  cur = tmp;
+  if (cur > end) { cur = ret; return (void*)0; }
+  /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && ret + PAGE_SIZE == cur && owned_array(ret,
+      0,
+      PAGE_SIZE) * owned_array(ret, PAGE_SIZE, end - ret)
+    */
+	// clear_page((void *)ret);
+  /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && ret + PAGE_SIZE == cur && zeroed_array(ret,
+      0,
+      PAGE_SIZE) * owned_array(ret, PAGE_SIZE, end - ret)
+    */
+  /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && ret + PAGE_SIZE == cur && zeroed_array(ret,
+      0,
+      PAGE_SIZE) * owned_array(cur, 0, end - cur)
+    */
+  return (void*)ret;
+}
+
+void* hyp_early_alloc_contig(int nr_pages)
+/*@ Require PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && nr_pages > 0 && nr_pages * PAGE_SIZE < UINT_MAX && cur + nr_pages * PAGE_SIZE <= end && owned_array(cur,
+    0,
+    end - cur)
+  Ensure PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && __return + nr_pages * PAGE_SIZE == cur && zeroed_array(__return,
+    0,
+    nr_pages * PAGE_SIZE) * owned_array(cur, 0, end - cur)
+  */
+{
+  int ret = cur;
+  if (!nr_pages)
+    return (void*)0;
+  int tmp = cur + nr_pages * PAGE_SIZE;
+  cur = tmp;
+  if (cur > end) { cur = ret; return (void*)0; }
+  int i = 0;
+  /*@ Assert Inv PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && i <= nr_pages && ret + nr_pages * PAGE_SIZE == cur && zeroed_array(ret,
+      0,
+      i * PAGE_SIZE) * owned_array(ret, i * PAGE_SIZE, end - ret)
+    */
+  while (i < nr_pages) {
+    /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && i < nr_pages && ret + nr_pages * PAGE_SIZE == cur && zeroed_array(ret,
+        0,
+        i * PAGE_SIZE) * owned_array(ret,
+        i * PAGE_SIZE,
+        i * PAGE_SIZE + PAGE_SIZE) * owned_array(ret,
+        i * PAGE_SIZE + PAGE_SIZE,
+        end - ret)
+      */
+    int p = ret + i * PAGE_SIZE;
+    /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && i < nr_pages && ret + nr_pages * PAGE_SIZE == cur && zeroed_array(ret,
+        0,
+        i * PAGE_SIZE) * owned_array(p, 0, PAGE_SIZE) * owned_array(ret,
+        i * PAGE_SIZE + PAGE_SIZE,
+        end - ret)
+      */
+    // clear_page((void *)p);
+		/*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && i < nr_pages && ret + nr_pages * PAGE_SIZE == cur && zeroed_array(ret,
+        0,
+        i * PAGE_SIZE) * zeroed_array(p, 0, PAGE_SIZE) * owned_array(ret,
+        i * PAGE_SIZE + PAGE_SIZE,
+        end - ret)
+      */
+    /*@ Assert PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && tmp == tmp && p == p && i < nr_pages && ret + nr_pages * PAGE_SIZE == cur && zeroed_array(ret,
+        0,
+        i * PAGE_SIZE + PAGE_SIZE) * owned_array(ret,
+        i * PAGE_SIZE + PAGE_SIZE,
+        end - ret)
+      */
+    i = i + 1;
+  }
+  return (void*)ret;
+}
+
+void hyp_early_alloc_init(int virt, int size)
+/*@ Require PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && owned_array(virt,
+    0,
+    size)
+  Ensure PAGE_SIZE == PAGE_SIZE && UINT_MAX == UINT_MAX && base == base && cur == cur && end == end && base == virt && end == virt + size && cur == virt && owned_array(virt,
+    0,
+    size)
+  */
+{ base = virt; end = virt + size; cur = virt; }
+
+int main()
+/*@ Require emp
+  Ensure __return == 0 && emp
+  */
+{ return 0; }

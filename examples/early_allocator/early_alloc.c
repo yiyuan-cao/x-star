@@ -16,17 +16,17 @@
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1 << PAGE_SHIFT)
 
-/* CP: originally: #include <asm/kvm_pgtable.h> */
+// /* CP: originally: #include <asm/kvm_pgtable.h> */
 
-/* CP: originally: #include <nvhe/memory.h> */
+// /* CP: originally: #include <nvhe/memory.h> */
 // #include "memory.h"
 
-/* CP: adding */
+// /* CP: adding */
 // #include "include/page-def.h"
 // #include "include/stddef.h"
 // #include "include/kvm_pgtable.h"
 
-/* CP: originally: s64 hyp_physvirt_offset; */
+// /* CP: originally: s64 hyp_physvirt_offset; */
 // unsigned long long hyp_physvirt_offset;
 // struct kvm_pgtable_mm_ops hyp_early_alloc_mm_ops;
 
@@ -120,8 +120,8 @@ bool zeroed_array(char *addr, int lo, int hi)
 	else if(lo == hi) return EMP;
 	else
 	{
-		DATA_AT_ANY(addr + lo, 0); // (addr + lo) ~> 0
-		return owned_array(addr, lo + 1, hi);
+		LET_DATA_AT(addr + lo, int val); // (addr + lo) ~> 0
+		return PURE(val == 0) SEP owned_array(addr, lo + 1, hi);
 	}
 }
 )]]
@@ -133,26 +133,29 @@ unsigned long hyp_early_alloc_nr_pages(void)
 	return (cur - base) >> PAGE_SHIFT;
 }
 
-/* CP: originally: extern void clear_page(void *to); */
-/* CP: instead, making up a definition of this */
 void clear_page(void *to)
 	[[ghost::require(owned_array(to, 0, PAGE_SIZE))]]
 	[[ghost::ensure(zeroed_array(to, 0, PAGE_SIZE))]]
 {    
 	int i = 0;   
 	[[ghost::invariant(
-		zeroed_array(to, 0, i) SEP owned_array(to, i, PAGE_SIZE)
+		PURE(i <= PAGE_SIZE) SEP zeroed_array(to, 0, i) SEP owned_array(to, i, PAGE_SIZE)
 	)]]
 	while(i < PAGE_SIZE)   
-	{  
+	{
+		// need several lemmas - see below
+		[[ghost::assert(
+			PURE(i < PAGE_SIZE) SEP 
+			zeroed_array(to, 0, i) SEP ((char *)to + i) ~> _ SEP owned_array(to, i + 1, PAGE_SIZE)
+		)]]
 		*((char *) to+i) = 0;
-		i++;  
+		i++;
 	}; 
 }    
 
 void * hyp_early_alloc_page(void *arg)
 	[[ghost::require(PURE(0 <= cur && cur + PAGE_SIZE <= end) SEP owned_array(cur, 0, end - cur))]]
-	[[ghost::ensure(PURE(__result + PAGE_SIZE == cur) SEP zero_array(__result, 0, PAGE_SIZE) SEP owned_array(cur, 0, end - cur))]]
+	[[ghost::ensure(PURE(__result + PAGE_SIZE == cur) SEP zeroed_array(__result, 0, PAGE_SIZE) SEP owned_array(cur, 0, end - cur))]]
 {
 	unsigned long ret = cur;
 
@@ -161,36 +164,63 @@ void * hyp_early_alloc_page(void *arg)
 		cur = ret;
 		return NULL;
 	}
+	[[ghost::assert(
+		PURE(ret + PAGE_SIZE == cur) SEP owned_array(ret, 0, PAGE_SIZE) SEP owned_array(ret, PAGE_SIZE, end - ret)
+	)]]
 	clear_page((void*)ret);
 
 	return (void *)ret;
 }
 
-/* CP: We also include this variant of hyp_early_alloc_page that
-   allocates a number of pages, as found in newer versions of
-   early_alloc.c */
 void *hyp_early_alloc_contig(unsigned int nr_pages)
-	[[ghost::require(PURE(nr_pages > 0 && (nr_pages << PAGE_SHIFT) < UINT_MAX && cur + (nr_pages << PAGE_SHIFT) <= end) SEP owned_array(cur, 0, end - cur))]]
-	[[ghost::ensure(PURE(__result + (nr_pages << PAGE_SHIFT) == cur) SEP zeroed_array(__result, 0, nr_pages << PAGE_SHIFT) SEP owned_array(cur, 0, end - cur))]]
+	[[ghost::require(PURE(nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && cur + (nr_pages * PAGE_SIZE) <= end) SEP owned_array(cur, 0, end - cur))]]
+	[[ghost::ensure(PURE(__result + (nr_pages * PAGE_SIZE) == cur) SEP zeroed_array(__result, 0, nr_pages * PAGE_SIZE) SEP owned_array(cur, 0, end - cur))]]
 {
 	unsigned long ret = cur, i, p;
 
 	if (!nr_pages)
 		return NULL;
 
-	cur += nr_pages << PAGE_SHIFT;
+	cur += nr_pages * PAGE_SIZE;
 	if (cur > end) {
 		cur = ret;
 		return NULL;
 	}
 
+	i = 0;
 	[[ghost::invariant(
-		zeroed_array(ret, 0, i << PAGE_SHIFT) SEP owned_array(ret, i << PAGE_SHIFT, (i << PAGE_SHIFT) + PAGE_SIZE)
+		PURE(i <= nr_pages && ret + nr_pages * PAGE_SIZE == cur) SEP zeroed_array(ret, 0, i * PAGE_SIZE) SEP owned_array(ret, i * PAGE_SIZE, end - ret)
 	)]]
-	for (i = 0; i < nr_pages; i++) {
-		p = ret + (i << PAGE_SHIFT);
+	while(i < nr_pages)
+	{
+		// break owned_array - lemma1
+		[[ghost::assert(
+			PURE(i < nr_pages && ret + nr_pages * PAGE_SIZE == cur) SEP 
+			zeroed_array(ret, 0, i * PAGE_SIZE) SEP 
+			owned_array(ret, i * PAGE_SIZE, (i * PAGE_SIZE) + PAGE_SIZE) SEP
+			owned_array(ret, (i * PAGE_SIZE) + PAGE_SIZE, end - ret)
+		)]]
+		p = ret + (i * PAGE_SIZE);
+		// change the base addr (from ret to p) -- lemma2
+		[[ghost::assert(
+			PURE(i < nr_pages && ret + nr_pages * PAGE_SIZE == cur) SEP 
+			zeroed_array(ret, 0, i * PAGE_SIZE) SEP 
+			owned_array(p, 0, PAGE_SIZE) SEP
+			owned_array(ret, (i * PAGE_SIZE) + PAGE_SIZE, end - ret)
+		)]]
 		clear_page((void *)(p));
+		// merge zero_array -- lemma3
+		[[ghost::assert(
+			PURE(i < nr_pages && ret + nr_pages * PAGE_SIZE == cur) SEP 
+			zeroed_array(ret, 0, (i * PAGE_SIZE) + PAGE_SIZE) SEP 
+			owned_array(ret, (i * PAGE_SIZE) + PAGE_SIZE, end - ret)
+		)]]
+		i++;
 	}
+	// for (i = 0; i < nr_pages; i++) {
+	// 	p = ret + (i * PAGE_SIZE);
+	// 	clear_page((void *)(p));
+	// }
 
 	return (void *)ret;
 }
