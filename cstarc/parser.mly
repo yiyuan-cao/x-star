@@ -169,6 +169,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token COMMA ","
 %token DOT "."
 
+%token COLONCOLON "::"
+%token CSTAR_FUNCTION "cstar::function"
+%token CSTAR_REPRESENTATION "cstar::representation"
+%token CSTAR_PREDICATE "cstar::predicate"
+%token CSTAR_DATATYPE "cstar::datatype"
+
 (* ATOMIC_LPAREN is "special"; it's used for left parentheses that
    follow the ["_Atomic"] keyword. It isn't given a token alias *)
 %token ATOMIC_LPAREN
@@ -209,23 +215,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    which in some cases is necessary in order to avoid a conflict.
    By convention, [X?] is syntactic sugar for [option(X)]. *)
 
-%inline ioption(X):
-| /* nothing */
-    { None }
-| x=X
-    { Some x }
+// %inline ioption(X):
+// | /* nothing */
+//     { None }
+// | x=X
+//     { Some x }
 
-option(X):
-| o=ioption(X)
-    { o }
+// option(X):
+// | o=ioption(X)
+//     { o }
 
-(* By convention, [X*] is syntactic sugar for [list(X)]. *)
+// (* By convention, [X*] is syntactic sugar for [list(X)]. *)
 
-list(X):
-| /* nothing */
-    { [] }
-| x=X xs=list(X)
-    { x::xs }
+// list(X):
+// | /* nothing */
+//     { [] }
+// | x=X xs=list(X)
+//     { x::xs }
 
 (* A list of A's and B's that contains exactly one A: *)
 
@@ -967,6 +973,8 @@ external_declaration:
     { [d] }
 | d=declaration
     { d }
+| a=attribute_specifier ";"
+    { Core.List.map a ~f:(fun a -> Dattribute (a, mk_range $sloc)) }
 
 function_definition1:
 | t=declaration_specifiers d=declarator_varname
@@ -985,3 +993,184 @@ declaration_list:
 | declaration
 | declaration_list declaration
     {}
+
+(**************************************************)
+(*                  Annotations                   *)
+(**************************************************)
+
+attribute_specifier:
+| "[" "[" a=attribute_list "]" "]" 
+    { a }
+
+attribute_list:
+| x=attribute
+    { x }
+| xs=attribute_list "," x=attribute
+    { xs @ x }
+
+attribute:
+| x=cstar_attribute
+    { [x] }
+| attribute_token attribute_argument_clause?
+    { [] }
+
+attribute_token:
+| standard_attribute
+| attribute_prefixed_token
+    {}
+
+standard_attribute:
+| general_identifier
+    {}
+
+attribute_prefixed_token:
+| attribute_prefix "::" general_identifier
+    {}
+
+attribute_prefix:
+| general_identifier
+    {}
+
+attribute_argument_clause:
+| "(" balanced_token_sequence? ")"
+    {}
+
+balanced_token_sequence:
+| balanced_token+
+    {}
+
+balanced_token:
+| "(" balanced_token_sequence? ")"
+| "[" balanced_token_sequence? "]"
+| "{" balanced_token_sequence? "}"
+| NAME
+| TYPE
+| CONSTANT 
+| STRING_LITERAL
+| "_Alignas"
+| "_Alignof"
+| "_Atomic"
+| "auto"
+| "_Bool"
+| "break"
+| "case"
+| "char"
+| "_Complex"
+| "const"
+| "continue"
+| "default"
+| "do"
+| "double"
+| "else"
+| "enum"
+| "extern"
+| "float"
+| "for"
+| "_Generic"
+| "goto"
+| "if"
+| "_Imaginary"
+| "inline"
+| "int"
+| "long"
+| "_Noreturn"
+| "register"
+| "restrict"
+| "return"
+| "short"
+| "signed"
+| "sizeof"
+| "static"
+| "_Static_assert"
+| "struct"
+| "switch"
+| "_Thread_local"
+| "typedef"
+| "union"
+| "unsigned"
+| "void"
+| "volatile"
+| "while"
+| "::"
+| "..."
+| "+="
+| "-="
+| "*="
+| "/="
+| "%="
+| "|="
+| "&="
+| "^="
+| "<<="
+| ">>="
+| "<<"
+| ">>"
+| "=="
+| "!="
+| "<="
+| ">="
+| "="
+| "<"
+| ">"
+| "++"
+| "--"
+| "->"
+| "+"
+| "-"
+| "*"
+| "/"
+| "%"
+| "!"
+| "&&"
+| "||"
+| "&"
+| "|"
+| "^"
+| "?"
+| ":"
+| "~"
+| ";"
+| ","
+| "."
+    {}
+
+cstar_attribute:
+| x=cstar_function_attribute
+| x=cstar_representation_attribute
+| x=cstar_predicate_attribute
+| x=cstar_datatype_attribute
+    { x }
+
+cstar_function_attribute:
+| CSTAR_FUNCTION "(" d=function_definition ")"
+    { Acstar (Afunction d) }
+
+cstar_representation_attribute:
+| CSTAR_REPRESENTATION "(" d=function_definition ")"
+    { Acstar (Arepresentation d) }
+
+cstar_predicate_attribute:
+| CSTAR_PREDICATE "(" d=function_definition ")"
+    { Acstar (Apredicate d) }
+
+cstar_datatype_attribute:
+| CSTAR_DATATYPE "(" d=cstar_datatype_definition ")"
+    { Acstar (Adatatype d) }
+
+cstar_datatype_definition:
+| i=cstar_datatype_name "," cs=cstar_datatype_constructor_list ","?
+    { {name= i; constructors= cs} }
+
+cstar_datatype_name:
+| i=general_identifier 
+    { declare_typedefname i; i }
+
+cstar_datatype_constructor_list:
+| c=cstar_datatype_constructor
+    { [c] }
+| cs=cstar_datatype_constructor_list "," c=cstar_datatype_constructor
+    { cs @ [c] }
+
+cstar_datatype_constructor:
+| d=declarator_varname
+    { (identifier d, parameters d) }

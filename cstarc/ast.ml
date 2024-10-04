@@ -113,49 +113,32 @@ and expr =
   | Econditional of expr * expr * expr
 [@@deriving show]
 
-(** Struct or union. *)
-type struct_or_union = Struct | Union [@@deriving show]
-
-(** Elements of proofs. Currently a string literal for Coq tactics.  *)
-type tactic = string [@@deriving show]
-
-(** Annotations. always wrapped in [/*@ @*/]*)
-type annotation =
-  | Arequire of expr * range
-      (** formula (of type [prop]) is indistinguishable from [expr] syntactically. *)
-  | Aensure of expr * range
-  | Aassertion of expr * range
-      (** internal assertions. including loop invariants. *)
-  | Aparameter of parameter list * range  (** Logical variables. *)
-  | Aproof of ident * tactic * range
-      (** proof script in programs, with identifier label. *)
-  | Aimplies of expr * expr * ident * range
-      (** [/*@ implies(<expr>, <expr>, <ident>) @*/]. *)
+type cstar_datatype =
+  {name: ident; constructors: (ident * parameter list) list}
 [@@deriving show]
 
-(** Function annotation list. *)
-type annotations = annotation list [@@deriving show]
+(** Annotations. always wrapped in [/*@ @*/]*)
+type attribute = Acstar of cstar_attribute [@@deriving show]
 
-(** Constructors of inductive data types. *)
-type constructor = funsym [@@deriving show]
-
-(** A inductive data type definition. *)
-type indtype = ident * constructor list * range [@@deriving show]
+and cstar_attribute =
+  | Afunction of declaration
+  | Arepresentation of declaration
+  | Apredicate of declaration
+  | Adatatype of cstar_datatype
+[@@deriving show]
 
 (** Statements. *)
-type stmt =
+and stmt =
   | Sskip of range
   | Sblock of stmt list * range
   | Sdo of expr * range
   | Sif of expr * stmt * stmt option * range
-  | Swhile of expr * annotation option * stmt * range
+  | Swhile of expr * attribute option * stmt * range
       (** optionally preceded by a invariant (written as [/*@ invariant <expr>*/])*)
   | Sbreak of range
   | Scontinue of range
   | Sreturn of expr option * range
   | Sdecl of declaration  (** local declarations. *)
-  | Sannotation of annotation
-      (** annotations. only [Aassertion]s make sense currently. *)
 [@@deriving show]
 
 (** Declarations. *)
@@ -163,10 +146,11 @@ and declaration =
   | Ddeclvar of typ * ident * init option * range
       (** variable declaration. *)
   | Ddeclcomp of typ * range  (** composite type declaration. *)
-  | Ddeclfun of funsym * annotations  (** function declaration. *)
+  | Ddeclfun of funsym * attribute list  (** function declaration. *)
   | Ddecltype of typ * range  (** type definition. *)
   | Ddecltypedef of ident * typ * range  (** type definition. *)
-  | Ddeffun of funsym * annotations * stmt  (** function definition. *)
+  | Ddeffun of funsym * attribute list * stmt  (** function definition. *)
+  | Dattribute of attribute * range  (** attribute declaration. *)
 [@@deriving show]
 
 (** Program. *)
