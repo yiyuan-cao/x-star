@@ -28,33 +28,27 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *)
 
-module StringSet = Set.Make(String)
+module StringSet = Set.Make (String)
 
 (* This mutable global variable stores the current context. *)
-let current =
-  ref StringSet.empty
+let current = ref StringSet.empty
 
 (* This declares [id] as a typedef name. *)
-let declare_typedefname id =
-  current := StringSet.add id !current
+let declare_typedefname id = current := StringSet.add id !current
 
 (* This declares [id] as a variable (hence un-declares it as a typedef name). *)
-let declare_varname id =
-  current := StringSet.remove id !current
+let declare_varname id = current := StringSet.remove id !current
 
 (* This tests whether [id] is known as a typedef name. *)
-let is_typedefname id =
-  StringSet.mem id !current
+let is_typedefname id = StringSet.mem id !current
 
 (* A context is just a set of identifiers. It is the set of typedef
    names that are now visible. *)
-type context =
-  StringSet.t
+type context = StringSet.t
 
 (* This takes a snapshot of the current context. *)
-let save_context () =
-  !current
+let save_context () = !current
 
 (* This re-installs a snapshot as the current context. *)
-let restore_context snapshot =
-  current := snapshot
+let restore_context snapshot = current := snapshot
+

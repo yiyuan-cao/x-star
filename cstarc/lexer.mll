@@ -41,14 +41,12 @@ open Options
 let init _filename channel : Lexing.lexbuf =
   Lexing.from_channel channel
 
-type string_literal_buf = {
-  value: Buffer.t;
-  literal: Buffer.t;
-}
-let new_string_literal_buf () = {
-  value= Buffer.create 17;
-  literal= Buffer.create 17;
-}
+type string_literal_buf = 
+  { value: Buffer.t
+  ; literal: Buffer.t }
+let new_string_literal_buf () = 
+  { value= Buffer.create 17
+  ; literal= Buffer.create 17 }
 
 }
 
@@ -157,6 +155,13 @@ rule initial = parse
   | preprocessing_number          { failwith "These characters form a preprocessor number, but not a constant" }
   | (['L' 'u' 'U']|"") "'"        { ignore (char lexbuf); char_literal_end lexbuf; failwith "unsupported" }
   | (['L' 'u' 'U']|""|"u8") "\""  { STRING_LITERAL (string_literal (new_string_literal_buf ()) lexbuf) }
+  
+  | "::"                          { COLONCOLON }
+  | "cstar::function"             { CSTAR_FUNCTION }
+  | "cstar::representation"       { CSTAR_REPRESENTATION }
+  | "cstar::predicate"            { CSTAR_PREDICATE }
+  | "cstar::datatype"             { CSTAR_DATATYPE }
+
   | "..."                         { ELLIPSIS }
   | "+="                          { ADD_ASSIGN }
   | "-="                          { SUB_ASSIGN }
