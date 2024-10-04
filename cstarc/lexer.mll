@@ -41,6 +41,15 @@ open Options
 let init _filename channel : Lexing.lexbuf =
   Lexing.from_channel channel
 
+type string_literal_buf = {
+  value: Buffer.t;
+  literal: Buffer.t;
+}
+let new_string_literal_buf () = {
+  value= Buffer.create 17;
+  literal= Buffer.create 17;
+}
+
 }
 
 (* Identifiers *)
@@ -146,8 +155,8 @@ rule initial = parse
   | decimal_floating_constant     { failwith "unsupported" }
   | hexadecimal_floating_constant { failwith "unsupported" }
   | preprocessing_number          { failwith "These characters form a preprocessor number, but not a constant" }
-  | (['L' 'u' 'U']|"") "'"        { char lexbuf; char_literal_end lexbuf; failwith "unsupported" }
-  | (['L' 'u' 'U']|""|"u8") "\""  { string_literal lexbuf; STRING_LITERAL }
+  | (['L' 'u' 'U']|"") "'"        { ignore (char lexbuf); char_literal_end lexbuf; failwith "unsupported" }
+  | (['L' 'u' 'U']|""|"u8") "\""  { STRING_LITERAL (string_literal (new_string_literal_buf ()) lexbuf) }
   | "..."                         { ELLIPSIS }
   | "+="                          { ADD_ASSIGN }
   | "-="                          { SUB_ASSIGN }
@@ -249,22 +258,41 @@ and initial_linebegin = parse
   | ""                            { initial lexbuf }
 
 and char = parse
-  | simple_escape_sequence        { }
-  | octal_escape_sequence         { }
-  | hexadecimal_escape_sequence   { }
-  | universal_character_name      { }
+  | simple_escape_sequence        { let l = Lexing.lexeme lexbuf in
+                                    let c = match l.[1] with 
+                                    | 'a' -> '\007'
+                                    | 'b' -> '\b'
+                                    | 'f' -> '\012'
+                                    | 'n' -> '\n'
+                                    | 'r' -> '\r'
+                                    | 't' -> '\t'
+                                    | 'v' -> '\011'
+                                    | c -> c in
+                                    (c, l) }
+  | octal_escape_sequence         { failwith "unsupported octal escape sequence" }
+  | hexadecimal_escape_sequence   { let l = Lexing.lexeme lexbuf in
+                                    let hex = String.sub l ~pos:2 ~len:(String.length l - 2) in
+                                    match Char.of_int (Int.of_string ("0x" ^ hex)) with
+                                    | Some c -> (c, l)
+                                    | None -> failwith "unsupported hexadecimal escape sequence" }
+  | universal_character_name      { failwith "unsupported universal character name" }
   | '\\' _                        { failwith "incorrect escape sequence" }
-  | _                             { }
+  | _                             { let l = Lexing.lexeme lexbuf in 
+                                    let c = l.[0] in
+                                    (c, l) }
 
 and char_literal_end = parse
   | '\''       { }
   | '\n' | eof { failwith "missing terminating \"'\" character" }
-  | ""         { char lexbuf; char_literal_end lexbuf }
+  | ""         { ignore (char lexbuf); char_literal_end lexbuf }
 
-and string_literal = parse
-  | '\"'       { }
+and string_literal buf = parse
+  | '\"'       { {value= Buffer.contents buf.value; literal= [Buffer.contents buf.literal]} }
   | '\n' | eof { failwith "missing terminating '\"' character" }
-  | ""         { char lexbuf; string_literal lexbuf }
+  | ""         { let (c, l) = char lexbuf in
+                  Buffer.add_char buf.value c;
+                  Buffer.add_string buf.literal l;
+                  string_literal buf lexbuf }
 
 (* We assume gcc -E syntax but try to tolerate variations. *)
 and hash = parse

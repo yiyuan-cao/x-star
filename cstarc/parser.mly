@@ -75,7 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token<string> NAME
 %token VARIABLE TYPE
 %token<Ast.constant> CONSTANT 
-%token STRING_LITERAL
+%token<Ast.string_literal> STRING_LITERAL
 
 %token ALIGNAS "_Alignas"
 %token ALIGNOF "_Alignof"
@@ -314,9 +314,10 @@ declarator_typedefname:
 
 (* Merge source-level string literals. *)
 string_literal:
-| STRING_LITERAL
-| string_literal STRING_LITERAL
-    {}
+| s=STRING_LITERAL
+    { s }
+| ss=string_literal s=STRING_LITERAL
+    { {value= ss.value ^ s.value; literal= ss.literal @ s.literal} }
 
 (* End of the helpers, and beginning of the grammar proper: *)
 
@@ -325,8 +326,8 @@ primary_expression:
     { Evar n }
 | c=CONSTANT
     { Econst c }
-| string_literal
-    { failwith "unsupported string literal" }
+| s=string_literal
+    { Econst (Cstring s) }
 | "(" e=expression ")"
     { e }
 | generic_selection

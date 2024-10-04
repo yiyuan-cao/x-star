@@ -9,11 +9,17 @@ type loc = {line_no: int; col_no: int} [@@deriving show]
 (** Source range information. *)
 type range = {start_p: loc; end_p: loc} [@@deriving show]
 
+type string_literal =
+  { value: string  (** the string literal *)
+  ; literal: string list  (** the raw string literal, parsed as is. *) }
+[@@deriving show]
+
 (** Constants. *)
 type constant =
   | Cinteger of int  (** Overloaded integer literals: [int], [Z]. *)
   | Cboolean of bool
       (** Overloaded boolean literals [true] and [false]: [_Bool], [bool], [prop], [hprop]. *)
+  | Cstring of string_literal  (** string literals. *)
   | Cnullval  (** [val nullval]. *)
 [@@deriving show]
 
