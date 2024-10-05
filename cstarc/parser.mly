@@ -67,9 +67,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     let open Core in
     let t = ref { data_type = Dint; signed = true } in
     List.iter ss ~f:(function
-        | Sdata d -> t := { !t with data_type = d }
-        | Ssigness s -> t := { !t with signed = s });
+      | Sdata d -> t := { !t with data_type = d }
+      | Ssigness s -> t := { !t with signed = s });
     !t
+
+  let mk_constexpr e = 
+    { expr= e; 
+      value= match e with
+        | Econst c -> Some c
+        | _ -> None }
 %}
 
 %token<string> NAME
@@ -329,7 +335,7 @@ string_literal:
 | s=STRING_LITERAL
     { s }
 | ss=string_literal s=STRING_LITERAL
-    { {value= ss.value ^ s.value; literal= ss.literal @ s.literal} }
+    { concat_string_literal ss s }
 
 (* End of the helpers, and beginning of the grammar proper: *)
 
@@ -799,14 +805,11 @@ direct_declarator:
     { d }
 | d=direct_declarator "[" type_qualifier_list? e=assignment_expression? "]"
     { other_declarator d (match e with
-      | Some (Econst (Cinteger i)) -> fun t -> Tarray (t, Some i)
-      | None -> fun t -> Tarray (t, None)
-      | _ -> failwith "unsupported array size") }
+      | Some e -> fun t -> Tarray (t, Some (mk_constexpr e))
+      | None -> fun t -> Tarray (t, None) ) }
 | d=direct_declarator "[" "static" type_qualifier_list? e=assignment_expression "]"
 | d=direct_declarator "[" type_qualifier_list "static" e=assignment_expression "]"
-    { other_declarator d (match e with
-      | Econst (Cinteger i) -> fun t -> Tarray (t, Some i)
-      | _ -> failwith "unsupported array size") }
+    { other_declarator d (fun t -> Tarray (t, Some (mk_constexpr e))) }
 | d=direct_declarator "[" type_qualifier_list? "*" "]"
     { other_declarator d (fun t -> Tarray (t, None)) }
 | d=direct_declarator "(" ps=scoped(parameter_type_list) ")"
@@ -866,14 +869,11 @@ direct_abstract_declarator:
     { failwith "unsupported abstract declarator" }
 | d=direct_abstract_declarator? "[" ioption(type_qualifier_list) e=assignment_expression? "]"
     { (d -? id) *.* match e with
-      | Some (Econst (Cinteger i)) -> fun t -> Tarray (t, Some i)
-      | None -> fun t -> Tarray (t, None)
-      | _ -> failwith "unsupported array size" }
+      | Some e -> fun t -> Tarray (t, Some (mk_constexpr e))
+      | None -> fun t -> Tarray (t, None) }
 | d=direct_abstract_declarator? "[" "static" type_qualifier_list? e=assignment_expression "]"
 | d=direct_abstract_declarator? "[" type_qualifier_list "static" e=assignment_expression "]"
-    { (d -? id) *.* match e with
-      | Econst (Cinteger i) -> fun t -> Tarray (t, Some i)
-      | _ -> failwith "unsupported array size" }
+    { (d -? id) *.* (fun t -> Tarray (t, Some (mk_constexpr e))) }
 | d=direct_abstract_declarator? "[" "*" "]"
     { (d -? id) *.* fun t -> Tarray (t, None) }
 | ioption(direct_abstract_declarator) "(" scoped(parameter_type_list)? ")"
