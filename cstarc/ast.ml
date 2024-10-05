@@ -4,7 +4,7 @@
 type ident = string [@@deriving show]
 
 (** Source location information. *)
-type loc = {line_no: int; col_no: int} [@@deriving show] 
+type loc = {line_no: int; col_no: int} [@@deriving show]
 
 let pp_loc fmt loc = Format.fprintf fmt "%d:%d" loc.line_no loc.col_no
 
@@ -19,6 +19,9 @@ type string_literal =
   ; literal: string list  (** the raw string literal, parsed as is. *) }
 [@@deriving show]
 
+let concat_string_literal l1 l2 =
+  {value= l1.value ^ l2.value; literal= l1.literal @ l2.literal}
+
 (** Constants. *)
 type constant =
   | Cinteger of int  (** Overloaded integer literals: [int], [Z]. *)
@@ -29,7 +32,7 @@ type constant =
 [@@deriving show]
 
 (** Types. No anonymous struct/union. *)
-type typ =
+and typ =
   | Tvoid  (** [void] *)
   | T_Bool  (** [_Bool], the C program bool type **)
   | Tint  (** [int], the C 32-bit integer *)
@@ -37,7 +40,7 @@ type typ =
   | Tprop  (** [PROP], the Cstar prop type *)
   | Thprop  (** [HPROP], seperation logic propsition *)
   | Tptr of typ  (** [<typ> *] *)
-  | Tarray of typ * int option  (** [<typ> [<len>]] *)
+  | Tarray of typ * constexpr option  (** [<typ> [<len>]] *)
   | Tstruct of ident  (** struct <ident> *)
   | Tstructdecl of ident option * field list
       (** struct <ident> { <field> ... } *)
@@ -54,7 +57,7 @@ and parameter = typ * ident [@@deriving show]
 and field = parameter [@@deriving show]
 
 (** Unary operators. *)
-type unary_operator =
+and unary_operator =
   | Ominus  (** unary [-] *)
   | Oplus  (** unary [+] *)
   | Olognot  (** [!] *)
@@ -66,7 +69,7 @@ type unary_operator =
 [@@deriving show]
 
 (** Binary operators. *)
-type binary_operator =
+and binary_operator =
   | Omul  (** binary [*] *)
   | Odiv  (** [/] *)
   | Omod  (** [%] *)
@@ -96,10 +99,10 @@ type binary_operator =
 [@@deriving show]
 
 (** function symbol prototype. *)
-type funsym = typ * ident * parameter list * range [@@deriving show]
+and funsym = typ * ident * parameter list * range [@@deriving show]
 
 (** Initializers. *)
-type init =
+and init =
   | Init_single of expr
   | Init_struct of (ident * init) list
       (** [{.<ident> = init, ...}] for union and struct composite literal *)
@@ -123,12 +126,16 @@ and expr =
   | Elet_data_at of expr * typ * ident
 [@@deriving show]
 
-type cstar_datatype =
+(** Const expressions. *)
+and constexpr = {expr: expr; mutable value: constant option}
+[@@deriving show]
+
+and cstar_datatype =
   {name: ident; constructors: (ident * parameter list) list}
 [@@deriving show]
 
 (** Annotations. always wrapped in [/*@ @*/]*)
-type attribute = Acstar of cstar_attribute [@@deriving show]
+and attribute = Acstar of cstar_attribute [@@deriving show]
 
 and cstar_attribute =
   | Afunction of declaration
@@ -164,9 +171,4 @@ and declaration =
 [@@deriving show]
 
 (** Program. *)
-type program = declaration list [@@deriving show]
-
-(** Builtin types and functions. TODO: use this. *)
-type builtins =
-  { builtin_typedefs: (ident * typ) list
-  ; builtin_functions: (ident * typ * typ list) list }
+and program = declaration list [@@deriving show]
