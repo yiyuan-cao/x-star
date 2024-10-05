@@ -6,7 +6,7 @@ CFLAGS = -I$(OCAMLPATH) -fpic
 
 all: libhol_native.a compile_flags.txt
 
-libhol_native.a: caml.o host.o runtime.o
+libhol_native.a: caml.o host.o runtime.o sl.o
 	$(AR) rcs libhol_native.a $^
 
 hol-light/hol_loader.cmo:
