@@ -121,7 +121,7 @@ bool zeroed_array(char *addr, int lo, int hi)
 	else
 	{
 		LET_DATA_AT(addr + lo, int val); // (addr + lo) ~> 0
-		return PURE(val == 0) SEP owned_array(addr, lo + 1, hi);
+		return PURE(val == 0) SEP zeroed_array(addr, lo + 1, hi);
 	}
 }
 )]]
@@ -144,6 +144,7 @@ void clear_page(void *to)
 	while(i < PAGE_SIZE)   
 	{
 		// need several lemmas - see below
+		// lemma1
 		[[ghost::assert(
 			PURE(i < PAGE_SIZE) SEP 
 			zeroed_array(to, 0, i) SEP ((char *)to + i) ~> _ SEP owned_array(to, i + 1, PAGE_SIZE)
@@ -164,10 +165,12 @@ void * hyp_early_alloc_page(void *arg)
 		cur = ret;
 		return NULL;
 	}
+	// lemma1
 	[[ghost::assert(
 		PURE(ret + PAGE_SIZE == cur) SEP owned_array(ret, 0, PAGE_SIZE) SEP owned_array(ret, PAGE_SIZE, end - ret)
 	)]]
 	clear_page((void*)ret);
+	// lemma3
 
 	return (void *)ret;
 }
@@ -193,7 +196,7 @@ void *hyp_early_alloc_contig(unsigned int nr_pages)
 	)]]
 	while(i < nr_pages)
 	{
-		// break owned_array - lemma1
+		// break owned_array -- lemma1
 		[[ghost::assert(
 			PURE(i < nr_pages && ret + nr_pages * PAGE_SIZE == cur) SEP 
 			zeroed_array(ret, 0, i * PAGE_SIZE) SEP 
