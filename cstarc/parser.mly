@@ -175,6 +175,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token CSTAR_PREDICATE "cstar::predicate"
 %token CSTAR_DATATYPE "cstar::datatype"
 
+%token SEP "SEP"
+%token SEPAND "SEPAND"
+%token PROP "PROP"
+%token HPROP "HPROP"
+%token LET_DATA_AT "LET_DATA_AT"
+
 (* ATOMIC_LPAREN is "special"; it's used for left parentheses that
    follow the ["_Atomic"] keyword. It isn't given a token alias *)
 %token ATOMIC_LPAREN
@@ -390,6 +396,8 @@ unary_expression:
     { Esizeoftyp t }
 | "_Alignof" "(" type_name ")"
     { failwith "unsupported alignof" }
+| "LET_DATA_AT" "(" e=assignment_expression "," t=declaration_specifiers d=declarator_varname ")"
+    { Elet_data_at (e, declarator_type d t, identifier d) }
 
 unary_operator:
 | "&"
@@ -500,6 +508,10 @@ logical_and_expression:
     { e }
 | e1=logical_and_expression "&&" e2=inclusive_or_expression
     { Ebinary (Ologand, e1, e2) }
+| e1=logical_and_expression SEP e2=inclusive_or_expression
+    { Ebinary (Osep, e1, e2) }
+| e1=logical_and_expression SEPAND e2=inclusive_or_expression
+    { Ebinary (Osepand, e1, e2) }
 
 logical_or_expression:
 | e=logical_and_expression
@@ -665,6 +677,10 @@ type_specifier_unique:
     { Tvoid }
 | "_Bool"
     { T_Bool }
+| "PROP"
+    { Tprop }
+| "HPROP"
+    { Thprop }
 | atomic_type_specifier
     { failwith "unsupported atomic" }
 | t=struct_or_union_specifier
