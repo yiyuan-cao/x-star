@@ -30,8 +30,10 @@ const value *caml_from_toplevel(const char *name) {
   return named;
 }
 
-void *caml_forget(value v) {
-  caml_register_generational_global_root(&v);
+void *caml_forget(const value v) {
+  value* p = malloc(sizeof(value));
+  *p = v; 
+  caml_register_generational_global_root(p);
   return (void *)v;
 }
 
