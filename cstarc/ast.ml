@@ -142,15 +142,23 @@ and cstar_attribute =
   | Arepresentation of declaration
   | Apredicate of declaration
   | Adatatype of cstar_datatype
+  | Aparameter of parameter list
+  | Arequire of expr
+  | Aensure of expr
+  | Alocalvar of declaration
+  | Ainvariant of expr
+  | Aassert of expr
+  | Acommand of stmt
+  | Aargument of expr list
 [@@deriving show]
 
 (** Statements. *)
 and stmt =
-  | Sskip of range
+  | Sskip of attribute list * range
   | Sblock of stmt list * range
-  | Sdo of expr * range
-  | Sif of expr * stmt * stmt option * range
-  | Swhile of expr * attribute option * stmt * range
+  | Sexpr of expr * attribute list * range
+  | Sif of expr * stmt * stmt option * attribute list * range
+  | Swhile of expr * stmt * attribute list * range
       (** optionally preceded by a invariant (written as [/*@ invariant <expr>*/])*)
   | Sbreak of range
   | Scontinue of range
