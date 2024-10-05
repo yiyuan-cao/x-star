@@ -161,6 +161,11 @@ rule initial = parse
   | "cstar::representation"       { CSTAR_REPRESENTATION }
   | "cstar::predicate"            { CSTAR_PREDICATE }
   | "cstar::datatype"             { CSTAR_DATATYPE }
+  | "SEP"                         { SEP }
+  | "SEPAND"                      { SEPAND }
+  | "PROP"                        { PROP }
+  | "HPROP"                       { HPROP }
+  | "LET_DATA_AT"                 { LET_DATA_AT }
 
   | "..."                         { ELLIPSIS }
   | "+="                          { ADD_ASSIGN }
