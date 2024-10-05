@@ -3,30 +3,38 @@
 #include "reverse_se.h"
 #include <stddef.h>
 
-struct list_cell {
-    int head;
-    struct list_cell *tail;
+/*@ Extern Coq (i32_list: *)
+               (i32_ll_repr: val -> i32_list -> Assertion) */
+
+struct i32_ll_node {
+  int32_t value;
+  struct i32_ll_node *next;
 };
 
-// TODO
-struct list_cell *reverse(struct list_cell *p)
-    [[ghost::parameter(List l)]]
-    [[ghost::require(list_repr(p, l))]]
-    [[ghost::ensure(list_repr(p, list_reverse(l)))]]
+typedef struct i32_ll_node *i32_ll;
+
+// TODO: (to fix) ghost localval/command.
+i32_ll i32_ll_reverse(i32_ll p, i32_list l)
+/*@ Require i32_ll_repr(p, l) 
+    Ensure i32_ll_repr(__return, reverse(l)) 
+*/
 {
-    struct list_cell *rev_prefix = NULL, *rem_suffix = p;
-    [[ghost::localvar(List l1 = list_nil(), l2 = l)]]; // ghost local variable, must be initialized
-    [[ghost::invariant((PURE(list_equal(list_append(list_reverse(l1), l2), l))
-                            SEPAND(list_repr(rev_prefix, l1) SEP list_repr(rem_suffix, l2) SEP DATA_AT_ANY(&p))))]] // no `;`, attached to the while loop below
+    i32_ll rev_prefix = (void *)0, rem_suffix = p;
+    i32_list l1 = nil(), l2 = l; // [[ghost::localvar]]
+    
+    /*@ Inv i32_list_eq(l, append(reverse(l1), l2)) && 
+            i32_ll_repr(rev_prefix, l1) * i32_ll_repr(rem_suffix, l2) *
+            undef_data_at(&p)
+      */
     while (rem_suffix != NULL) {
-        struct list_cell *t;
-        [[ghost::assert(rem_suffix != NULL)]]; // Possible hint: tell VST-IDE that rem_suffix is not NULL (unfold the cell)
-        t = rem_suffix->tail;
-        rem_suffix->tail = rev_prefix;
+        i32_ll t;
+        assert(is_cons(l2)); // [[ghost::assert]]
+        t = rem_suffix->next;
+        rem_suffix->next = rev_prefix;
         rev_prefix = rem_suffix;
-        [[ghost::command(l1 = list_cons(rem_suffix->head, l1))]];
+        l1 = cons(rem_suffix->value, l1); // [[ghost::command]]
         rem_suffix = t;
-        [[ghost::command(l2 = list_cons_tail(l2))]];
+        l2 = tail(l2); // [[ghost::command]]
     }
     return rev_prefix;
 }
