@@ -4,10 +4,15 @@
 type ident = string [@@deriving show]
 
 (** Source location information. *)
-type loc = {line_no: int; col_no: int} [@@deriving show]
+type loc = {line_no: int; col_no: int} [@@deriving show] 
+
+let pp_loc fmt loc = Format.fprintf fmt "%d:%d" loc.line_no loc.col_no
 
 (** Source range information. *)
 type range = {start_p: loc; end_p: loc} [@@deriving show]
+
+let pp_range fmt r =
+  Format.fprintf fmt "<%a-%a>" pp_loc r.start_p pp_loc r.end_p
 
 type string_literal =
   { value: string  (** the string literal *)
@@ -29,6 +34,8 @@ type typ =
   | T_Bool  (** [_Bool], the C program bool type **)
   | Tint  (** [int], the C 32-bit integer *)
   | Tunsigned  (** [unsigned], the C 32-bit unsigned integer *)
+  | Tprop  (** [PROP], the Cstar prop type *)
+  | Thprop  (** [HPROP], seperation logic propsition *)
   | Tptr of typ  (** [<typ> *] *)
   | Tarray of typ * int option  (** [<typ> [<len>]] *)
   | Tstruct of ident  (** struct <ident> *)
@@ -84,6 +91,8 @@ type binary_operator =
   | Oassign  (** [=] *)
   | Ocomma
       (** [,] sequence effecful expressions, return the result of the latter *)
+  | Osep  (** [SEP]. seperation logic conjunction *)
+  | Osepand  (** [SEPAND]. seperation logic and *)
 [@@deriving show]
 
 (** function symbol prototype. *)
@@ -111,6 +120,7 @@ and expr =
   | Esizeoftyp of typ
   | Ecast of typ * expr
   | Econditional of expr * expr * expr
+  | Elet_data_at of expr * typ * ident
 [@@deriving show]
 
 type cstar_datatype =
