@@ -41,8 +41,8 @@ struct int_ll_node {
         } else {
             int h = head(l);
             int_list t = tail(l);
-            LET_DATA_AT(&p->value, int, value);                  // Internally DATA_AT_INT(p + 0, value)
-            LET_DATA_AT(&p->next, struct int_ll_node*, next);    // DATA_AT_PTR(p + 1, next) (ignore size difference between C values and paddings)
+            LET_DATA_AT(&p->value, int value);                  // Internally DATA_AT_INT(p + 0, value)
+            LET_DATA_AT(&p->next, struct int_ll_node* next);    // DATA_AT_PTR(p + 1, next) (ignore size difference between C values and paddings)
             return PURE(value == h) SEPAND int_ll_repr(next, t);
         }
     }
