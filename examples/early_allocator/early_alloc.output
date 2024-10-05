@@ -1,0 +1,457 @@
+int PAGE_SIZE = 4096;
+int UINT_MAX = (1 << 31);
+int base;
+int end;
+int cur;
+int (hyp_early_alloc_nr_pages()) {
+  /*@ 
+    local();
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(base <= cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end) @*/
+  return ((cur - base) / PAGE_SIZE);
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+      local();
+      pure(base <= cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end
+      |-
+      local();
+      pure((cur - base) != -(2147483648) || PAGE_SIZE != -(1) && PAGE_SIZE != 0) &*& 
+    ).
+  @*/
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+      local();
+      pure(base <= cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end
+      |-
+      local();
+      pure((cur - base) <= 2147483647 && -(2147483648) <= (cur - base)) &*& 
+    ).
+  @*/
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+      local();
+      pure(base <= cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end
+      |-
+      local();
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(((cur - base) / PAGE_SIZE) == ((cur - base) / PAGE_SIZE)) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end)
+    ).
+  @*/
+}
+void (clear_page(void (*to))) {
+  /*@ 
+    local(#to = to);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(to, 0, PAGE_SIZE)) @*/
+  int i = 0;
+  /*@ 
+    local(#i = 0, #to = to);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(to, 0, PAGE_SIZE)) @*/
+  /*@ AFTER-INV:  
+    local(#i = 0, #to = to);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(to, 0, PAGE_SIZE)) @*/
+  while ((i < PAGE_SIZE)) {
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z to, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+        local(#i = i_p, #to = to_p);
+        PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(to, 0, PAGE_SIZE)
+        |-
+        local(#i = i_p, #to = to_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(0 <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, 0) &*& owned_array(to, 0, PAGE_SIZE))
+      ).
+    @*/
+    /*@ 
+      local(#i = i, #to = to);
+      hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < PAGE_SIZE && i <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& owned_array(to, i, PAGE_SIZE)) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z i, Z to;
+        local(#i = i_p, #to = to_p);
+        pure(i < PAGE_SIZE && i <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& owned_array(to, i, PAGE_SIZE)
+        |-
+        local(#i = i_p, #to = to_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> _ &*& owned_array(to, (i + 1), PAGE_SIZE))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #to = to);
+      hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> _ &*& owned_array(to, (i + 1), PAGE_SIZE)) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z i, Z to;
+        local(#i = i_p, #to = to_p);
+        pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> _ &*& owned_array(to, (i + 1), PAGE_SIZE)
+        |-
+        local(#i = i_p, #to = to_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #to = to);
+      hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE)) @*/
+    int tmp = (i + 1);
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z to_p, Z i_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z i, Z to, Z tmp_p;
+        local();
+        pure(i < PAGE_SIZE) &*& tmp_p ~> _ &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& i_p ~> i &*& to_p ~> to &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE)
+        |-
+        local();
+        pure((i + 1) <= 2147483647 && -(2147483648) <= (i + 1)) &*& 
+      ).
+    @*/
+    /*@ 
+      local(#tmp = (i + 1), #i = i, #to = to);
+      hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE)) @*/
+    i = tmp;
+    /*@ 
+      local(#tmp = (i + 1), #i = (i + 1), #to = to);
+      hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE)) @*/
+  }
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z i, Z to;
+      local(#i = i_p, #to = to_p);
+      pure(i < PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& (to + i) ~> 0 &*& owned_array(to, (i + 1), PAGE_SIZE)
+      |-
+      local(#i = i_p, #to = to_p);
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((i + 1) <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, (i + 1)) &*& owned_array(to, (i + 1), PAGE_SIZE))
+    ).
+  @*/
+  /*@ 
+    local(#i = i, #to = to);
+    hexists(Z to, Z i, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(i >= PAGE_SIZE && i <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& owned_array(to, i, PAGE_SIZE)) @*/
+  return;
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z to, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z i, Z to;
+      local(#to = to);
+      pure(i >= PAGE_SIZE && i <= PAGE_SIZE) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, i) &*& owned_array(to, i, PAGE_SIZE)
+      |-
+      local();
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(to, 0, PAGE_SIZE))
+    ).
+  @*/
+}
+void (*(hyp_early_alloc_page(void (*arg)))) {
+  /*@ 
+    local(#arg = arg);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(0 <= cur && (cur + PAGE_SIZE) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  int ret = cur;
+  /*@ 
+    local(#ret = cur, #arg = arg);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(0 <= cur && (cur + PAGE_SIZE) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  int tmp = (cur + PAGE_SIZE);
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z arg, Z arg_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret_p, Z tmp_p;
+      local();
+      pure(0 <= cur && (cur + PAGE_SIZE) <= end) &*& tmp_p ~> _ &*& ret_p ~> cur &*& arg_p ~> arg &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))
+      |-
+      local();
+      pure((cur + PAGE_SIZE) <= 2147483647 && -(2147483648) <= (cur + PAGE_SIZE)) &*& 
+    ).
+  @*/
+  /*@ 
+    local(#tmp = (cur + PAGE_SIZE), #ret = cur, #arg = arg);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(0 <= cur && (cur + PAGE_SIZE) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  cur = tmp;
+  /*@ 
+    local(#tmp = (cur + PAGE_SIZE), #ret = cur, #arg = arg);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(0 <= cur && (cur + PAGE_SIZE) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + PAGE_SIZE) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  if ((cur > end)) {
+    cur = ret;
+    return ((void (*))0);
+  }
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z arg, Z arg_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+      local(#tmp = tmp_p, #ret = ret_p, #arg = arg_p);
+      pure((cur + PAGE_SIZE) <= end && 0 <= cur && (cur + PAGE_SIZE) <= end) &*& arg_p ~> arg &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + PAGE_SIZE) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))
+      |-
+      local(#tmp = tmp_p, #ret = ret_p);
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((cur + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, PAGE_SIZE) &*& owned_array(cur, PAGE_SIZE, (end - cur)))
+    ).
+  @*/
+  /*@ AFTER-ASSERT: 
+    local(#tmp = tmp, #ret = ret);
+    hexists(Z ret, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(ret, 0, PAGE_SIZE) &*& owned_array(ret, PAGE_SIZE, (end - ret))) @*/
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret;
+      local(#tmp = tmp_p, #ret = ret_p);
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(ret, 0, PAGE_SIZE) &*& owned_array(ret, PAGE_SIZE, (end - ret))
+      |-
+      local(#tmp = tmp_p, #ret = ret_p);
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(ret, PAGE_SIZE, (end - ret)))
+    ).
+  @*/
+  /*@ AFTER-ASSERT: 
+    local(#tmp = tmp, #ret = ret);
+    hexists(Z ret, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(ret, PAGE_SIZE, (end - ret))) @*/
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret;
+      local(#tmp = tmp_p, #ret = ret_p);
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(ret, PAGE_SIZE, (end - ret))
+      |-
+      local(#tmp = tmp_p, #ret = ret_p);
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(cur, 0, (end - cur)))
+    ).
+  @*/
+  /*@ AFTER-ASSERT: 
+    local(#tmp = tmp, #ret = ret);
+    hexists(Z ret, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(cur, 0, (end - cur))) @*/
+  return ((void (*))ret);
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret;
+      local();
+      pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(cur, 0, (end - cur))
+      |-
+      local();
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((ret + PAGE_SIZE) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, PAGE_SIZE) &*& owned_array(cur, 0, (end - cur)))
+    ).
+  @*/
+}
+void (*(hyp_early_alloc_contig(int nr_pages))) {
+  /*@ 
+    local(#nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  int ret = cur;
+  /*@ 
+    local(#ret = cur, #nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  if ((!nr_pages)) return ((void (*))0);
+  int tmp = (cur + (nr_pages * PAGE_SIZE));
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages, Z nr_pages_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret_p, Z tmp_p;
+      local();
+      pure(nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& tmp_p ~> _ &*& ret_p ~> cur &*& nr_pages_p ~> nr_pages &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))
+      |-
+      local();
+      pure((cur + (nr_pages * PAGE_SIZE)) <= 2147483647 && -(2147483648) <= (cur + (nr_pages * PAGE_SIZE))) &*& 
+    ).
+  @*/
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages, Z nr_pages_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z ret_p, Z tmp_p;
+      local();
+      pure(nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& tmp_p ~> _ &*& ret_p ~> cur &*& nr_pages_p ~> nr_pages &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))
+      |-
+      local();
+      pure((nr_pages * PAGE_SIZE) <= 2147483647 && -(2147483648) <= (nr_pages * PAGE_SIZE)) &*& 
+    ).
+  @*/
+  /*@ 
+    local(#tmp = (cur + (nr_pages * PAGE_SIZE)), #ret = cur, #nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  cur = tmp;
+  /*@ 
+    local(#tmp = (cur + (nr_pages * PAGE_SIZE)), #ret = cur, #nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + (nr_pages * PAGE_SIZE)) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  if ((cur > end)) {
+    cur = ret;
+    return ((void (*))0);
+  }
+  int i = 0;
+  /*@ 
+    local(#i = 0, #tmp = (cur + (nr_pages * PAGE_SIZE)), #ret = cur, #nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure((cur + (nr_pages * PAGE_SIZE)) <= end && nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + (nr_pages * PAGE_SIZE)) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  /*@ AFTER-INV:  
+    local(#i = 0, #tmp = (cur + (nr_pages * PAGE_SIZE)), #ret = cur, #nr_pages = nr_pages);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure((cur + (nr_pages * PAGE_SIZE)) <= end && nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + (nr_pages * PAGE_SIZE)) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))) @*/
+  while ((i < nr_pages)) {
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end;
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+        pure((cur + (nr_pages * PAGE_SIZE)) <= end && nr_pages != 0 && nr_pages > 0 && (nr_pages * PAGE_SIZE) < UINT_MAX && (cur + (nr_pages * PAGE_SIZE)) <= end) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> (cur + (nr_pages * PAGE_SIZE)) &*& end_p ~> end &*& owned_array(cur, 0, (end - cur))
+        |-
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(0 <= nr_pages && (cur + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(cur, 0, (0 * PAGE_SIZE)) &*& owned_array(cur, (0 * PAGE_SIZE), (end - cur)))
+      ).
+    @*/
+    /*@ 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages);
+      hexists(Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && i <= nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), (end - ret))) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret;
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+        pure(i < nr_pages && i <= nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), (end - ret))
+        |-
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret)))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages);
+      hexists(Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+    int p = (ret + (i * PAGE_SIZE));
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages_p, Z ret_p, Z tmp_p, Z i_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z tmp, Z nr_pages, Z i, Z ret, Z p_p;
+        local();
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& p_p ~> _ &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& tmp_p ~> tmp &*& nr_pages_p ~> nr_pages &*& i_p ~> i &*& ret_p ~> ret &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local();
+        pure((ret + (i * PAGE_SIZE)) <= 2147483647 && -(2147483648) <= (ret + (i * PAGE_SIZE))) &*& 
+      ).
+    @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages_p, Z ret_p, Z tmp_p, Z i_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z tmp, Z nr_pages, Z i, Z ret, Z p_p;
+        local();
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& p_p ~> _ &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& tmp_p ~> tmp &*& nr_pages_p ~> nr_pages &*& i_p ~> i &*& ret_p ~> ret &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local();
+        pure((i * PAGE_SIZE) <= 2147483647 && -(2147483648) <= (i * PAGE_SIZE)) &*& 
+      ).
+    @*/
+    /*@ 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages, #p = (ret + (i * PAGE_SIZE)));
+      hexists(Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret;
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array((ret + (i * PAGE_SIZE)), 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret)))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages, #p = p);
+      hexists(Z p, Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(p, 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret, Z p;
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(p, 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& zeroed_array(p, 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret)))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages, #p = p);
+      hexists(Z p, Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& zeroed_array(p, 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret, Z p;
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& zeroed_array(p, 0, PAGE_SIZE) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p, #p = p_p);
+        hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+          pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret)))
+      ).
+    @*/
+    /*@ AFTER-ASSERT: 
+      local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages, #p = p);
+      hexists(Z ret, Z i, Z nr_pages, Z p, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+    i = (i + 1);
+    /*@ ENTAILMENT:
+      forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages_p, Z ret_p, Z tmp_p, Z i_p, Z p_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z tmp, Z p, Z nr_pages, Z i, Z ret;
+        local();
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& tmp_p ~> tmp &*& p_p ~> p &*& nr_pages_p ~> nr_pages &*& i_p ~> i &*& ret_p ~> ret &*& zeroed_array(ret, 0, ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+        |-
+        local();
+        pure((i + 1) <= 2147483647 && -(2147483648) <= (i + 1)) &*& 
+      ).
+    @*/
+    /*@ 
+      local(#i = (i + 1), #tmp = tmp, #ret = ret, #nr_pages = nr_pages, #p = p);
+      hexists(Z ret, Z i, Z nr_pages, Z p, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))) @*/
+  }
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret;
+      local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+      pure(i < nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, ((i * PAGE_SIZE) + PAGE_SIZE)) &*& owned_array(ret, ((i * PAGE_SIZE) + PAGE_SIZE), (end - ret))
+      |-
+      local(#i = i_p, #tmp = tmp_p, #ret = ret_p, #nr_pages = nr_pages_p);
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((i + 1) <= nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, ((i + 1) * PAGE_SIZE)) &*& owned_array(ret, ((i + 1) * PAGE_SIZE), (end - ret)))
+    ).
+  @*/
+  /*@ 
+    local(#i = i, #tmp = tmp, #ret = ret, #nr_pages = nr_pages);
+    hexists(Z ret, Z i, Z nr_pages, Z tmp, Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      pure(i >= nr_pages && i <= nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), (end - ret))) @*/
+  return ((void (*))ret);
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z nr_pages, Z PAGE_SIZE, Z UINT_MAX, Z base, Z cur, Z end, Z nr_pages, Z i, Z ret;
+      local(#nr_pages = nr_pages);
+      pure(i >= nr_pages && i <= nr_pages && (ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (i * PAGE_SIZE)) &*& owned_array(ret, (i * PAGE_SIZE), (end - ret))
+      |-
+      local();
+      hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+        pure((ret + (nr_pages * PAGE_SIZE)) == cur) &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& zeroed_array(ret, 0, (nr_pages * PAGE_SIZE)) &*& owned_array(cur, 0, (end - cur)))
+    ).
+  @*/
+}
+void (hyp_early_alloc_init(int virt, int size)) {
+  /*@ 
+    local(#virt = virt, #size = size);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> base &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(virt, 0, size)) @*/
+  base = virt;
+  /*@ 
+    local(#virt = virt, #size = size);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> virt &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(virt, 0, size)) @*/
+  end = (virt + size);
+  /*@ ENTAILMENT:
+    forall(Z PAGE_SIZE_p, Z UINT_MAX_p, Z base_p, Z end_p, Z cur_p, Z size, Z size_p, Z virt, Z virt_p, Z PAGE_SIZE, Z UINT_MAX, Z cur, Z end;
+      local();
+      size_p ~> size &*& virt_p ~> virt &*& PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> virt &*& cur_p ~> cur &*& end_p ~> end &*& owned_array(virt, 0, size)
+      |-
+      local();
+      pure((virt + size) <= 2147483647 && -(2147483648) <= (virt + size)) &*& 
+    ).
+  @*/
+  /*@ 
+    local(#virt = virt, #size = size);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> virt &*& cur_p ~> cur &*& end_p ~> (virt + size) &*& owned_array(virt, 0, size)) @*/
+  cur = virt;
+  /*@ 
+    local(#virt = virt, #size = size);
+    hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+      PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> virt &*& cur_p ~> virt &*& end_p ~> (virt + size) &*& owned_array(virt, 0, size)) @*/
+}
+/*@ 
+  local(#virt = virt, #size = size);
+  hexists(Z end, Z cur, Z base, Z UINT_MAX, Z PAGE_SIZE;
+    PAGE_SIZE_p ~> PAGE_SIZE &*& UINT_MAX_p ~> UINT_MAX &*& base_p ~> virt &*& cur_p ~> virt &*& end_p ~> (virt + size) &*& owned_array(virt, 0, size)) @*/
+int (main()) {
+  /*@ 
+    local();
+     @*/
+  return 0;
+}
