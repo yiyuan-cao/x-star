@@ -175,11 +175,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token COMMA ","
 %token DOT "."
 
+%token LBRACK_BRACK "[["
+%token RBRACK_BRACK "]]"
 %token COLONCOLON "::"
 %token CSTAR_FUNCTION "cstar::function"
 %token CSTAR_REPRESENTATION "cstar::representation"
 %token CSTAR_PREDICATE "cstar::predicate"
 %token CSTAR_DATATYPE "cstar::datatype"
+%token CSTAR_PARAMETER "cstar::parameter"
+%token CSTAR_REQUIRE "cstar::require"
+%token CSTAR_ENSURE "cstar::ensure"
+%token CSTAR_INVARIANT "cstar::invariant"
+%token CSTAR_LOCALVAR "cstar::localvar"
+%token CSTAR_ASSERT "cstar::assert"
+%token CSTAR_COMMAND "cstar::command"
+%token CSTAR_ARGUMENT "cstar::argument"
 
 %token SEP "SEP"
 %token SEPAND "SEPAND"
@@ -918,11 +928,7 @@ static_assert_declaration:
 
 statement:
 | s=labeled_statement
-| s=scoped(compound_statement)
-| s=expression_statement
-| s=scoped(selection_statement)
-| s=scoped(iteration_statement)
-| s=jump_statement
+| s=unlabelled_statement
     { s }
 
 labeled_statement:
@@ -930,6 +936,23 @@ labeled_statement:
 | "case" constant_expression ":" s=statement
 | "default" ":" s=statement
     { s }
+
+unlabelled_statement:
+| s=scoped(compound_statement)
+| s=attributed_statement
+    { s }
+
+attributed_statement:
+| ts=attribute_specifier_sequence s=jump_statement
+| ts=attribute_specifier_sequence s=expression_statement
+| ts=attribute_specifier_sequence s=scoped(selection_statement)
+| ts=attribute_specifier_sequence s=scoped(iteration_statement)
+    { match s with
+      | Sskip (ts', r) -> Sskip (ts @ ts', r)
+      | Sexpr (e, ts', r) -> Sexpr (e, ts @ ts', r)
+      | Sif (e, st, se, ts', r) -> Sif (e, st, se, ts @ ts', r) 
+      | Swhile (e, st, ts', r) -> Swhile (e, st, ts @ ts', r)
+      | s -> s }
 
 compound_statement:
 | "{" ss=block_item_list? "}"
@@ -948,20 +971,22 @@ block_item:
 expression_statement:
 | e=expression? ";"
     { match e with
-      | None -> Sskip (mk_range $sloc)
-      | Some e -> Sdo (e, mk_range $sloc) }
+      | None -> Sskip ([], mk_range $sloc)
+      | Some e -> Sexpr (e, [], mk_range $sloc) }
 
 selection_statement:
 | "if" "(" e=expression ")" st=scoped(statement) "else" se=scoped(statement)
-    { Sif (e, st, Some se, mk_range $sloc) }
+    { Sif (e, st, Some se, [], mk_range $sloc) }
 | "if" "(" e=expression ")" st=scoped(statement) %prec below_ELSE
-    { Sif (e, st, None, mk_range $sloc) }
+    { Sif (e, st, None, [], mk_range $sloc) }
 | "switch" "(" expression ")" scoped(statement)
     { failwith "unsupported switch" }
 
 iteration_statement:
-| "while" "(" e=expression ")" s=scoped(statement)
-    { Swhile (e, None, s, mk_range $sloc) }
+| "while" "(" e=expression ")" ts=attribute_specifier_sequence s=scoped(compound_statement)
+    { Swhile (e, s, ts, mk_range $sloc) }
+| "while" "(" e=expression ")" s=attributed_statement
+    { Swhile (e, s, [], mk_range $sloc) }
 | "do" scoped(statement) "while" "(" expression ")" ";"
     { failwith "unsupported do-while" }
 | "for" "(" expression? ";" expression? ";" expression? ")" scoped(statement)
@@ -985,9 +1010,11 @@ translation_unit_file:
     { d }
 
 external_declaration:
-| d=function_definition
-    { [d] }
-| d=declaration
+| ts=attribute_specifier_sequence d=function_definition
+    { match d with
+      | Ddeffun (f, ts', s) -> [Ddeffun (f, ts @ ts', s)]
+      | _ -> failwith "internal error" }
+| attribute_specifier_sequence d=declaration
     { d }
 | a=attribute_specifier ";"
     { Core.List.map a ~f:(fun a -> Dattribute (a, mk_range $sloc)) }
@@ -999,11 +1026,9 @@ function_definition1:
       (ctx, (declarator_type d t, identifier d, parameters d, mk_range $sloc)) }
 
 function_definition:
-| ctx=function_definition1 d=declaration_list? s=compound_statement
+| ctx=function_definition1 declaration_list? ts=attribute_specifier_sequence s=compound_statement
     { let (ctx, f) = ctx in
-      restore_context ctx; match d with 
-      | None -> Ddeffun (f, [], s) 
-      | Some _ -> failwith "unsupported K&R function definition" }
+      restore_context ctx; Ddeffun (f, ts, s) }
 
 declaration_list:
 | declaration
@@ -1014,8 +1039,18 @@ declaration_list:
 (*                  Annotations                   *)
 (**************************************************)
 
+%inline attribute_specifier_sequence:
+| a=ioption(attribute_specifier_list)
+    { a -? [] }
+
+attribute_specifier_list:
+| t=attribute_specifier
+    { t }
+| ts=attribute_specifier_list t=attribute_specifier
+    { ts @ t }
+
 attribute_specifier:
-| "[" "[" a=attribute_list "]" "]" 
+| "[[" a=attribute_list "]]" 
     { a }
 
 attribute_list:
@@ -1026,7 +1061,7 @@ attribute_list:
 
 attribute:
 | x=cstar_attribute
-    { [x] }
+    { x }
 | attribute_token attribute_argument_clause?
     { [] }
 
@@ -1155,23 +1190,31 @@ cstar_attribute:
 | x=cstar_representation_attribute
 | x=cstar_predicate_attribute
 | x=cstar_datatype_attribute
+| x=cstar_parameter_attribute
+| x=cstar_require_attribute
+| x=cstar_ensure_attribute
+| x=cstar_invariant_attribute
+| x=cstar_localvar_attribute
+| x=cstar_assert_attribute
+| x=cstar_command_attribute
+| x=cstar_argument_attribute
     { x }
 
 cstar_function_attribute:
 | CSTAR_FUNCTION "(" d=function_definition ")"
-    { Acstar (Afunction d) }
+    { [Acstar (Afunction d)] }
 
 cstar_representation_attribute:
 | CSTAR_REPRESENTATION "(" d=function_definition ")"
-    { Acstar (Arepresentation d) }
+    { [Acstar (Arepresentation d)] }
 
 cstar_predicate_attribute:
 | CSTAR_PREDICATE "(" d=function_definition ")"
-    { Acstar (Apredicate d) }
+    { [Acstar (Apredicate d)] }
 
 cstar_datatype_attribute:
 | CSTAR_DATATYPE "(" d=cstar_datatype_definition ")"
-    { Acstar (Adatatype d) }
+    { [Acstar (Adatatype d)] }
 
 cstar_datatype_definition:
 | i=cstar_datatype_name "," cs=cstar_datatype_constructor_list ","?
@@ -1190,3 +1233,46 @@ cstar_datatype_constructor_list:
 cstar_datatype_constructor:
 | d=declarator_varname
     { (identifier d, parameters d) }
+
+cstar_parameter_attribute:
+| CSTAR_PARAMETER "(" ps=scoped(parameter_type_list)? ")"
+    { match ps with
+      | Some (_, ps) -> [Acstar (Aparameter ps)] 
+      | None -> [Acstar (Aparameter [])] }
+
+cstar_require_attribute:
+| CSTAR_REQUIRE "(" e=expression ")"
+    { [Acstar (Arequire e)] }
+
+cstar_ensure_attribute:
+| CSTAR_ENSURE "(" e=expression ")"
+    { [Acstar (Aensure e)] }
+
+cstar_invariant_attribute:
+| CSTAR_INVARIANT "(" e=expression ")"
+    { [Acstar (Ainvariant e)] }
+
+cstar_localvar_attribute:
+| CSTAR_LOCALVAR "(" t=declaration_specifiers ds=init_declarator_list(declarator_varname) ")"
+    { Core.List.map ds ~f:(fun (d, i) -> 
+        Acstar (Alocalvar (Ddeclvar (declarator_type d t, identifier d, i, mk_range $sloc)))) }
+
+cstar_assert_attribute:
+| CSTAR_ASSERT "(" e=expression ")"
+    { [Acstar (Aassert e)] }
+
+cstar_command_attribute:
+| CSTAR_COMMAND "(" s=cstar_command_statement ")"
+    { [Acstar (Acommand s)] }
+
+cstar_command_statement:
+| s=scoped(compound_statement)
+| s=scoped(selection_statement)
+| s=scoped(iteration_statement)
+    { s }
+| e=expression
+    { Sexpr (e, [], mk_range $sloc) }
+
+cstar_argument_attribute:
+| CSTAR_ARGUMENT "(" es=argument_expression_list?  ")"
+    { [Acstar (Aargument (es -? []))] }

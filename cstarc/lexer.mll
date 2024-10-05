@@ -155,12 +155,22 @@ rule initial = parse
   | preprocessing_number          { failwith "These characters form a preprocessor number, but not a constant" }
   | (['L' 'u' 'U']|"") "'"        { ignore (char lexbuf); char_literal_end lexbuf; failwith "unsupported" }
   | (['L' 'u' 'U']|""|"u8") "\""  { STRING_LITERAL (string_literal (new_string_literal_buf ()) lexbuf) }
-  
+
+  | "[["                          { LBRACK_BRACK }
+  | "]]"                          { RBRACK_BRACK }
   | "::"                          { COLONCOLON }
   | "cstar::function"             { CSTAR_FUNCTION }
   | "cstar::representation"       { CSTAR_REPRESENTATION }
   | "cstar::predicate"            { CSTAR_PREDICATE }
   | "cstar::datatype"             { CSTAR_DATATYPE }
+  | "cstar::parameter"            { CSTAR_PARAMETER }
+  | "cstar::require"              { CSTAR_REQUIRE }
+  | "cstar::ensure"               { CSTAR_ENSURE }
+  | "cstar::invariant"            { CSTAR_INVARIANT }
+  | "cstar::localvar"             { CSTAR_LOCALVAR }
+  | "cstar::assert"               { CSTAR_ASSERT }
+  | "cstar::command"              { CSTAR_COMMAND }
+  | "cstar::argument"             { CSTAR_ARGUMENT }
   | "SEP"                         { SEP }
   | "SEPAND"                      { SEPAND }
   | "PROP"                        { PROP }
