@@ -114,7 +114,7 @@ and expr =
   | Econst of constant  (** literal values. *)
   | Ecomplit of typ * init
       (** [(_struct ident) { init_list }]. Composite initializer. *)
-  | Ebackquoted of expr  (** backquoted. *)
+  | Ebackquoted of string  (** backquoted. *)
   | Evar of ident  (** variables. *)
   | Eunary of unary_operator * expr
   | Ebinary of binary_operator * expr * expr
@@ -170,7 +170,6 @@ and stmt =
 and declaration =
   | Ddeclvar of typ * ident * init option * range
       (** variable declaration. *)
-  | Ddeclcomp of typ * range  (** composite type declaration. *)
   | Ddeclfun of funsym * attribute list  (** function declaration. *)
   | Ddecltype of typ * range  (** type definition. *)
   | Ddecltypedef of ident * typ * range  (** type definition. *)
