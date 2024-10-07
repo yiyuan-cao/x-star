@@ -53,7 +53,7 @@ let rec alignof =
       List.fold_left 
         (fun acc (t, _) -> Int.max acc (alignof t)) 1 
             (StrMap.find id !co_ctx).co_members 
-  | _ -> failwith "sizeof: error type."
+  | _ -> failwith "alignof: error type."
 
 
 (* Declare a composite type and update composite environment. *)
@@ -74,8 +74,6 @@ let composite_decl =
                    ; co_members = fs
                    ; co_sizeof = sizeof (Tstruct id) 
                    ; co_alignof = alignof (Tstruct id) }); 
-      Printf.printf "size of type %s is %d\n" id (sizeof (Tstruct id));
-      Printf.printf "alignment of type %s is %d\n" id (alignof (Tstruct id));
     )
   | Tuniondecl (Some id, fs) ->
     ( co_ctx := !co_ctx 
@@ -109,7 +107,7 @@ and field_ofs_aux id = function
   | (t, i) :: fs -> if String.equal id i then 0 else (sizeof t) + field_ofs_aux id fs
 
 
-(* Unfinished. *)
+(* Unfinished, currently only for testing. *)
 let declaration_action = function
   | Ddecltype (t, _) -> composite_decl t;
   | _ -> ()
