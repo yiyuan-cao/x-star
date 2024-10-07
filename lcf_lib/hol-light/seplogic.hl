@@ -1,0 +1,161 @@
+(* Utilities *)
+let assign_implicit_type (ident, ty) =
+    the_implicit_types := (ident, ty) :: !the_implicit_types;;
+let add_to_database (name, thm) =
+    theorems := (name, thm) :: !theorems;;
+
+assign_implicit_type ("p", `:bool`);;
+assign_implicit_type ("p1", `:bool`);;
+assign_implicit_type ("p2", `:bool`);;
+assign_implicit_type ("p3", `:bool`);;
+assign_implicit_type ("pA", `:A -> bool`);;
+
+(* Separation algebra model type and operations; UNUSED *)
+new_type ("model", 0);;
+new_constant ("join", `:model -> model -> model -> bool`);;
+new_constant ("is_unit", `:model -> bool`);;
+
+assign_implicit_type ("m", `:model`);;
+assign_implicit_type ("m1", `:model`);;
+assign_implicit_type ("m2", `:model`);;
+
+(* Model properties; UNUSED *)
+let union_join = new_axiom
+    `!m. ?u. is_unit u /\ join u m m`;;
+let unit_spec = new_axiom
+    `!u m1 m2. is_unit u /\ join u m1 m2 ==> m1 = m2`;;
+let join_comm = new_axiom
+    `!m m1 m2. join m1 m2 m ==> join m2 m1 m`;;
+let join_assoc = new_axiom
+    `!mx my mz mxy mxyz. join mx my mxy /\ join mxy mz mxyz ==> ?myz. join my mz myz /\ join mx myz mxyz `;;
+
+(* Separation logic assertions and core predicates *)
+
+(* Introduce a new type for `:HPROP`, a bijection to the type `:model -> bool` *)
+new_type_definition "HPROP" ("MK_HPROP", "DEST_HPROP") (
+    prove (
+        `?hp: model -> bool. T`,
+        EXISTS_TAC `\m. T` THEN
+        ACCEPT_TAC TRUTH
+    )
+);;
+
+assign_implicit_type ("hp", `:HPROP`);;
+assign_implicit_type ("hp1", `:HPROP`);;
+assign_implicit_type ("hp2", `:HPROP`);;
+assign_implicit_type ("hp3", `:HPROP`);;
+assign_implicit_type ("hpA", `:A -> HPROP`);;
+assign_implicit_type ("hps", `:HPROP list`);;
+assign_implicit_type ("hps1", `:HPROP list`);;
+assign_implicit_type ("hps2", `:HPROP list`);;
+
+(* Notations for parsing and printing separation logic assertions in HOL Light *)
+parse_as_binder "SEPEXISTS";;
+parse_as_binder "SEPFORALL";;
+parse_as_infix ("SEPENTAIL", (2, "right"));;
+parse_as_infix ("SEPIFF", (2, "right"));;
+parse_as_infix ("SEPIMPL", (4, "right"));;
+parse_as_infix ("SEPWAND", (4, "right"));;
+parse_as_infix ("SEPOR", (6, "right"));;
+parse_as_infix ("SEPCONJ", (8, "right"));;
+parse_as_infix ("SEPAND", (8, "right"));;
+
+(* BEWARE: the infix status of `=` is high compared to other logical operators!!! *)
+(* It's sensible to use `<=>` for `bool`-typed equality at a lower precedence level 2 *)
+(* Anyways, always use parentheses when unsure *)
+
+(* Normal higher-order logical connectives and constants lifted to separation logic *)
+let PURE_DEF = new_definition
+    `(!p. PURE p = MK_HPROP (\m. p))`;;
+let SEPTRUE_DEF = new_definition
+    `SEPTRUE = PURE T`;;
+let SEPFALSE_DEF = new_definition
+    `SEPFALSE = PURE F`;;
+let SEPOR_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPOR hp2) = MK_HPROP (\m. DEST_HPROP hp1 m \/ DEST_HPROP hp2 m)`;;
+let SEPAND_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPAND hp2) = MK_HPROP (\m. DEST_HPROP hp1 m /\ DEST_HPROP hp2 m)`;;
+let SEPIMPL_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPIMPL hp2) = MK_HPROP (\m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`;;
+let SEPEXISTS_DEF = new_definition
+    `!hpA. (SEPEXISTS) hpA = MK_HPROP (\m. ?x : A. DEST_HPROP (hpA x) m)`;;
+let SEPFORALL_DEF = new_definition
+    `!hpA. (SEPFORALL) hpA = MK_HPROP (\m. !x : A. DEST_HPROP (hpA x) m)`;;
+
+(* Separation logic special assertions *)
+let EMP_DEF = new_definition
+    `EMP = MK_HPROP (\m. is_unit m)`;;
+let SEPCONJ_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPCONJ hp2) = MK_HPROP (\m. ?m1 m2. join m1 m2 m /\ DEST_HPROP hp1 m1 /\ DEST_HPROP hp2 m2)`;;
+let SEPWAND_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPWAND hp2) = MK_HPROP (\m. !m1 m2. DEST_HPROP hp1 m1 /\ join m m1 m2 ==> DEST_HPROP hp2 m2)`;;
+let SEPITER_DEF = define
+    `(!hp hps m. SEPITER (CONS hp hps) = (hp SEPCONJ (SEPITER hps))) /\
+     (SEPITER NIL = EMP)`;;
+
+(* Separation logic entailment and equivalence *)
+let SEPIFF_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPIFF hp2) <=> (!m. DEST_HPROP hp1 m <=> DEST_HPROP hp2 m)`;;
+let SEPENTAIL_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPENTAIL hp2) <=> (!m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`;;
+
+(* Separation logic entailment and equivalence natural deduction rules *)
+let SEPIFF_EXT = new_axiom
+    `!hp1 hp2. (hp1 SEPIFF hp2) ==> (hp1 = hp2)`;;
+let SEPENTAIL_REFL = new_axiom
+    `!hp. hp SEPENTAIL hp`;;
+let SEPENTAILS_TRANS = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPENTAIL hp3)`;;
+let SEPENTAIL_ANTISYM = new_axiom
+    `!hp1 hp2. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp1) ==> (hp1 SEPIFF hp2)`;;
+let PURE_RIGHT = new_axiom
+    `!p hp. p ==> (hp SEPENTAIL (PURE p))`;;
+let PURE_LEFT = new_axiom
+    `!p hp. (p ==> (SEPTRUE SEPENTAIL hp)) ==> (PURE p SEPENTAIL hp)`;;
+let SEPTRUE_RIGHT = new_axiom
+    `!hp. (hp SEPENTAIL SEPTRUE)`;;
+let SEPFALSE_LEFT = new_axiom
+    `!hp. (SEPFALSE SEPENTAIL hp)`;;
+let SEPAND_RIGHT = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp1 SEPENTAIL hp3) ==> (hp1 SEPENTAIL (hp2 SEPAND hp3))`;;
+let SEPAND_LEFT1 = new_axiom
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp1`;;
+let SEPAND_LEFT2 = new_axiom
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp2`;;
+let SEPAND_COMM = new_axiom
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPIFF (hp2 SEPAND hp1)`;;
+let SEPAND_ASSOC = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPAND (hp2 SEPAND hp3)) SEPIFF ((hp1 SEPAND hp2) SEPAND hp3)`;;
+let SEPOR_RIGHT1 = new_axiom
+    `!hp1 hp2. hp1 SEPENTAIL hp1 SEPOR hp2`;;
+let SEPOR_RIGHT2 = new_axiom
+    `!hp1 hp2. hp2 SEPENTAIL hp1 SEPOR hp2`;;
+let SEPOR_LEFT = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp3) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPOR hp2 SEPENTAIL hp3)`;;
+let SEPIMPL_SEPAND_ADJ = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPAND hp2 SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPIMPL hp3)`;;
+let SEPEXISTS_RIGHT = new_axiom
+    `!hp hpA (x : A). (hp SEPENTAIL hpA x) ==> (hp SEPENTAIL (SEPEXISTS) hpA)`;;
+let SEPEXISTS_LEFT = new_axiom
+    `!hp hpA. (!x : A. (hpA x SEPENTAIL hp)) ==> ((SEPEXISTS) hpA SEPENTAIL hp)`;;
+let SEPFORALL_RIGHT = new_axiom
+    `!hp hpA. (!x : A. (hp SEPENTAIL hpA x)) ==> (hp SEPENTAIL (SEPFORALL) hpA)`;;
+let SEPFORALL_LEFT = new_axiom
+    `!hp hpA (x : A). (hpA x SEPENTAIL hp) ==> ((SEPFORALL) hpA SEPENTAIL hp)`;;
+
+(* Separating conjunction and wand and iteration *)
+let SEPCONJ_EMP_LEFT = new_axiom
+    `!hp. (EMP SEPAND hp) SEPIFF hp`;;
+let SEPCONJ_EMP_RIGHT = new_axiom
+    `!hp. (hp SEPAND EMP) SEPIFF hp`;;
+let SEPCONJ_MONO = new_axiom
+    `!hp1 hp2 hp1' hp2'. (hp1 SEPENTAIL hp1') /\ (hp2 SEPENTAIL hp2') ==> (hp1 SEPCONJ hp2 SEPENTAIL hp1' SEPCONJ hp2')`;;
+let SEPCONJ_COMM = new_axiom
+    `!hp1 hp2. (hp1 SEPCONJ hp2) SEPIFF (hp2 SEPCONJ hp1)`;;
+let SEPCONJ_ASSOC = new_axiom
+    `!hp1 hp2 hp3. hp1 SEPCONJ (hp2 SEPCONJ hp3) SEPIFF (hp1 SEPCONJ hp2) SEPCONJ hp3`;;
+let SEPWAND_SEPCONJ_ADJ = new_axiom
+    `!hp1 hp2 hp3. ((hp1 SEPCONJ hp2) SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPWAND hp3)`;;
+let SEPCONJ_SEPITER = new_axiom
+    `!hps1 hps2. (SEPITER hps1 SEPCONJ SEPITER hps2) SEPIFF (SEPITER (SEPITER_MERGE hps1 hps2))`;;
+
