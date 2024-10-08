@@ -8,7 +8,7 @@
 (executable
  (name main)
  (public_name cstarc)
- (modules main ast declarator context options lexer parser printer)
+ (modules main ast declarator context options lexer parser printer env)
  (libraries menhirLib core pprint)
  (preprocess
   (pps ppx_deriving.show)))
