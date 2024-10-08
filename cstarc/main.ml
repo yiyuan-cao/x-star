@@ -80,7 +80,7 @@ let _ =
   let lexbuf = Lexing.from_channel In_channel.stdin in
   try
     let ast = !parser lexer lexbuf in
-    Printf.printf "%s\n" (Ast.show_program ast)
+    Printf.printf "%s\n" (Printer.Render.render_to_string (Printer.program_to_doc ast))
   with
   | Parser.Error ->
       fprintf stderr "%a: syntax error\n" print_position lexbuf ;

@@ -145,10 +145,10 @@ and cstar_attribute =
   | Aparameter of parameter list
   | Arequire of expr
   | Aensure of expr
-  | Alocalvar of declaration
+  | Aghostvar of declaration
   | Ainvariant of expr
   | Aassert of expr
-  | Acommand of stmt
+  | Aghostcommand of stmt
   | Aargument of expr list
 [@@deriving show]
 

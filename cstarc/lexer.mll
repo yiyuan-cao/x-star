@@ -167,9 +167,9 @@ rule initial = parse
   | "cstar::require"              { CSTAR_REQUIRE }
   | "cstar::ensure"               { CSTAR_ENSURE }
   | "cstar::invariant"            { CSTAR_INVARIANT }
-  | "cstar::localvar"             { CSTAR_LOCALVAR }
+  | "cstar::ghostvar"             { CSTAR_GHOSTVAR }
   | "cstar::assert"               { CSTAR_ASSERT }
-  | "cstar::command"              { CSTAR_COMMAND }
+  | "cstar::ghostcommand"         { CSTAR_GHOSTCOMMAND }
   | "cstar::argument"             { CSTAR_ARGUMENT }
   | "SEP"                         { SEP }
   | "SEPAND"                      { SEPAND }
