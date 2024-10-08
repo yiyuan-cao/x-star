@@ -186,9 +186,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token CSTAR_REQUIRE "cstar::require"
 %token CSTAR_ENSURE "cstar::ensure"
 %token CSTAR_INVARIANT "cstar::invariant"
-%token CSTAR_LOCALVAR "cstar::localvar"
+%token CSTAR_GHOSTVAR "cstar::ghostvar"
 %token CSTAR_ASSERT "cstar::assert"
-%token CSTAR_COMMAND "cstar::command"
+%token CSTAR_GHOSTCOMMAND "cstar::ghostcommand"
 %token CSTAR_ARGUMENT "cstar::argument"
 
 %token SEP "SEP"
@@ -1194,9 +1194,9 @@ cstar_attribute:
 | x=cstar_require_attribute
 | x=cstar_ensure_attribute
 | x=cstar_invariant_attribute
-| x=cstar_localvar_attribute
+| x=cstar_ghostvar_attribute
 | x=cstar_assert_attribute
-| x=cstar_command_attribute
+| x=cstar_ghostcommand_attribute
 | x=cstar_argument_attribute
     { x }
 
@@ -1252,18 +1252,18 @@ cstar_invariant_attribute:
 | CSTAR_INVARIANT "(" e=expression ")"
     { [Acstar (Ainvariant e)] }
 
-cstar_localvar_attribute:
-| CSTAR_LOCALVAR "(" t=declaration_specifiers ds=init_declarator_list(declarator_varname) ")"
+cstar_ghostvar_attribute:
+| CSTAR_GHOSTVAR "(" t=declaration_specifiers ds=init_declarator_list(declarator_varname) ")"
     { Core.List.map ds ~f:(fun (d, i) -> 
-        Acstar (Alocalvar (Ddeclvar (declarator_type d t, identifier d, i, mk_range $sloc)))) }
+        Acstar (Aghostvar (Ddeclvar (declarator_type d t, identifier d, i, mk_range $sloc)))) }
 
 cstar_assert_attribute:
 | CSTAR_ASSERT "(" e=expression ")"
     { [Acstar (Aassert e)] }
 
-cstar_command_attribute:
-| CSTAR_COMMAND "(" s=cstar_command_statement ")"
-    { [Acstar (Acommand s)] }
+cstar_ghostcommand_attribute:
+| CSTAR_GHOSTCOMMAND "(" s=cstar_command_statement ")"
+    { [Acstar (Aghostcommand s)] }
 
 cstar_command_statement:
 | s=scoped(compound_statement)

@@ -223,37 +223,63 @@ module Pretty = struct
   let braces x = surround_braces empty x
 end
 
+module Render = struct
+  open Core
+
+  (** Make a renderer for documents. *)
+  module Make (R : PPrint.RENDERER with type document = PPrint.document) =
+  struct
+    (** [render doc output] renders [doc] to [output]. *)
+    let render doc output = R.pretty 1. Pretty.config.line_length output doc
+  end
+
+  (** Render documents to channels, such as stdout. *)
+  module ToChannel = Make (PPrint.ToChannel)
+
+  (** Render documents to string buffers. *)
+  module ToBuffer = Make (PPrint.ToBuffer)
+
+  (** [doc_to_string printer doc] renders [doc] to a string. *)
+  let render_to_string doc =
+    let buf = Buffer.create 100 in
+    ToBuffer.render doc buf ; Buffer.contents buf
+end
+
 open Core
 open Ast
 open Pretty
 
-let rec program_to_doc ~host program =
-  (program |> List.map ~f:declaration_to_doc_opt |> seperate (hardlines 2))
+let rec program_to_doc program =
+  (program |> List.map ~f:declaration_to_doc |> seperate (hardlines 2))
   ^^ hardline
 
-and declaration_to_doc_opt = function
+and declaration_to_doc = function
+  | Ddeffun _ as d -> declaration_to_doc_inner d
+  | d -> declaration_to_doc_inner d ^^ semi
+
+and declaration_to_doc_inner = function
   | Ddeclvar (typ, ident, init, _) ->
-      field_to_doc (typ, ident)
+      parameter_to_doc (typ, ident)
       ^^ optional init ~f:(fun init ->
              space ^^ op "=" ^^ break ^^ init_to_doc init )
-      ^^ semi
       |> nest |> group
-  | Ddecltype (typ, _) -> typ_to_doc typ ^^ semi
+  | Ddecltype (typ, _) -> typ_to_doc typ
   | Ddecltypedef (ident, typ, _) ->
-      kwd "typedef" ^^ break ^^ field_to_doc (typ, ident) ^^ semi
-  | Ddeclfun (func, _) -> funsym_to_doc func ^^ semi
+      kwd "typedef" ^^ break ^^ parameter_to_doc (typ, ident)
+  | Ddeclfun (func, _) -> funsym_to_doc func
   | Ddeffun (func, _, stmt) ->
       funsym_to_doc func ^^ space ^^ stmt_to_doc stmt
-  | Dattribute (_, _) -> empty (* TODO *)
+  | Dattribute (attr, _) -> attribute_to_doc attr
 
 and funsym_to_doc (typ, ident, params, _) =
-  surround_parens (field_to_doc (typ, ident)) (parameters_to_doc params)
+  surround_parens (parameter_to_doc (typ, ident)) (parameters_to_doc params)
 
 and stmt_to_doc = function
-  | Sskip _ -> semi
+  | Sskip (attrs, _) -> attribute_list_to_doc attrs false ^^ semi |> group
   | Sblock (stmts, _) ->
       stmts |> List.map ~f:stmt_to_doc |> seperate break |> braces
-  | Sexpr (expr, attrs, _) -> expr_to_doc expr ^^ semi
+  | Sexpr (expr, attrs, _) ->
+      attribute_list_to_doc attrs true ^^ expr_to_doc expr ^^ semi |> group
   | Sif (expr, then_stmt, else_stmt, attrs, _) ->
       let cond = surround_parens (kwd "if" ^^ space) (expr_to_doc expr) in
       let then_stmt =
@@ -270,25 +296,29 @@ and stmt_to_doc = function
             ^^ (break ^^ stmt_to_doc (Option.value_exn else_stmt) |> nest)
         | None -> empty
       in
-      cond ^^ then_stmt ^^ else_stmt
-  | Swhile (expr, stmt, attrs, _) -> (
+      attribute_list_to_doc attrs true ^^ cond ^^ then_stmt ^^ else_stmt
+      |> group
+  | Swhile (expr, stmt, attrs, _) ->
       let cond = surround_parens (kwd "while" ^^ space) (expr_to_doc expr) in
-      match stmt with
-      | Sblock _ -> cond ^^ space ^^ stmt_to_doc stmt
-      | _ -> prefix cond (stmt_to_doc stmt) )
+      let doc =
+        match stmt with
+        | Sblock _ -> cond ^^ space ^^ stmt_to_doc stmt
+        | _ -> prefix cond (stmt_to_doc stmt)
+      in
+      attribute_list_to_doc attrs true ^^ doc |> group
   | Sbreak _ -> kwd "break" ^^ semi
   | Scontinue _ -> kwd "continue" ^^ semi
   | Sreturn (None, _) -> kwd "return" ^^ semi
   | Sreturn (Some expr, _) ->
       kwd "return" ^^ space ^^ expr_to_doc expr ^^ semi
-  | Sdecl decl -> declaration_to_doc_opt decl
+  | Sdecl decl -> declaration_to_doc decl
 
 and init_to_doc = function
   | Init_single e -> expr_to_doc e
-  | Init_array l -> braces (seperate_map comma ~f:init_to_doc l)
+  | Init_array l -> braces (seperate_map comma_break ~f:init_to_doc l)
   | Init_struct l ->
       braces
-        (seperate_map comma
+        (seperate_map comma_break
            ~f:(fun (i, init) ->
              sym "." ^^ id i ^^ space ^^ op "=" ^^ break ^^ init_to_doc init )
            l )
@@ -456,29 +486,66 @@ and declarator_to_doc t i =
 
 and typ_to_doc t =
   let spec, decl = declarator_to_doc t (id "") in
-  spec ^^ break ^^ decl
+  spec ^^ decl
 
-and field_to_doc (t, i) =
-  let spec, decl = declarator_to_doc t (id i) in
-  spec ^^ break ^^ decl ^^ semi
-
-and location_to_str loc =
-  "("
-  ^ string_of_int (loc.line_no - 1)
-  ^ ", "
-  ^ string_of_int (loc.col_no + 1)
-  ^ ")"
+and field_to_doc f = parameter_to_doc f ^^ semi
 
 and fields_to_doc fs = seperate_map break ~f:field_to_doc fs
 
-and parameter_to_doc (t, i) = typ_to_doc t ^^ space ^^ id i
+and parameter_to_doc (t, i) =
+  let spec, decl = declarator_to_doc t (id i) in
+  spec ^^ break ^^ decl
 
 and parameters_to_doc ps = seperate_map comma_break ~f:parameter_to_doc ps
 
-(** Vint (Int.repr 0) *)
 and constant_to_doc = function
   | Cinteger i -> lit_int i
   | Cboolean b -> if b then kwd "true" else kwd "false"
   | Cstring s ->
       seperate_map empty s.literal ~f:(fun s -> surround_quotes "\"" (str s))
   | Cnullval -> expr_to_doc (Econst (Cinteger 0))
+
+and attribute_list_to_doc attrs follow_break =
+  if List.is_empty attrs then empty
+  else
+    seperate_map break ~f:attribute_to_doc attrs
+    ^^ if follow_break then break else empty
+
+and attribute_to_doc = function
+  | Acstar attr ->
+      let name, inner = cstar_attribute_to_doc attr in
+      sym "[["
+      ^^ surround_parens (kwd name) (softline ^^ inner ^^ softline |> group)
+      ^^ sym "]]"
+
+and cstar_attribute_to_doc = function
+  | Afunction f -> ("cstar::function", declaration_to_doc_inner f)
+  | Arepresentation r -> ("cstar::representation", declaration_to_doc_inner r)
+  | Apredicate p -> ("cstar::predicate", declaration_to_doc_inner p)
+  | Adatatype d -> ("cstar::datatype", cstar_datatype_to_doc d)
+  | Aparameter p -> ("cstar::parameter", parameters_to_doc p)
+  | Arequire r -> ("cstar::require", expr_to_doc r)
+  | Aensure e -> ("cstar::ensure", expr_to_doc e)
+  | Aassert a -> ("cstar::assert", expr_to_doc a)
+  | Aghostvar v -> ("cstar::ghostvar", declaration_to_doc_inner v)
+  | Ainvariant i -> ("cstar::invariant", expr_to_doc i)
+  | Aghostcommand c ->
+      let stmt =
+        match c with
+        | Sexpr (expr, attrs, _) ->
+            attribute_list_to_doc attrs true ^^ expr_to_doc expr
+            |> group
+        | s -> stmt_to_doc s
+      in
+      ("cstar::ghostcommand", stmt)
+  | Aargument a ->
+      ("cstar::argument", seperate_map comma_break ~f:expr_to_doc a)
+
+and cstar_datatype_to_doc {name; constructors} =
+  let name_doc = id name in
+  let constructors_doc =
+    constructors
+    |> seperate_map comma_break ~f:(fun (i, params) ->
+           surround_parens (id i) (parameters_to_doc params) )
+  in
+  name_doc ^^ comma_break ^^ constructors_doc |> nest |> group
