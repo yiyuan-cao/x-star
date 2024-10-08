@@ -159,3 +159,189 @@ let SEPWAND_SEPCONJ_ADJ = new_axiom
 let SEPCONJ_SEPITER = new_axiom
     `!hps1 hps2. (SEPITER hps1 SEPCONJ SEPITER hps2) SEPIFF (SEPITER (SEPITER_MERGE hps1 hps2))`;;
 
+(* Program heap specific predicates and types *)
+
+let word_size_in_bytes = 8;;
+
+(* needs "Library/words.ml";; *)
+
+new_type_abbrev ("PTR", `:int`);;
+(* pointer address `addr` is valid (for a C type `ty`) if it is:
+    1. naturally aligned for `ty`;
+    2. the range `[addr, addr + sizeof(ty) - 1]` is included in `[0, SIZE_T_MAX]` *)
+new_type_abbrev ("Z", `:int`);;
+(* use `Z` for the representation value of primitive C integer types *)
+
+assign_implicit_type ("addr", `:PTR`);;
+assign_implicit_type ("addr1", `:PTR`);;
+assign_implicit_type ("addr2", `:PTR`);;
+assign_implicit_type ("val", `:Z`);;
+assign_implicit_type ("val1", `:Z`);;
+assign_implicit_type ("val2", `:Z`);;
+
+(* Most primitive form of the predicate: a byte natural number is stored at `addr`;
+   SHOULD NOT BE USED BY USERS DIRECTLY *)
+new_constant(
+    "MEM_STORE_BYTE",
+    `:PTR -> Z -> HPROP`
+);;
+
+(* Big-endian representation of n-bytes integer `Z` at `addr` *)
+new_constant(
+    "MEM_STORE_2BYTES",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "MEM_STORE_4BYTES",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "MEM_STORE_8BYTES",
+    `:PTR -> Z -> HPROP`
+);;
+
+(* Data-at predicates for C primitive types.
+   USER-LEVEL predicates defined on top of MEM_STORE_BYTE, etc.
+   Their defintions follow the following pattern:
+    1. the ptr is valid for the type (alignment and address range requirements)
+    2. the content is in the range of the type (or use modulo to calculate the actual representation)
+    
+    Data-at any predicates means that the value is ignored (existentially quantified).
+*)
+new_constant(
+    "DATA_AT_BOOL",
+    `:PTR -> bool -> HPROP`
+);;
+new_constant(
+    "DATA_AT_BOOL_ANY",
+    `:PTR -> HPROP`
+);;
+(* 1 byte; content must be 0 (denotes false) or 1 (denotes true) *)
+
+new_constant(
+    "DATA_AT_CHAR",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_UCHAR",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_CHAR_ANY",
+    `:PTR -> HPROP`
+);;
+new_constant(
+    "DATA_AT_UCHAR_ANY",
+    `:PTR -> HPROP`
+);;
+
+new_constant(
+    "DATA_AT_SHORT",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_USHORT",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_SHORT_ANY",
+    `:PTR -> HPROP`
+);;
+new_constant(
+    "DATA_AT_USHORT_ANY",
+    `:PTR -> HPROP`
+);;
+
+new_constant(
+    "DATA_AT_INT",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_UINT",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_INT_ANY",
+    `:PTR -> HPROP`
+);;
+new_constant(
+    "DATA_AT_UINT_ANY",
+    `:PTR -> HPROP`
+);;
+
+new_constant(
+    "DATA_AT_SIZE_T",
+    `:PTR -> Z -> HPROP`
+);;
+new_constant(
+    "DATA_AT_SIZE_T_ANY",
+    `:PTR -> HPROP`
+);;
+
+new_definition `DATA_AT_PTR = DATA_AT_SIZE_T`;;
+
+(* Rules for basic data-at predicates *)
+let DATA_AT_BOOL_TO_ANY = new_axiom(
+    `!addr (b : bool). DATA_AT_BOOL addr b SEPENTAIL DATA_AT_BOOL_ANY addr`
+);;
+let DATA_AT_BOOL_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_BOOL_ANY addr) SEPCONJ (DATA_AT_BOOL_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_CHAR_TO_ANY = new_axiom(
+    `!addr val. DATA_AT_CHAR addr val SEPENTAIL DATA_AT_CHAR_ANY addr`
+);;
+let DATA_AT_CHAR_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_CHAR_ANY addr) SEPCONJ (DATA_AT_CHAR_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_UCHAR_TO_UCHAR_ANY = new_axiom(
+    `!addr val. DATA_AT_UCHAR addr val SEPENTAIL DATA_AT_UCHAR_ANY addr`
+);;
+let DATA_AT_UCHAR_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_UCHAR_ANY addr) SEPCONJ (DATA_AT_UCHAR_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_SHORT_TO_SHORT_ANY = new_axiom(
+    `!addr val. DATA_AT_SHORT addr val SEPENTAIL DATA_AT_SHORT_ANY addr`
+);;
+let DATA_AT_SHORT_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_SHORT_ANY addr) SEPCONJ (DATA_AT_SHORT_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_USHORT_TO_USHORT_ANY = new_axiom(
+    `!addr val. DATA_AT_USHORT addr val SEPENTAIL DATA_AT_USHORT_ANY addr`
+);;
+let DATA_AT_USHORT_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_USHORT_ANY addr) SEPCONJ (DATA_AT_USHORT_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_INT_TO_INT_ANY = new_axiom(
+    `!addr val. DATA_AT_INT addr val SEPENTAIL DATA_AT_INT_ANY addr`
+);;
+let DATA_AT_INT_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_INT_ANY addr) SEPCONJ (DATA_AT_INT_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_UINT_TO_UINT_ANY = new_axiom(
+    `!addr val. DATA_AT_UINT addr val SEPENTAIL DATA_AT_UINT_ANY addr`
+);;
+let DATA_AT_UINT_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_UINT_ANY addr) SEPCONJ (DATA_AT_UINT_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_SIZE_T_TO_SIZE_T_ANY = new_axiom(
+    `!addr val. DATA_AT_SIZE_T addr val SEPENTAIL DATA_AT_SIZE_T_ANY addr`
+);;
+let DATA_AT_SIZE_T_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_SIZE_T_ANY addr) SEPCONJ (DATA_AT_SIZE_T_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+let DATA_AT_PTR_TO_PTR_ANY = new_axiom(
+    `!addr val. DATA_AT_PTR addr val SEPENTAIL DATA_AT_PTR_ANY addr`
+);;
+let DATA_AT_PTR_ANY_DUP = new_axiom(
+    `!addr. (DATA_AT_PTR_ANY addr) SEPCONJ (DATA_AT_PTR_ANY addr) SEPENTAIL SEPFALSE`
+);;
+
+(* TODO: Derived normalization rules and tactics *)
