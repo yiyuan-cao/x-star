@@ -1,0 +1,173 @@
+(* inductive data type definition. *)
+let i32_list = define_type "i32_list = nil | cons int i32_list";;
+
+(* discriminators, accessors*)
+let dis_nil = define `dis_nil nil = T /\ !h t. dis_nil (cons h t) = F`;;
+let dis_cons = define `dis_cons nil = F /\ !h t. dis_cons (cons h t) = T`;; 
+let head = define `!h t. head (cons h t) = h`;;
+let tail = define `!h t. tail (cons h t) = t`;;
+extend_basic_rewrites[dis_nil; dis_cons; head; tail];;
+extend_basic_convs("elimination on condition 1", 
+    (`if T then c1:A else c2:A`, CONDS_ELIM_CONV));;
+extend_basic_convs("elimination on condition 2",
+    (`if F then c1:A else c2:A`, CONDS_ELIM_CONV));;
+extend_basic_convs("elimination on let bindings",
+    (`let x = e in t`, let_CONV));;
+
+(* get second operand of a theorem's conclusion. *)
+let eq_r th = snd (dest_comb (concl th));;
+
+(* TRANS rule on a list. *)
+let rec TRANS_LIST thl = 
+  match thl with 
+  | [] -> failwith "TRANS_LIST: empty list"
+  | h :: [] -> h 
+  | h :: t -> TRANS h (TRANS_LIST t) ;;
+
+(* recursive function definition. *)
+new_constant("append", `:i32_list#i32_list->i32_list`);;
+let append = new_axiom 
+  `append (l1, l2) = 
+    if dis_nil l1 then l2 else cons (head l1) (append(tail l1, l2))`;;
+
+new_constant("reverse", `:i32_list->i32_list`);;
+let reverse = new_axiom 
+    `!l. reverse l = 
+      if dis_nil l then nil else 
+        let h = head l in 
+        let rev_t = reverse (tail l) in 
+          (append(rev_t, cons h nil))`;; 
+(* use basic rules/convs to simplify definition. *)
+let reverse = EQ_MP (REWRITE_CONV[] (concl reverse)) reverse;;
+
+(* APP_NIL_R *)
+`append(nil,nil) = nil`;;
+let app_nil_r_nil = 
+  let th1 = PURE_ONCE_REWRITE_CONV[append] `append(nil, nil)` in
+  let th2 = REWRITE_CONV[] (eq_r th1) in
+  TRANS_LIST[th1;th2];;
+
+`!a0 a1. append(a1,nil) = a1 ==> append(cons a0 a1,nil) = cons a0 a1`;;
+let app_nil_r_cons = 
+  let th1 = PURE_ONCE_REWRITE_CONV[append] `append(cons a0 a1, nil)` in 
+  let th2 = REWRITE_CONV[] (eq_r th1) in 
+  let th3 = PURE_ONCE_REWRITE_CONV[ASSUME `append(a1, nil) = a1`] (eq_r th2) in 
+  let th4 = TRANS_LIST[th1;th2;th3] in 
+  GEN `a0:int` (GEN `a1:i32_list` (DISCH `append(a1, nil) = a1` th4));;
+
+`!x. append(x,nil) = x`;;
+let app_nil_r = 
+  let i32_list_induct = 
+    ( let induct = ISPEC `\l. append(l, nil) = l` (fst i32_list) in
+      EQ_MP (REWRITE_CONV[] (concl induct)) induct ) in 
+  MATCH_MP i32_list_induct (CONJ app_nil_r_nil app_nil_r_cons);;
+
+
+(* APP_ASSOC *)
+`!m n. append (append (nil,m),n) = append (nil,append (m,n))`;;
+let app_assoc_nil = 
+  let th1 = PURE_ONCE_REWRITE_CONV[append] `append(append(nil,m),n)` in 
+  let aux1 = PURE_ONCE_REWRITE_CONV[append] `append(nil,m)` in 
+  let th2 = PURE_ONCE_REWRITE_CONV[aux1] (eq_r th1) in 
+  let th3 = REWRITE_CONV[] (eq_r th2) in 
+  let th4 = PURE_ONCE_REWRITE_CONV[SYM append] (eq_r th3) in 
+  let th_l = TRANS_LIST[th1;th2;th3;th4] in 
+  let th6 = PURE_ONCE_REWRITE_CONV[append] `append(nil,append(m,n))` in 
+  let th7 = REWRITE_CONV[] (eq_r th6) in 
+  GEN `m:i32_list` (GEN `n:i32_list` (TRANS_LIST[th_l; SYM th7;SYM th6]));;
+
+`(!a0 a1.
+  (!m n. append (append (a1,m),n) = append (a1,append (m,n)))
+  ==> (!m n.
+           append (append (cons a0 a1,m),n) =
+           append (cons a0 a1,append (m,n))))`;;
+let app_assoc_cons = 
+  let th_asm = ASSUME `!m n. append (append (a1,m),n) = append (a1,append (m,n))` in
+  let th2 = PURE_ONCE_REWRITE_CONV[append] `append(cons a0 a1, m)` in
+  let th3 = REWRITE_CONV[] (eq_r th2) in
+  let th4 = PURE_ONCE_REWRITE_CONV[TRANS_LIST[th2;th3]] `append (append(cons a0 a1, m),n)` in
+  let th5 = PURE_ONCE_REWRITE_CONV[append] (eq_r th4) in
+  let th6 = REWRITE_CONV[] (eq_r th5) in
+  let th_l = TRANS_LIST[th4;th5;th6] in
+  let th11 = PURE_ONCE_REWRITE_CONV[append] `append(cons a0 a1, append(m,n))` in
+  let th12 = REWRITE_CONV[] (eq_r th11) in
+  let th_r = TRANS_LIST[th11;th12] in
+  let th_ind = PURE_ONCE_REWRITE_CONV[th_asm] (eq_r th_l) in
+  let th_post = DISCH (concl th_asm) (GEN `m:i32_list` (GEN `n:i32_list` (TRANS_LIST[th_l;th_ind;SYM th_r]))) in
+  GEN `a0:int` (GEN `a1:i32_list` th_post) ;;
+
+`!l m n. append(append(l,m),n) = append(l,append(m,n))`;;
+let app_assoc = MATCH_MP (fst i32_list) (CONJ app_assoc_nil app_assoc_cons);;
+
+
+(* REV_APP_DISTR *)
+`(!n. reverse(append(nil,n)) = append (reverse(n),reverse(nil)))`;;
+let rev_app_distr_nil =
+  let th1 = PURE_ONCE_REWRITE_CONV[append] `reverse(append(nil,n))` in
+  let th2 = REWRITE_CONV[] (eq_r th1) in
+  let th3 = PURE_ONCE_REWRITE_CONV[reverse] `append(reverse(n),reverse(nil))` in
+  let th4 = REWRITE_CONV[] (eq_r th3) in
+  let th5 = PURE_ONCE_REWRITE_CONV[SYM(SPEC `n:i32_list` reverse)] (eq_r th4) in
+  let th6 = PURE_ONCE_REWRITE_CONV[app_nil_r] (eq_r th5) in
+  let th7 = TRANS (TRANS_LIST[th1;th2]) (SYM (TRANS_LIST[th3;th4;th5;th6])) in
+  GEN `n:i32_list` th7 ;;
+
+let goal = new_axiom
+  `(!a0 a1.
+    (!n. reverse(append(a1,n)) = append(reverse(n),reverse(a1)))
+      ==> (!n. reverse(append(cons a0 a1,n)) =
+               append(reverse(n),reverse(cons a0 a1))))`;;
+let rev_app_distr_cons = 
+  let th1 = PURE_ONCE_REWRITE_CONV[append] `reverse(append(cons a0 a1, n))` in 
+  let th2 = REWRITE_CONV[] (eq_r th1) in 
+  let th3 = PURE_ONCE_REWRITE_CONV[reverse] (eq_r th2) in 
+  let th4 = REWRITE_CONV[] (eq_r th3) in 
+  let th5 = PURE_ONCE_REWRITE_CONV[ASSUME `!n. reverse(append(a1,n)) = append(reverse(n),reverse(a1))`] (eq_r th4) in 
+  let th6 = PURE_ONCE_REWRITE_CONV[app_assoc] (eq_r th5) in 
+  let aux1 = PURE_ONCE_REWRITE_CONV[reverse] `reverse(cons a0 a1)` in 
+  let aux2 = REWRITE_CONV[] (eq_r aux1) in 
+  let aux3 = TRANS aux1 aux2 in 
+  let th7 = SYM (PURE_ONCE_REWRITE_CONV[aux3] `append(reverse(n),reverse(cons a0 a1))`) in 
+  let th8 = GEN `n:i32_list` (TRANS_LIST[th1;th2;th3;th4;th5;th6;th7]) in 
+  GEN `a0:int` (GEN `a1:i32_list` (DISCH (hd(hyp(th8))) th8));; 
+let check = equals_thm rev_app_distr_cons goal;;
+
+`!m n. reverse(append(m, n)) = append(reverse(n), reverse(m))`;;
+let rev_app_distr = MATCH_MP (fst i32_list) (CONJ rev_app_distr_nil rev_app_distr_cons);;
+
+
+(* REV_INVOLUTIVE *)
+`reverse (reverse nil) = nil`;;
+let rev_involutive_nil = 
+  let th1 = PURE_ONCE_REWRITE_CONV[reverse] `reverse(reverse(nil))` in
+  let th2 = PURE_ONCE_REWRITE_CONV[reverse] (eq_r th1) in
+  let th3 = REWRITE_CONV[] (eq_r th2) in
+  TRANS_LIST[th1;th2;th3];;
+
+let goal = new_axiom 
+  `(!a0 a1.
+    reverse(reverse(a1)) = a1
+    ==> reverse (reverse(cons a0 a1)) = cons a0 a1)`;;
+let rev_involutive_cons = 
+  let aux1 = PURE_ONCE_REWRITE_CONV[reverse] `reverse(cons a0 a1)` in
+  let aux2 = REWRITE_CONV[] (eq_r aux1) in
+  let th1 = PURE_ONCE_REWRITE_CONV[TRANS aux1 aux2] `reverse(reverse(cons a0 a1))` in
+  let th2 = PURE_ONCE_REWRITE_CONV[rev_app_distr] (eq_r th1) in
+  let th3 = PURE_ONCE_REWRITE_CONV[ASSUME `reverse(reverse(a1)) = a1`] (eq_r th2) in
+  let th4 = PURE_ONCE_REWRITE_CONV[reverse] (eq_r th3) in
+  let th5 = PURE_ONCE_REWRITE_CONV[reverse] (eq_r th4) in
+  let th6 = REWRITE_CONV[] (eq_r th5) in
+  let aux3 = PURE_ONCE_REWRITE_CONV[append] `append(nil, cons a0 nil)` in
+  let aux4 = REWRITE_CONV[] (eq_r aux3) in
+  let th7 = PURE_ONCE_REWRITE_CONV[TRANS aux3 aux4] (eq_r th6); in
+  let th8 = PURE_ONCE_REWRITE_CONV[append] (eq_r th7); in
+  let th9 = REWRITE_CONV[] (eq_r th8) in
+  let th10 = PURE_ONCE_REWRITE_CONV[append] (eq_r th9) in
+  let th11 = REWRITE_CONV[] (eq_r th10) in
+  let th12 = TRANS_LIST[th1;th2;th3;th4;th5;th6;th7;th8;th9;th10;th11] in
+  GEN `a0:int` (GEN `a1:i32_list` (DISCH (hd(hyp(th12))) th12));;
+
+`!l. reverse(reverse(l)) = l`;;
+let rev_involutive = MATCH_MP (fst i32_list) (CONJ rev_involutive_nil rev_involutive_cons);;
+
+
