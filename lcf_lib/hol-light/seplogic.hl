@@ -1,8 +1,37 @@
 (* Utilities *)
+
+(* Impose type scheme constraints on the inferred types of variables (when inputed as quoted terms) *)
 let assign_implicit_type (ident, ty) =
     the_implicit_types := (ident, ty) :: !the_implicit_types;;
+(* Add a theorem to the theorems database *)
 let add_to_database (name, thm) =
     theorems := (name, thm) :: !theorems;;
+
+(* ------------------------------------------------------------------------- *)
+(* print_varandtype, show_types, hide_types:                                 *)
+(* Prints the type after each variable.  Useful for "debugging" type issues. *)
+(* ------------------------------------------------------------------------- *)
+(* Source:                                                                   *)
+(* http://code.google.com/p/flyspeck/wiki/TipsAndTricks#Investigating_Types  *)
+(* ------------------------------------------------------------------------- *)
+
+let print_varandtype fmt tm =
+    let hop,args = strip_comb tm in
+    let s = name_of hop
+    and ty = type_of hop in
+    if is_var hop && args = [] then
+        (pp_print_string fmt "(";
+        pp_print_string fmt s;
+        pp_print_string fmt ":";
+        pp_print_type fmt ty;
+        pp_print_string fmt ")")
+    else fail() ;;
+  
+let show_types,hide_types =
+    (fun () -> install_user_printer ("Show Types",print_varandtype)),
+    (fun () -> try delete_user_printer "Show Types"
+               with Failure _ -> failwith ("hide_types: "^
+                                           "Types are already hidden."));;
 
 assign_implicit_type ("p", `:bool`);;
 assign_implicit_type ("p1", `:bool`);;
