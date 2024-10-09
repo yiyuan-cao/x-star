@@ -33,6 +33,9 @@ let show_types,hide_types =
                with Failure _ -> failwith ("hide_types: "^
                                            "Types are already hidden."));;
 
+(* Show types after each variable by default *)
+show_types ();;
+
 assign_implicit_type ("p", `:bool`);;
 assign_implicit_type ("p1", `:bool`);;
 assign_implicit_type ("p2", `:bool`);;
@@ -61,13 +64,11 @@ let join_assoc = new_axiom
 (* Separation logic assertions and core predicates *)
 
 (* Introduce a new type for `:HPROP`, a bijection to the type `:model -> bool` *)
-new_type_definition "HPROP" ("MK_HPROP", "DEST_HPROP") (
-    prove (
-        `?hp: model -> bool. T`,
-        EXISTS_TAC `\m. T` THEN
-        ACCEPT_TAC TRUTH
-    )
-);;
+let HPROP_BIJ1, HPROP_BIJ2 =
+    REWRITE_RULE[] (new_type_definition "HPROP" ("MK_HPROP", "DEST_HPROP")
+        (prove (`?x: model -> bool. T`, REWRITE_TAC [])))
+    |> CONJ_PAIR
+;;
 
 assign_implicit_type ("hp", `:HPROP`);;
 assign_implicit_type ("hp1", `:HPROP`);;
@@ -187,6 +188,34 @@ let SEPWAND_SEPCONJ_ADJ = new_axiom
     `!hp1 hp2 hp3. ((hp1 SEPCONJ hp2) SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPWAND hp3)`;;
 let SEPCONJ_SEPITER = new_axiom
     `!hps1 hps2. (SEPITER hps1 SEPCONJ SEPITER hps2) SEPIFF (SEPITER (SEPITER_MERGE hps1 hps2))`;;
+
+(* other useful rules for "normalizing" a separation logic assertion; PLCC book page 90 *)
+let SEPAND_TRUE_LEFT = new_axiom
+    `!hp. (SEPTRUE SEPAND hp) SEPIFF hp`;;
+let SEPAND_TRUE_RIGHT = new_axiom
+    `!hp. (hp SEPAND SEPTRUE) SEPIFF hp`;;
+let SEPAND_FALSE_LEFT = new_axiom
+    `!hp. (SEPFALSE SEPAND hp) SEPIFF SEPFALSE`;;
+let SEPAND_FALSE_RIGHT = new_axiom
+    `!hp. (hp SEPAND SEPFALSE) SEPIFF SEPFALSE`;;
+let SEPAND_IDEM = new_axiom
+    `!hp. (hp SEPAND hp) SEPIFF hp`;;
+let PURE_EQUIV_SEPFALSE = new_axiom
+    `!p. ~p ==> (PURE p SEPIFF SEPFALSE)`;;
+let PURE_EQUIV_SEPTRUE = new_axiom
+    `!p. p ==> (PURE p SEPIFF SEPTRUE)`;;
+
+let SEPAND_EXISTS_LEFT = new_axiom
+    `!hp hpA. ((SEPEXISTS) hpA SEPAND hp) SEPIFF SEPEXISTS x : A. (hpA x SEPAND hp)`;;
+let SEPAND_EXISTS_RIGHT = new_axiom
+    `!hp hpA. (hp SEPAND (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPAND hpA x)`;;
+let SEPCONJ_EXISTS_LEFT = new_axiom
+    `!hp hpA. ((SEPEXISTS) hpA SEPCONJ hp) SEPIFF SEPEXISTS x : A. (hpA x SEPCONJ hp)`;;
+let SEPCONJ_EXISTS_RIGHT = new_axiom
+    `!hp hpA. (hp SEPCONJ (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPCONJ hpA x)`;;
+
+let EXTRACT_SEPAND_PURE = new_axiom
+    `!p hp1 hp2. (PURE p SEPAND hp1) SEPCONJ hp2 SEPIFF (PURE p SEPAND (hp1 SEPCONJ hp2))`;;
 
 (* Program heap specific predicates and types *)
 
