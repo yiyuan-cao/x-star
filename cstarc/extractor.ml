@@ -47,6 +47,8 @@ let register_ghost_def (cmd: command) =
     )
 
 (* Set of all constructor names. *)
+(* Note: we use `f a b` syntax when writing constructors, 
+   and we use `f(a, b)` syntax otherwise. *)
 module StrSet = Set.Make (String)
 let constr_names = ref StrSet.empty
 
@@ -60,7 +62,7 @@ let constant_to_str =
   | Cinteger i -> Int.to_string i 
   | Cboolean b -> Bool.to_string b 
   | Cstring str -> str.value
-  | Cnullval -> "(&0:PTR)"
+  | Cnullval -> "(&0)" (* Dead code? `NULL` is Evar "NULL". *)
 
 let typ_to_str = 
   function 
@@ -97,7 +99,7 @@ let rec expr_to_str =
     function 
     | Econst c -> constant_to_str c  
     | Ebackquoted s -> s 
-    | Evar v -> if String.equal v "NULL" then "(&0)" else v
+    | Evar v -> if String.equal v "NULL" then "(&0)" else v 
     | Eunary (op, e) -> 
       ( match op with 
         | Ominus -> "-"
@@ -110,8 +112,7 @@ let rec expr_to_str =
       ( let op = 
         ( match op with 
           | Omul -> `Op "*" 
-          | Odiv -> `Op "/"
-          (* Omod: only for natural numbers *)
+          | Odiv -> `Op "/" (* MOD: only for `:num` in HOL-light. *)
           | Omod -> `Op "MOD" 
           | Oadd -> `Op "+"
           | Osub -> `Op "-"
@@ -143,7 +144,8 @@ let rec expr_to_str =
     | Ecall (Evar func, exprs) -> 
       if (String.equal func "DATA_AT")
         then 
-          ( "" (* TODO: DATA_AT predicate. *) )
+          failwith "data_at: unsupported."
+          (* TODO: DATA_AT predicate. *) 
         else 
           ( match (StrSet.find_opt func !constr_names) with 
             | None -> func ^ 
@@ -165,9 +167,22 @@ and init_to_str =
 
 let func_to_str ps stmt = 
   let parens str = "(" ^ str ^ ")" in 
-  let local_ptr : (typ StrMap.t) ref = ref StrMap.empty in 
-  let decl_ptr id ty = local_ptr := StrMap.add id ty !local_ptr in 
-  let typ_ptr id = StrMap.find id !local_ptr in
+  (* Local variables type information. *)
+  (* Note: now we only clear local variable context after exiting a function. *)
+  let local_var : (typ StrMap.t) ref = ref StrMap.empty in 
+  let decl_var id ty = local_var := StrMap.add id ty !local_var in 
+  let typ_var id = StrMap.find id !local_var in
+  let typ_suffix = 
+    function
+    | T_Bool -> "_BOOL"
+    | Tint -> "_INT"
+    | Tunsigned -> "_UINT"
+    | Tptr _ -> "_PTR"
+    | Tarray _ -> failwith "data_at: unsupported array."
+    | Tstruct _ -> failwith "data_at: unsupported struct."
+    | Tunion _ -> failwith "data_at: unsupported union."
+    | _ -> failwith "data_at: wrong type."
+  in
   let rec stmt_to_str =
     function 
     | Sskip (_, _)-> ""
@@ -179,27 +194,22 @@ let func_to_str ps stmt =
           ( match e with 
             | Eunary (Oaddrof, e) -> 
               ( match e with 
-                | Evar e -> e
+                | Evar p -> 
+                    parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "," ^ id))
                 | Eunary ((Oarrow fid), Evar p) -> 
-                  ( match ty with 
-                    | T_Bool -> 
-                        parens ("DATA_AT_BOOL" ^ parens (p ^ "+" 
-                          ^ parens ("&" ^ Int.to_string (field_ofs (typ_ptr p) fid)) ^ "," ^ id))
-                    | Tint -> 
-                        parens ("DATA_AT_INT" ^ parens (p ^ "+" 
-                          ^ parens ("&" ^ Int.to_string (field_ofs (typ_ptr p) fid)) ^ "," ^ id))
-                    | Tunsigned -> 
-                        parens ("DATA_AT_UINT" ^ parens (p ^ "+" 
-                          ^ parens ("&" ^ Int.to_string (field_ofs (typ_ptr p) fid)) ^ "," ^ id))
-                    | Tptr _ -> 
-                        parens ("DATA_AT_PTR" ^ parens (p ^ "+" 
-                          ^ parens ("&" ^ Int.to_string (field_ofs (typ_ptr p) fid)) ^ "," ^ id))
-                    | _ -> failwith "let_data_at: unsupported array/struct/union field."
-                  )
-                (* now only support &(p->_) and p is Evar. *)
-                (* TODO: &(p._) =extract=> DATA_AT_ANY(p_ptr, p) ** DATA_AT_##(p_ptr+#, v) *)
-                (* TODO: DATA_AT_STRUCT *)
+                  ( match (typ_var p) with 
+                    | Tptr (Tstruct tid) -> 
+                      parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "+" 
+                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ id)) 
+                    | _ -> failwith "let_data_at: use arrow but not a struct pointer." )
+                | Eunary ((Odot fid), Evar p) -> 
+                  ( match (typ_var p) with 
+                    | Tstruct tid -> 
+                      parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "+" 
+                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ id)) 
+                    | _ -> failwith "let_data_at: use dot but not a struct." )
                 | _ -> failwith "let_data_at: unsupported pointer syntax."
+                (* TODO: DATA_AT_STRUCT/ARRAY *)
               )
             | _ -> failwith "let_data_at: unsupported syntax." 
           ) in 
@@ -213,17 +223,15 @@ let func_to_str ps stmt =
         ^ "then" ^ parens (stmt_to_str c1)
         ^ "else" ^ parens (stmt_to_str c2)
     | Sreturn (Some e, _) -> expr_to_str e
-    | Sdecl (Ddeclvar (ty, id, init, _)) ->
-      ( match ty with 
-        | Tptr p -> decl_ptr id p;
-        | _ -> () );
+    | Sdecl (Ddeclvar (ty, id, init, _)) -> 
+      decl_var id ty;
       ( match init with 
         | None -> ""
         | Some init -> 
             "let " ^ parens (id ^ ":" ^ typ_to_str ty)
               ^ "=" ^ init_to_str init ^ " in " )
     | _ -> failwith "stmt_to_str: unsupported attribute syntax" in 
-  List.iter (fun (ty, id) -> match ty with Tptr ty -> (decl_ptr id ty) | _ -> ()) ps;
+  List.iter (fun (ty, id) -> decl_var id ty) ps;
   stmt_to_str stmt
 
 
