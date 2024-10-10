@@ -1,13 +1,37 @@
 (* For bounded integer reasoning and bit manipulation *)
 needs "Library/words.ml";;
+needs "Library/bitmatch.ml";;
+needs "Library/binary.ml";;
+needs "Library/bitsize.ml";;
+needs "Library/iter.ml";;
 
-(* Personal preferences *)
+(* Useful functions (check `help "INT_ARITH"`, etc. for details) *)
+let _ = [
+    ignore (INT_ARITH);
+    ignore (PAT_CONV);
+    ignore (MESON);
+];;
+
+(* Personal preferences and useful information *)
 let () =
     (* Show types of variables and constants in terms *)
     print_types_of_subterms := 2;
     (* Treat type inventions as errors *)
-    type_invention_error := true
+    type_invention_error := true;
+    (* Explicit universe syntax *)
+    typify_universal_set := false;
+    (* Overload arithmetic interface to `int` by default *)
+    prioritize_int ();
+    (* Show loaded files *)
+    List.iter (fun (filename, _) -> print_endline filename) !loaded_files;
+    (* reserved_words *)
+    List.iter print_endline (reserved_words ());
+    (* Unset printing verbose symbols like `exists` and `forall` *)
+    unset_verbose_symbols ()
 ;;
+
+(* Unset multiple subgoals (a lexer option handled by preprocessor) *)
+unset_then_multiple_subgoals;;
 
 (* Utilities *)
 
