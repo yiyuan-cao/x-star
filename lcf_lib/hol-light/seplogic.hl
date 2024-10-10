@@ -319,17 +319,17 @@ let () =
     Data-at any predicates means that the value is ignored (existentially quantified).
 *)
 let () =
-    new_constant("DATA_AT_BOOL", `:PTR -> bool -> HPROP`)
+    new_constant("DATA_AT_BOOL", `:PTR # bool -> HPROP`)
 ;;
 let () =
     new_constant("DATA_AT_BOOL_ANY", `:PTR -> HPROP`)
 ;;
 (* 1 byte; content must be 0 (denotes false) or 1 (denotes true) *)
 let () =
-    new_constant("DATA_AT_CHAR", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_CHAR", `:PTR # Z -> HPROP`)
 ;;
 let () =
-    new_constant("DATA_AT_UCHAR", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_UCHAR", `:PTR # Z -> HPROP`)
 ;;
 let () =
     new_constant("DATA_AT_CHAR_ANY", `:PTR -> HPROP`)
@@ -339,10 +339,10 @@ let () =
 ;;
 
 let () =
-    new_constant("DATA_AT_SHORT", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_SHORT", `:PTR # Z -> HPROP`)
 ;;
 let () =
-    new_constant("DATA_AT_USHORT", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_USHORT", `:PTR # Z -> HPROP`)
 ;;
 let () =
     new_constant("DATA_AT_SHORT_ANY", `:PTR -> HPROP`)
@@ -351,10 +351,10 @@ let () =
     new_constant("DATA_AT_USHORT_ANY", `:PTR -> HPROP`)
 ;;
 let () =
-    new_constant("DATA_AT_INT", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_INT", `:PTR # Z -> HPROP`)
 ;;
 let () =
-    new_constant("DATA_AT_UINT", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_UINT", `:PTR # Z -> HPROP`)
 ;;
 let () =
     new_constant("DATA_AT_INT_ANY", `:PTR -> HPROP`)
@@ -364,7 +364,7 @@ let () =
 ;;
 
 let () =
-    new_constant("DATA_AT_SIZE_T", `:PTR -> Z -> HPROP`)
+    new_constant("DATA_AT_SIZE_T", `:PTR # Z -> HPROP`)
 ;;
 let () =
     new_constant("DATA_AT_SIZE_T_ANY", `:PTR -> HPROP`)
@@ -376,63 +376,63 @@ let DATA_AT_PTR_DEF =
 
 (* Rules for basic data-at predicates *)
 let DATA_AT_BOOL_TO_ANY = new_axiom(
-    `!addr (b : bool). DATA_AT_BOOL addr b SEPENTAIL DATA_AT_BOOL_ANY addr`
+    `!addr (b : bool). DATA_AT_BOOL (addr, b) SEPENTAIL DATA_AT_BOOL_ANY addr`
 );;
 let DATA_AT_BOOL_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_BOOL_ANY addr) SEPCONJ (DATA_AT_BOOL_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_CHAR_TO_ANY = new_axiom(
-    `!addr val. DATA_AT_CHAR addr val SEPENTAIL DATA_AT_CHAR_ANY addr`
+    `!addr val. DATA_AT_CHAR (addr, val) SEPENTAIL DATA_AT_CHAR_ANY addr`
 );;
 let DATA_AT_CHAR_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_CHAR_ANY addr) SEPCONJ (DATA_AT_CHAR_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_UCHAR_TO_UCHAR_ANY = new_axiom(
-    `!addr val. DATA_AT_UCHAR addr val SEPENTAIL DATA_AT_UCHAR_ANY addr`
+    `!addr val. DATA_AT_UCHAR (addr, val) SEPENTAIL DATA_AT_UCHAR_ANY addr`
 );;
 let DATA_AT_UCHAR_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_UCHAR_ANY addr) SEPCONJ (DATA_AT_UCHAR_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_SHORT_TO_SHORT_ANY = new_axiom(
-    `!addr val. DATA_AT_SHORT addr val SEPENTAIL DATA_AT_SHORT_ANY addr`
+    `!addr val. DATA_AT_SHORT (addr, val) SEPENTAIL DATA_AT_SHORT_ANY addr`
 );;
 let DATA_AT_SHORT_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_SHORT_ANY addr) SEPCONJ (DATA_AT_SHORT_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_USHORT_TO_USHORT_ANY = new_axiom(
-    `!addr val. DATA_AT_USHORT addr val SEPENTAIL DATA_AT_USHORT_ANY addr`
+    `!addr val. DATA_AT_USHORT (addr, val) SEPENTAIL DATA_AT_USHORT_ANY addr`
 );;
 let DATA_AT_USHORT_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_USHORT_ANY addr) SEPCONJ (DATA_AT_USHORT_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_INT_TO_INT_ANY = new_axiom(
-    `!addr val. DATA_AT_INT addr val SEPENTAIL DATA_AT_INT_ANY addr`
+    `!addr val. DATA_AT_INT (addr, val) SEPENTAIL DATA_AT_INT_ANY addr`
 );;
 let DATA_AT_INT_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_INT_ANY addr) SEPCONJ (DATA_AT_INT_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_UINT_TO_UINT_ANY = new_axiom(
-    `!addr val. DATA_AT_UINT addr val SEPENTAIL DATA_AT_UINT_ANY addr`
+    `!addr val. DATA_AT_UINT (addr, val) SEPENTAIL DATA_AT_UINT_ANY addr`
 );;
 let DATA_AT_UINT_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_UINT_ANY addr) SEPCONJ (DATA_AT_UINT_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_SIZE_T_TO_SIZE_T_ANY = new_axiom(
-    `!addr val. DATA_AT_SIZE_T addr val SEPENTAIL DATA_AT_SIZE_T_ANY addr`
+    `!addr val. DATA_AT_SIZE_T (addr, val) SEPENTAIL DATA_AT_SIZE_T_ANY addr`
 );;
 let DATA_AT_SIZE_T_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_SIZE_T_ANY addr) SEPCONJ (DATA_AT_SIZE_T_ANY addr) SEPENTAIL SEPFALSE`
 );;
 
 let DATA_AT_PTR_TO_PTR_ANY = new_axiom(
-    `!addr val. DATA_AT_PTR addr val SEPENTAIL DATA_AT_PTR_ANY addr`
+    `!addr val. DATA_AT_PTR (addr, val) SEPENTAIL DATA_AT_PTR_ANY addr`
 );;
 let DATA_AT_PTR_ANY_DUP = new_axiom(
     `!addr. (DATA_AT_PTR_ANY addr) SEPCONJ (DATA_AT_PTR_ANY addr) SEPENTAIL SEPFALSE`
