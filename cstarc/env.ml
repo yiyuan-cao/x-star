@@ -61,12 +61,11 @@ let composite_decl =
   function 
   | Tstructdecl (Some id, fs) -> 
     ( co_ctx := !co_ctx 
-        |> StrMap.update id 
-          (function _ -> 
-              Some { co_su = Struct
-                   ; co_members = fs
-                   ; co_sizeof = 0 
-                   ; co_alignof = 1 });
+        |> StrMap.add id 
+              { co_su = Struct
+                ; co_members = fs
+                ; co_sizeof = 0 
+                ; co_alignof = 1 };
       co_ctx := !co_ctx 
         |> StrMap.update id 
           (function _ -> 
@@ -77,12 +76,11 @@ let composite_decl =
     )
   | Tuniondecl (Some id, fs) ->
     ( co_ctx := !co_ctx 
-        |> StrMap.update id 
-          (function _ -> 
-              Some { co_su = Union
-                   ; co_members = fs
-                   ; co_sizeof = 0 
-                   ; co_alignof = 1 });
+        |> StrMap.add id 
+              { co_su = Union
+                ; co_members = fs
+                ; co_sizeof = 0 
+                ; co_alignof = 1 };
       co_ctx := !co_ctx 
         |> StrMap.update id 
           (function _ -> 
@@ -107,10 +105,9 @@ and field_ofs_aux id = function
   | (t, i) :: fs -> if String.equal id i then 0 else (sizeof t) + field_ofs_aux id fs
 
 
-(* Unfinished, currently only for testing. *)
-let declaration_action = function
+(* TODO: padding *)
+let decl_datatype = function
   | Ddecltype (t, _) -> composite_decl t;
   | _ -> ()
 
-let handle program = 
-  program |> List.iter declaration_action
+let decl_composite = List.iter decl_datatype
