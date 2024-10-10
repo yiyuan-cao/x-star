@@ -1,65 +1,60 @@
+(* For bounded integer reasoning and bit manipulation *)
+needs "Library/words.ml";;
+
+(* Personal preferences *)
+let () =
+    (* Show types of variables and constants in terms *)
+    print_types_of_subterms := 2;
+    (* Treat type inventions as errors *)
+    type_invention_error := true
+;;
+
 (* Utilities *)
 
 (* Impose type scheme constraints on the inferred types of variables (when inputed as quoted terms) *)
 let assign_implicit_type (ident, ty) =
-    the_implicit_types := (ident, ty) :: !the_implicit_types;;
+    the_implicit_types := (ident, ty) :: !the_implicit_types
+;;
 (* Add a theorem to the theorems database *)
 let add_to_database (name, thm) =
-    theorems := (name, thm) :: !theorems;;
+    theorems := (name, thm) :: !theorems
+;;
 
-(* ------------------------------------------------------------------------- *)
-(* print_varandtype, show_types, hide_types:                                 *)
-(* Prints the type after each variable.  Useful for "debugging" type issues. *)
-(* ------------------------------------------------------------------------- *)
-(* Source:                                                                   *)
-(* http://code.google.com/p/flyspeck/wiki/TipsAndTricks#Investigating_Types  *)
-(* ------------------------------------------------------------------------- *)
-
-let print_varandtype fmt tm =
-    let hop,args = strip_comb tm in
-    let s = name_of hop
-    and ty = type_of hop in
-    if is_var hop && args = [] then
-        (pp_print_string fmt "(";
-        pp_print_string fmt s;
-        pp_print_string fmt ":";
-        pp_print_type fmt ty;
-        pp_print_string fmt ")")
-    else fail() ;;
-  
-let show_types,hide_types =
-    (fun () -> install_user_printer ("Show Types",print_varandtype)),
-    (fun () -> try delete_user_printer "Show Types"
-               with Failure _ -> failwith ("hide_types: "^
-                                           "Types are already hidden."));;
-
-(* Show types after each variable by default *)
-show_types ();;
-
-assign_implicit_type ("p", `:bool`);;
-assign_implicit_type ("p1", `:bool`);;
-assign_implicit_type ("p2", `:bool`);;
-assign_implicit_type ("p3", `:bool`);;
-assign_implicit_type ("pA", `:A -> bool`);;
+(* Assign implicit type schemes to variables to constrain the inferred types *)
+let () =
+    assign_implicit_type ("p", `:bool`);
+    assign_implicit_type ("p1", `:bool`);
+    assign_implicit_type ("p2", `:bool`);
+    assign_implicit_type ("p3", `:bool`);
+    assign_implicit_type ("pA", `:A -> bool`)
+;;
 
 (* Separation algebra model type and operations; UNUSED *)
-new_type ("model", 0);;
-new_constant ("join", `:model -> model -> model -> bool`);;
-new_constant ("is_unit", `:model -> bool`);;
+let () =
+    new_type ("model", 0);
+    new_constant ("join", `:model -> model -> model -> bool`);
+    new_constant ("is_unit", `:model -> bool`)
+;;
 
-assign_implicit_type ("m", `:model`);;
-assign_implicit_type ("m1", `:model`);;
-assign_implicit_type ("m2", `:model`);;
+let () =
+    assign_implicit_type ("m", `:model`);
+    assign_implicit_type ("m1", `:model`);
+    assign_implicit_type ("m2", `:model`)
+;;
 
 (* Model properties; UNUSED *)
-let union_join = new_axiom
-    `!m. ?u. is_unit u /\ join u m m`;;
-let unit_spec = new_axiom
-    `!u m1 m2. is_unit u /\ join u m1 m2 ==> m1 = m2`;;
-let join_comm = new_axiom
-    `!m m1 m2. join m1 m2 m ==> join m2 m1 m`;;
-let join_assoc = new_axiom
-    `!mx my mz mxy mxyz. join mx my mxy /\ join mxy mz mxyz ==> ?myz. join my mz myz /\ join mx myz mxyz `;;
+let UNION_JOIN = new_axiom
+    `!m. ?u. is_unit u /\ join u m m`
+;;
+let UNIT_SPEC = new_axiom
+    `!u m1 m2. is_unit u /\ join u m1 m2 ==> m1 = m2`
+;;
+let JOIN_COMM = new_axiom
+    `!m m1 m2. join m1 m2 m ==> join m2 m1 m`
+;;
+let JOIN_ASSOC = new_axiom
+    `!mx my mz mxy mxyz. join mx my mxy /\ join mxy mz mxyz ==> ?myz. join my mz myz /\ join mx myz mxyz `
+;;
 
 (* Separation logic assertions and core predicates *)
 
@@ -70,25 +65,29 @@ let HPROP_BIJ1, HPROP_BIJ2 =
     |> CONJ_PAIR
 ;;
 
-assign_implicit_type ("hp", `:HPROP`);;
-assign_implicit_type ("hp1", `:HPROP`);;
-assign_implicit_type ("hp2", `:HPROP`);;
-assign_implicit_type ("hp3", `:HPROP`);;
-assign_implicit_type ("hpA", `:A -> HPROP`);;
-assign_implicit_type ("hps", `:HPROP list`);;
-assign_implicit_type ("hps1", `:HPROP list`);;
-assign_implicit_type ("hps2", `:HPROP list`);;
+let () =
+    assign_implicit_type ("hp", `:HPROP`);
+    assign_implicit_type ("hp1", `:HPROP`);
+    assign_implicit_type ("hp2", `:HPROP`);
+    assign_implicit_type ("hp3", `:HPROP`);
+    assign_implicit_type ("hpA", `:A -> HPROP`);
+    assign_implicit_type ("hps", `:HPROP list`);
+    assign_implicit_type ("hps1", `:HPROP list`);
+    assign_implicit_type ("hps2", `:HPROP list`)
+;;
 
 (* Notations for parsing and printing separation logic assertions in HOL Light *)
-parse_as_binder "SEPEXISTS";;
-parse_as_binder "SEPFORALL";;
-parse_as_infix ("SEPENTAIL", (2, "right"));;
-parse_as_infix ("SEPIFF", (2, "right"));;
-parse_as_infix ("SEPIMPL", (4, "right"));;
-parse_as_infix ("SEPWAND", (4, "right"));;
-parse_as_infix ("SEPOR", (6, "right"));;
-parse_as_infix ("SEPCONJ", (8, "right"));;
-parse_as_infix ("SEPAND", (8, "right"));;
+let () =
+    parse_as_binder "SEPEXISTS";
+    parse_as_binder "SEPFORALL";
+    parse_as_infix ("SEPENTAIL", (2, "right"));
+    parse_as_infix ("SEPIFF", (2, "right"));
+    parse_as_infix ("SEPIMPL", (4, "right"));
+    parse_as_infix ("SEPWAND", (4, "right"));
+    parse_as_infix ("SEPOR", (6, "right"));
+    parse_as_infix ("SEPCONJ", (8, "right"));
+    parse_as_infix ("SEPAND", (8, "right"))
+;;
 
 (* BEWARE: the infix status of `=` is high compared to other logical operators!!! *)
 (* It's sensible to use `<=>` for `bool`-typed equality at a lower precedence level 2 *)
@@ -96,167 +95,220 @@ parse_as_infix ("SEPAND", (8, "right"));;
 
 (* Normal higher-order logical connectives and constants lifted to separation logic *)
 let PURE_DEF = new_definition
-    `(!p. PURE p = MK_HPROP (\m. p))`;;
+    `(!p. PURE p = MK_HPROP (\m. p))`
+;;
 let SEPTRUE_DEF = new_definition
-    `SEPTRUE = PURE T`;;
+    `SEPTRUE = PURE T`
+;;
 let SEPFALSE_DEF = new_definition
-    `SEPFALSE = PURE F`;;
+    `SEPFALSE = PURE F`
+;;
 let SEPOR_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPOR hp2) = MK_HPROP (\m. DEST_HPROP hp1 m \/ DEST_HPROP hp2 m)`;;
+    `!hp1 hp2. (hp1 SEPOR hp2) = MK_HPROP (\m. DEST_HPROP hp1 m \/ DEST_HPROP hp2 m)`
+;;
 let SEPAND_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPAND hp2) = MK_HPROP (\m. DEST_HPROP hp1 m /\ DEST_HPROP hp2 m)`;;
+    `!hp1 hp2. (hp1 SEPAND hp2) = MK_HPROP (\m. DEST_HPROP hp1 m /\ DEST_HPROP hp2 m)`
+;;
 let SEPIMPL_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPIMPL hp2) = MK_HPROP (\m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`;;
+    `!hp1 hp2. (hp1 SEPIMPL hp2) = MK_HPROP (\m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`
+;;
 let SEPEXISTS_DEF = new_definition
-    `!hpA. (SEPEXISTS) hpA = MK_HPROP (\m. ?x : A. DEST_HPROP (hpA x) m)`;;
+    `!hpA. (SEPEXISTS) hpA = MK_HPROP (\m. ?x : A. DEST_HPROP (hpA x) m)`
+;;
 let SEPFORALL_DEF = new_definition
-    `!hpA. (SEPFORALL) hpA = MK_HPROP (\m. !x : A. DEST_HPROP (hpA x) m)`;;
+    `!hpA. (SEPFORALL) hpA = MK_HPROP (\m. !x : A. DEST_HPROP (hpA x) m)`
+;;
 
 (* Separation logic special assertions *)
 let EMP_DEF = new_definition
-    `EMP = MK_HPROP (\m. is_unit m)`;;
+    `EMP = MK_HPROP (\m. is_unit m)`
+;;
 let SEPCONJ_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPCONJ hp2) = MK_HPROP (\m. ?m1 m2. join m1 m2 m /\ DEST_HPROP hp1 m1 /\ DEST_HPROP hp2 m2)`;;
+    `!hp1 hp2. (hp1 SEPCONJ hp2) = MK_HPROP (\m. ?m1 m2. join m1 m2 m /\ DEST_HPROP hp1 m1 /\ DEST_HPROP hp2 m2)`
+;;
 let SEPWAND_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPWAND hp2) = MK_HPROP (\m. !m1 m2. DEST_HPROP hp1 m1 /\ join m m1 m2 ==> DEST_HPROP hp2 m2)`;;
+    `!hp1 hp2. (hp1 SEPWAND hp2) = MK_HPROP (\m. !m1 m2. DEST_HPROP hp1 m1 /\ join m m1 m2 ==> DEST_HPROP hp2 m2)`
+;;
 let SEPITER_DEF = define
     `(!hp hps m. SEPITER (CONS hp hps) = (hp SEPCONJ (SEPITER hps))) /\
-     (SEPITER NIL = EMP)`;;
+     (SEPITER NIL = EMP)`
+;;
 
 (* Separation logic entailment and equivalence *)
-let SEPIFF_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPIFF hp2) <=> (!m. DEST_HPROP hp1 m <=> DEST_HPROP hp2 m)`;;
 let SEPENTAIL_DEF = new_definition
-    `!hp1 hp2. (hp1 SEPENTAIL hp2) <=> (!m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`;;
-
-(* Separation logic entailment and equivalence natural deduction rules *)
-let SEPIFF_EXT = new_axiom
-    `!hp1 hp2. (hp1 SEPIFF hp2) ==> (hp1 = hp2)`;;
+    `!hp1 hp2. (hp1 SEPENTAIL hp2) <=> (!m. DEST_HPROP hp1 m ==> DEST_HPROP hp2 m)`
+;;
+let SEPIFF_DEF = new_definition
+    `!hp1 hp2. (hp1 SEPIFF hp2) <=> (!m. DEST_HPROP hp1 m <=> DEST_HPROP hp2 m)`
+;;
 let SEPENTAIL_REFL = new_axiom
-    `!hp. hp SEPENTAIL hp`;;
+    `!hp. hp SEPENTAIL hp`
+;;
 let SEPENTAILS_TRANS = new_axiom
-    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPENTAIL hp3)`;;
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPENTAIL hp3)`
+;;
 let SEPENTAIL_ANTISYM = new_axiom
-    `!hp1 hp2. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp1) ==> (hp1 SEPIFF hp2)`;;
+    `!hp1 hp2. (hp1 SEPENTAIL hp2) /\ (hp2 SEPENTAIL hp1) ==> (hp1 SEPIFF hp2)`
+;;
+let SEPIFF_EXT = new_axiom
+    `!hp1 hp2. (hp1 SEPIFF hp2) ==> (hp1 = hp2)`
+;;
+
+(* Separation logic natural deduction rules *)
 let PURE_RIGHT = new_axiom
-    `!p hp. p ==> (hp SEPENTAIL (PURE p))`;;
+    `!p hp. p ==> (hp SEPENTAIL (PURE p))`
+;;
 let PURE_LEFT = new_axiom
-    `!p hp. (p ==> (SEPTRUE SEPENTAIL hp)) ==> (PURE p SEPENTAIL hp)`;;
+    `!p hp. (p ==> (SEPTRUE SEPENTAIL hp)) ==> (PURE p SEPENTAIL hp)`
+;;
 let SEPTRUE_RIGHT = new_axiom
-    `!hp. (hp SEPENTAIL SEPTRUE)`;;
+    `!hp. (hp SEPENTAIL SEPTRUE)`
+;;
 let SEPFALSE_LEFT = new_axiom
-    `!hp. (SEPFALSE SEPENTAIL hp)`;;
+    `!hp. (SEPFALSE SEPENTAIL hp)`
+;;
 let SEPAND_RIGHT = new_axiom
-    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp1 SEPENTAIL hp3) ==> (hp1 SEPENTAIL (hp2 SEPAND hp3))`;;
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp2) /\ (hp1 SEPENTAIL hp3) ==> (hp1 SEPENTAIL (hp2 SEPAND hp3))`
+;;
 let SEPAND_LEFT1 = new_axiom
-    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp1`;;
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp1`
+;;
 let SEPAND_LEFT2 = new_axiom
-    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp2`;;
-let SEPAND_COMM = new_axiom
-    `!hp1 hp2. (hp1 SEPAND hp2) SEPIFF (hp2 SEPAND hp1)`;;
-let SEPAND_ASSOC = new_axiom
-    `!hp1 hp2 hp3. (hp1 SEPAND (hp2 SEPAND hp3)) SEPIFF ((hp1 SEPAND hp2) SEPAND hp3)`;;
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPENTAIL hp2`
+;;
 let SEPOR_RIGHT1 = new_axiom
-    `!hp1 hp2. hp1 SEPENTAIL hp1 SEPOR hp2`;;
+    `!hp1 hp2. hp1 SEPENTAIL hp1 SEPOR hp2`
+;;
 let SEPOR_RIGHT2 = new_axiom
-    `!hp1 hp2. hp2 SEPENTAIL hp1 SEPOR hp2`;;
+    `!hp1 hp2. hp2 SEPENTAIL hp1 SEPOR hp2`
+;;
 let SEPOR_LEFT = new_axiom
-    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp3) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPOR hp2 SEPENTAIL hp3)`;;
+    `!hp1 hp2 hp3. (hp1 SEPENTAIL hp3) /\ (hp2 SEPENTAIL hp3) ==> (hp1 SEPOR hp2 SEPENTAIL hp3)`
+;;
 let SEPIMPL_SEPAND_ADJ = new_axiom
-    `!hp1 hp2 hp3. (hp1 SEPAND hp2 SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPIMPL hp3)`;;
+    `!hp1 hp2 hp3. (hp1 SEPAND hp2 SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPIMPL hp3)`
+;;
 let SEPEXISTS_RIGHT = new_axiom
-    `!hp hpA (x : A). (hp SEPENTAIL hpA x) ==> (hp SEPENTAIL (SEPEXISTS) hpA)`;;
+    `!hp hpA (x : A). (hp SEPENTAIL hpA x) ==> (hp SEPENTAIL (SEPEXISTS) hpA)`
+;;
 let SEPEXISTS_LEFT = new_axiom
-    `!hp hpA. (!x : A. (hpA x SEPENTAIL hp)) ==> ((SEPEXISTS) hpA SEPENTAIL hp)`;;
+    `!hp hpA. (!x : A. (hpA x SEPENTAIL hp)) ==> ((SEPEXISTS) hpA SEPENTAIL hp)`
+;;
 let SEPFORALL_RIGHT = new_axiom
-    `!hp hpA. (!x : A. (hp SEPENTAIL hpA x)) ==> (hp SEPENTAIL (SEPFORALL) hpA)`;;
+    `!hp hpA. (!x : A. (hp SEPENTAIL hpA x)) ==> (hp SEPENTAIL (SEPFORALL) hpA)`
+;;
 let SEPFORALL_LEFT = new_axiom
-    `!hp hpA (x : A). (hpA x SEPENTAIL hp) ==> ((SEPFORALL) hpA SEPENTAIL hp)`;;
+    `!hp hpA (x : A). (hpA x SEPENTAIL hp) ==> ((SEPFORALL) hpA SEPENTAIL hp)`
+;;
 
 (* Separating conjunction and wand and iteration *)
 let SEPCONJ_EMP_LEFT = new_axiom
-    `!hp. (EMP SEPAND hp) SEPIFF hp`;;
+    `!hp. (EMP SEPAND hp) SEPIFF hp`
+;;
 let SEPCONJ_EMP_RIGHT = new_axiom
-    `!hp. (hp SEPAND EMP) SEPIFF hp`;;
+    `!hp. (hp SEPAND EMP) SEPIFF hp`
+;;
 let SEPCONJ_MONO = new_axiom
-    `!hp1 hp2 hp1' hp2'. (hp1 SEPENTAIL hp1') /\ (hp2 SEPENTAIL hp2') ==> (hp1 SEPCONJ hp2 SEPENTAIL hp1' SEPCONJ hp2')`;;
+    `!hp1 hp2 hp1' hp2'. (hp1 SEPENTAIL hp1') /\ (hp2 SEPENTAIL hp2') ==> (hp1 SEPCONJ hp2 SEPENTAIL hp1' SEPCONJ hp2')`
+;;
 let SEPCONJ_COMM = new_axiom
-    `!hp1 hp2. (hp1 SEPCONJ hp2) SEPIFF (hp2 SEPCONJ hp1)`;;
+    `!hp1 hp2. (hp1 SEPCONJ hp2) SEPIFF (hp2 SEPCONJ hp1)`
+;;
 let SEPCONJ_ASSOC = new_axiom
-    `!hp1 hp2 hp3. hp1 SEPCONJ (hp2 SEPCONJ hp3) SEPIFF (hp1 SEPCONJ hp2) SEPCONJ hp3`;;
+    `!hp1 hp2 hp3. hp1 SEPCONJ (hp2 SEPCONJ hp3) SEPIFF (hp1 SEPCONJ hp2) SEPCONJ hp3`
+;;
 let SEPWAND_SEPCONJ_ADJ = new_axiom
-    `!hp1 hp2 hp3. ((hp1 SEPCONJ hp2) SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPWAND hp3)`;;
+    `!hp1 hp2 hp3. ((hp1 SEPCONJ hp2) SEPENTAIL hp3) <=> (hp1 SEPENTAIL hp2 SEPWAND hp3)`
+;;
 let SEPCONJ_SEPITER = new_axiom
-    `!hps1 hps2. (SEPITER hps1 SEPCONJ SEPITER hps2) SEPIFF (SEPITER (SEPITER_MERGE hps1 hps2))`;;
+    `!hps1 hps2. (SEPITER hps1 SEPCONJ SEPITER hps2) SEPIFF (SEPITER (SEPITER_MERGE hps1 hps2))`
+;;
 
 (* other useful rules for "normalizing" a separation logic assertion; PLCC book page 90 *)
+let SEPAND_COMM = new_axiom
+    `!hp1 hp2. (hp1 SEPAND hp2) SEPIFF (hp2 SEPAND hp1)`
+;;
+let SEPAND_ASSOC = new_axiom
+    `!hp1 hp2 hp3. (hp1 SEPAND (hp2 SEPAND hp3)) SEPIFF ((hp1 SEPAND hp2) SEPAND hp3)`
+;;
 let SEPAND_TRUE_LEFT = new_axiom
-    `!hp. (SEPTRUE SEPAND hp) SEPIFF hp`;;
+    `!hp. (SEPTRUE SEPAND hp) SEPIFF hp`
+;;
 let SEPAND_TRUE_RIGHT = new_axiom
-    `!hp. (hp SEPAND SEPTRUE) SEPIFF hp`;;
+    `!hp. (hp SEPAND SEPTRUE) SEPIFF hp`
+;;
 let SEPAND_FALSE_LEFT = new_axiom
-    `!hp. (SEPFALSE SEPAND hp) SEPIFF SEPFALSE`;;
+    `!hp. (SEPFALSE SEPAND hp) SEPIFF SEPFALSE`
+;;
 let SEPAND_FALSE_RIGHT = new_axiom
-    `!hp. (hp SEPAND SEPFALSE) SEPIFF SEPFALSE`;;
+    `!hp. (hp SEPAND SEPFALSE) SEPIFF SEPFALSE`
+;;
 let SEPAND_IDEM = new_axiom
-    `!hp. (hp SEPAND hp) SEPIFF hp`;;
+    `!hp. (hp SEPAND hp) SEPIFF hp`
+;;
 let PURE_EQUIV_SEPFALSE = new_axiom
-    `!p. ~p ==> (PURE p SEPIFF SEPFALSE)`;;
+    `!p. ~p ==> (PURE p SEPIFF SEPFALSE)`
+;;
 let PURE_EQUIV_SEPTRUE = new_axiom
-    `!p. p ==> (PURE p SEPIFF SEPTRUE)`;;
+    `!p. p ==> (PURE p SEPIFF SEPTRUE)`
+;;
 
 let SEPAND_EXISTS_LEFT = new_axiom
-    `!hp hpA. ((SEPEXISTS) hpA SEPAND hp) SEPIFF SEPEXISTS x : A. (hpA x SEPAND hp)`;;
+    `!hp hpA. ((SEPEXISTS) hpA SEPAND hp) SEPIFF SEPEXISTS x : A. (hpA x SEPAND hp)`
+;;
 let SEPAND_EXISTS_RIGHT = new_axiom
-    `!hp hpA. (hp SEPAND (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPAND hpA x)`;;
+    `!hp hpA. (hp SEPAND (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPAND hpA x)`
+;;
 let SEPCONJ_EXISTS_LEFT = new_axiom
-    `!hp hpA. ((SEPEXISTS) hpA SEPCONJ hp) SEPIFF SEPEXISTS x : A. (hpA x SEPCONJ hp)`;;
+    `!hp hpA. ((SEPEXISTS) hpA SEPCONJ hp) SEPIFF SEPEXISTS x : A. (hpA x SEPCONJ hp)`
+;;
 let SEPCONJ_EXISTS_RIGHT = new_axiom
-    `!hp hpA. (hp SEPCONJ (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPCONJ hpA x)`;;
+    `!hp hpA. (hp SEPCONJ (SEPEXISTS) hpA) SEPIFF SEPEXISTS x : A. (hp SEPCONJ hpA x)`
+;;
 
 let EXTRACT_SEPAND_PURE = new_axiom
-    `!p hp1 hp2. (PURE p SEPAND hp1) SEPCONJ hp2 SEPIFF (PURE p SEPAND (hp1 SEPCONJ hp2))`;;
+    `!p hp1 hp2. (PURE p SEPAND hp1) SEPCONJ hp2 SEPIFF (PURE p SEPAND (hp1 SEPCONJ hp2))`
+;;
 
 (* Program heap specific predicates and types *)
 
-let word_size_in_bytes = 8;;
+let WORD_BYTES_DEF = new_definition `WORD_BYTES = 8`
+;;
 
-(* needs "Library/words.ml";; *)
-
-new_type_abbrev ("PTR", `:int`);;
 (* pointer address `addr` is valid (for a C type `ty`) if it is:
     1. naturally aligned for `ty`;
     2. the range `[addr, addr + sizeof(ty) - 1]` is included in `[0, SIZE_T_MAX]` *)
-new_type_abbrev ("Z", `:int`);;
 (* use `Z` for the representation value of primitive C integer types *)
+let () =
+    new_type_abbrev ("PTR", `:int`);
+    new_type_abbrev ("Z", `:int`)
+;;
 
-assign_implicit_type ("addr", `:PTR`);;
-assign_implicit_type ("addr1", `:PTR`);;
-assign_implicit_type ("addr2", `:PTR`);;
-assign_implicit_type ("val", `:Z`);;
-assign_implicit_type ("val1", `:Z`);;
-assign_implicit_type ("val2", `:Z`);;
+let () =
+    assign_implicit_type ("addr", `:PTR`);
+    assign_implicit_type ("addr1", `:PTR`);
+    assign_implicit_type ("addr2", `:PTR`);
+    assign_implicit_type ("val", `:Z`);
+    assign_implicit_type ("val1", `:Z`);
+    assign_implicit_type ("val2", `:Z`)
+;;
 
 (* Most primitive form of the predicate: a byte natural number is stored at `addr`;
    SHOULD NOT BE USED BY USERS DIRECTLY *)
-new_constant(
-    "MEM_STORE_BYTE",
-    `:PTR -> Z -> HPROP`
-);;
+let () =
+    new_constant("MEM_STORE_BYTE", `:PTR -> Z -> HPROP`)
+;;
 
 (* Big-endian representation of n-bytes integer `Z` at `addr` *)
-new_constant(
-    "MEM_STORE_2BYTES",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "MEM_STORE_4BYTES",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "MEM_STORE_8BYTES",
-    `:PTR -> Z -> HPROP`
-);;
+let () =
+    new_constant("MEM_STORE_2BYTES", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("MEM_STORE_4BYTES", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("MEM_STORE_8BYTES", `:PTR -> Z -> HPROP`)
+;;
 
 (* Data-at predicates for C primitive types.
    USER-LEVEL predicates defined on top of MEM_STORE_BYTE, etc.
@@ -266,77 +318,61 @@ new_constant(
     
     Data-at any predicates means that the value is ignored (existentially quantified).
 *)
-new_constant(
-    "DATA_AT_BOOL",
-    `:PTR -> bool -> HPROP`
-);;
-new_constant(
-    "DATA_AT_BOOL_ANY",
-    `:PTR -> HPROP`
-);;
+let () =
+    new_constant("DATA_AT_BOOL", `:PTR -> bool -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_BOOL_ANY", `:PTR -> HPROP`)
+;;
 (* 1 byte; content must be 0 (denotes false) or 1 (denotes true) *)
+let () =
+    new_constant("DATA_AT_CHAR", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_UCHAR", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_CHAR_ANY", `:PTR -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_UCHAR_ANY", `:PTR -> HPROP`)
+;;
 
-new_constant(
-    "DATA_AT_CHAR",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_UCHAR",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_CHAR_ANY",
-    `:PTR -> HPROP`
-);;
-new_constant(
-    "DATA_AT_UCHAR_ANY",
-    `:PTR -> HPROP`
-);;
+let () =
+    new_constant("DATA_AT_SHORT", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_USHORT", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_SHORT_ANY", `:PTR -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_USHORT_ANY", `:PTR -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_INT", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_UINT", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_INT_ANY", `:PTR -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_UINT_ANY", `:PTR -> HPROP`)
+;;
 
-new_constant(
-    "DATA_AT_SHORT",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_USHORT",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_SHORT_ANY",
-    `:PTR -> HPROP`
-);;
-new_constant(
-    "DATA_AT_USHORT_ANY",
-    `:PTR -> HPROP`
-);;
+let () =
+    new_constant("DATA_AT_SIZE_T", `:PTR -> Z -> HPROP`)
+;;
+let () =
+    new_constant("DATA_AT_SIZE_T_ANY", `:PTR -> HPROP`)
+;;
 
-new_constant(
-    "DATA_AT_INT",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_UINT",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_INT_ANY",
-    `:PTR -> HPROP`
-);;
-new_constant(
-    "DATA_AT_UINT_ANY",
-    `:PTR -> HPROP`
-);;
-
-new_constant(
-    "DATA_AT_SIZE_T",
-    `:PTR -> Z -> HPROP`
-);;
-new_constant(
-    "DATA_AT_SIZE_T_ANY",
-    `:PTR -> HPROP`
-);;
-
-new_definition `DATA_AT_PTR = DATA_AT_SIZE_T`;;
+let DATA_AT_PTR_DEF =
+    new_definition `DATA_AT_PTR = DATA_AT_SIZE_T`
+;;
 
 (* Rules for basic data-at predicates *)
 let DATA_AT_BOOL_TO_ANY = new_axiom(
@@ -403,3 +439,5 @@ let DATA_AT_PTR_ANY_DUP = new_axiom(
 );;
 
 (* TODO: Derived normalization rules and tactics *)
+let SEP_NORMALIZE septerm =
+    failwith "SEP_NORMALIZE: tactic not yet implemented";;
