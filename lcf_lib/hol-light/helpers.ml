@@ -19,3 +19,9 @@ let ONCE_REWRITE_CONV2 th1 th2 t = ONCE_REWRITE_CONV[th1;th2] t;;
 
 let fst (x, y) = x;;
 let snd (x, y) = y;;
+
+(* Operator abbreviations *)
+parse_as_infix ("&&",(8,"right"));;
+parse_as_infix ("||",(6,"right"));;
+override_interface("&&", `(/\)`);;
+override_interface("||", `(\/)`);;
