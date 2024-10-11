@@ -1,0 +1,64 @@
+#include "vst_ide.h"
+
+id : 0
+priority : core(0)
+left : data_at(?p, ?ty, ?v) at 0
+right : data_at(p, ty, v) at 1
+action : left_erase(0);
+         right_erase(1);
+
+id : 1
+priority : core(0)
+left : data_at(?p, ?ty, ?v) at 0
+right : exists x, data_at(p, ty, x) at 1
+action : instantiate(x -> v);
+
+id : 10
+priority : core(0)
+left : store_undef_array_rec(?storeA, ?p, ?lo, ?hi, ?n) at 0
+right : store_undef_array_rec(storeA, p, lo, hi, n) at 1
+action : left_erase(0);
+         right_erase(1);
+
+id : 11
+priority : core(2)
+right : store_undef_array_rec(?storeA, ?p, 0, ?n, Z_to_nat(?m)) at 0
+check : infer(n == m);
+action : right_erase(0);
+         right_add(store_undef_array(storeA, p, n));
+
+id : 20
+priority : core(0)
+left : store_undef_array(?storeA, ?p, ?n) at 0
+right : store_undef_array(storeA, p, n) at 1
+action : left_erase(0);
+         right_erase(1);
+
+id : 21
+priority : core(1)
+right : store_undef_array(?storeA, ?p + ?e, ?n) at 0
+check : infer(e == 0);
+action : right_erase(0);
+         right_add(store_undef_array(storeA, p, n));
+
+id : 22
+priority : core(0)
+left : store_undef_array(?storeA, ?p, ?n) at 0
+right : store_undef_array(storeA, p, ?m) at 1
+check : infer(n == m);
+action : left_erase(0);
+         right_erase(1);
+
+id : 30
+priority : core(0)
+left : store_array{?A}(?storeA, ?p, ?n, ?l) at 0
+right : store_array{A}(storeA, p, n, l) at 1
+action : left_erase(0);
+         right_erase(1);
+
+id : 31
+priority : core(1)
+right : store_array{?A}(?storeA, ?p, ?n, ?l) at 0
+check : infer (n == 0);
+action : right_erase(0);
+         right_add(l == nil{A});

@@ -1,0 +1,11 @@
+.*.aux
+*.glob
+*.vo
+*.vok
+*.vos
+.depend
+.lia.cache
+.nia.cache
+_CoqProject
+CONFIGURE
+gen.c
