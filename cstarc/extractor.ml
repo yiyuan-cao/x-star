@@ -2,7 +2,7 @@ open Ast
 open Env 
 
 (* Note: now we don't support range information in extraction. *)
-let default_range : range = {start_p = {line_no = 0; col_no = 0}; end_p = {line_no = 0; col_no = 0}}
+let _range : range = {start_p = {line_no = 0; col_no = 0}; end_p = {line_no = 0; col_no = 0}}
 
 (* Default variable suffix for special cases. *)
 let _var = "_var"
@@ -12,7 +12,9 @@ type form = String | Term | Type
 (* Record of calling a HOL-light interface. *)
 type command = { lval: ident option; func: string; params: (form * string) list }
 
-(* Body of function `ghost_function()` in `##_proof.c` *)
+(* Global declarations of ghost definitions. *)
+let ghost_decl : declaration list ref = ref []
+(* Body of function `ghost_function()`. *)
 let ghost_function : stmt list ref = ref []
 (* Turning a HOL-light calling into a C* statement. *)
 let register_ghost_def (cmd: command) = 
@@ -22,28 +24,39 @@ let register_ghost_def (cmd: command) =
         Sexpr (
           Ecall ( Evar cmd.func, 
                   List.map (fun (fm, str) -> 
-                    match fm with 
-                    | String -> Ebackquoted str
-                    | Term -> Ecall (Evar "parse_term", [Ebackquoted str])
-                    | Type -> Ecall (Evar "parse_type", [Ebackquoted str])
+                    let str = Cstring { value = str; literal = [str] } in
+                      match fm with 
+                      | String -> Econst str
+                      | Term -> Ecall (Evar "parse_term", [Econst str])
+                      | Type -> Ecall (Evar "parse_type", [Econst str])
                   ) cmd.params
                 ),
-          [], default_range ) :: !ghost_function ;
+          [], _range ) :: !ghost_function ;
     )
   | Some lval -> 
+      let ty = 
+        match cmd.func with 
+        | "define" | "new_axiom" -> "thm"
+        | "define_type"          -> "indtype"
+        | _                      -> failwith "push_ghost_def: unsupported HOL-light interface." 
+      in 
+      ghost_decl :=
+        Ddeclvar (Tnamed ty, lval, None, _range)
+          :: !ghost_decl; 
     ( ghost_function := 
         Sexpr (
           Ebinary (Oassign, Evar lval, 
             Ecall ( Evar cmd.func, 
                     List.map (fun (fm, str) -> 
-                      match fm with 
-                      | String -> Ebackquoted str
-                      | Term -> Ecall (Evar "parse_term", [Ebackquoted str])
-                      | Type -> Ecall (Evar "parse_type", [Ebackquoted str])
+                      let str = Cstring { value = str; literal = [str] } in
+                        match fm with 
+                        | String -> Econst str
+                        | Term -> Ecall (Evar "parse_term", [Econst str])
+                        | Type -> Ecall (Evar "parse_type", [Econst str])
                     ) cmd.params
                   ) 
           ),
-          [], default_range ):: !ghost_function;
+          [], _range ):: !ghost_function;
     )
 
 (* Set of all constructor names. *)
@@ -315,4 +328,5 @@ let attribute_decl =
 let extractor ast = 
   List.iter attribute_decl ast;
   ghost_function := List.rev !ghost_function;
-  [Ddeffun ((Tvoid, "ghost_function", [] , default_range), [], Sblock (!ghost_function, default_range))]
+  (List.rev !ghost_decl) 
+    @ [Ddeffun ((Tvoid, "ghost_function", [] , _range), [], Sblock (!ghost_function, _range))]
