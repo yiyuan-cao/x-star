@@ -22,10 +22,11 @@ let register_ghost_def (cmd: command) =
         Sexpr (
           Ecall ( Evar cmd.func, 
                   List.map (fun (fm, str) -> 
-                    match fm with 
-                    | String -> Ebackquoted str
-                    | Term -> Ecall (Evar "parse_term", [Ebackquoted str])
-                    | Type -> Ecall (Evar "parse_type", [Ebackquoted str])
+                    let str = Cstring { value = str; literal = [str] } in
+                      match fm with 
+                      | String -> Econst str
+                      | Term -> Ecall (Evar "parse_term", [Econst str])
+                      | Type -> Ecall (Evar "parse_type", [Econst str])
                   ) cmd.params
                 ),
           [], default_range ) :: !ghost_function ;
