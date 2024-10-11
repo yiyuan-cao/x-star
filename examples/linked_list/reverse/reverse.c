@@ -93,7 +93,7 @@ struct int_ll_node *int_ll_reverse(struct int_ll_node *p)
     [[cstar::ensure(int_ll_repr(__result, reverse(l)))]]
 {
     struct int_ll_node *rev_prefix = NULL, *rem_suffix = p;
-    [[cstar::localvar(int_list l1 = nil(), l2 = l)]];
+    [[cstar::ghostvar(int_list l1 = nil(), l2 = l)]];
     [[cstar::invariant(
             (append(reverse(l1), l2) == l) SEPAND
             (int_ll_repr(rev_prefix, l1) SEP
@@ -106,16 +106,16 @@ struct int_ll_node *int_ll_reverse(struct int_ll_node *p)
         t = rem_suffix->next;
         rem_suffix->next = rev_prefix;
         rev_prefix = rem_suffix;
-        [[cstar::command(l1 = cons(rem_suffix->value, l1))]];
+        [[cstar::ghostcommand(l1 = cons(rem_suffix->value, l1))]];
         rem_suffix = t;
-        [[cstar::command(l2 = tail(l2))]];
+        [[cstar::ghostcommand(l2 = tail(l2))]];
     }
     return rev_prefix;
 }
 
 int main() {
     struct int_ll_node *p = &(struct int_ll_node){1, &(struct int_ll_node){2, &(struct int_ll_node){3, NULL}}};
-    [[cstar::localvar(int_list l = cons(1, cons(2, cons(3, nil()))))]];
+    [[cstar::ghostvar(int_list l = cons(1, cons(2, cons(3, nil()))))]];
     struct int_ll_node *q;
     [[cstar::argument(l)]] q = int_ll_reverse(p);
     return 0;
