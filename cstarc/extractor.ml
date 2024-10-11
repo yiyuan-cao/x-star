@@ -257,9 +257,9 @@ let discriminator_decl constrs =
           constrs 
             |> List.concat_map 
               ( fun (id0, ps0) -> 
-                [ params_to_binder_str ~var_suffix:_var ps0
+                [ "(" ^ params_to_binder_str ~var_suffix:_var ps0
                   ^ discr_name ^ "(" ^ id0 ^ params_ident_to_str ~var_suffix:_var ps0 ^ ")" 
-                  ^ " = " ^ if String.equal id id0 then "T" else "F" ] )
+                  ^ " = " ^ (if String.equal id id0 then "T" else "F") ^ ")" ] )
             |> String.concat " && "
           in 
         register_ghost_def 
@@ -278,7 +278,7 @@ let accessor_decl =
             ^ id0 ^ "(" ^ id ^ params_ident_to_str ~var_suffix:_var ps ^ ")"
             ^ " = " ^ id0 ^ _var in
           register_ghost_def
-            { lval = Some (id0 ^ _var)
+            { lval = Some id0
             ; func = "define"
             ; params = [(Term, str)]}; 
         )
