@@ -336,7 +336,7 @@ let () =
 
 (* Data-at predicates for C primitive types.
    USER-LEVEL predicates defined on top of MEM_STORE_BYTE, etc.
-   Their defintions follow the following pattern:
+   Their definitions follow the following pattern:
     1. the ptr is valid for the type (alignment and address range requirements)
     2. the content is in the range of the type (or use modulo to calculate the actual representation)
     
@@ -396,6 +396,10 @@ let () =
 
 let DATA_AT_PTR_DEF =
     new_definition `DATA_AT_PTR = DATA_AT_SIZE_T`
+;;
+
+let DATA_AT_PTR_ANY_DEF = 
+    new_definition `DATA_AT_PTR_ANY = DATA_AT_SIZE_T_ANY`
 ;;
 
 (* Rules for basic data-at predicates *)
