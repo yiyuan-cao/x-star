@@ -17,36 +17,35 @@ let add_to_database (name, thm) =
     theorems := update_assoc (name, thm) !theorems
 ;;
 
+(* Get a theorem from the search database *)
+let get_theorem name =
+    assoc name !theorems
+;;
+
 (* Print variables with types *)
 let print_typed_var fmt tm =
     let s, ty = dest_var tm in
     pp_print_string fmt ("(" ^ s ^ ":" ^ string_of_type ty ^ ")")
 ;;
 
-(* Unset multiple subgoals (a lexer option handled by preprocessor) *)
-unset_then_multiple_subgoals;;
-
 (* Personal preferences and useful information *)
-let set_preference debugging =
-    if (debugging) then begin
-        (* Show types of variables and constants in terms *)
-        print_types_of_subterms := 2;
-        (* Print without reversing interface *)
-        reverse_interface_mapping := false;
-        (* Treat type inventions as errors *)
-        type_invention_error := true;
-        (* Unset printing verbose symbols like `exists` and `forall` *)
-        unset_verbose_symbols ()
-    end else begin
-        install_user_printer("print_typed_var", print_typed_var);
-        reverse_interface_mapping := true;
-        type_invention_error := false
-    end;
-    (* Overload arithmetic interface to `int` by default *)
-    prioritize_int ()
+let set_preference debug =
+    prioritize_int ();
+    type_invention_warning := true;
+    install_user_printer("print_typed_var", print_typed_var);
+    if debug then begin
+        delete_user_printer "print_typed_var";
+        reduce_interface ("true", `T:bool`);
+        reduce_interface ("false", `F:bool`);
+        reduce_interface ("&&", `(/\):bool->bool->bool`);
+        reduce_interface ("||", `(\/):bool->bool->bool`);
+        reduce_interface ("forall", `(!):(A->bool)->bool`);
+        reduce_interface ("exists", `(?):(A->bool)->bool`);
+    end
 ;;
 
-set_preference false;;
+(* Unset multiple subgoals (a lexer option handled by preprocessor) *)
+unset_then_multiple_subgoals;;
 
 (* Helper function for uncurrying; C* usually exports an uncurried interfaces (except for operators) *)
 let uncurry_def = new_definition
@@ -54,23 +53,21 @@ let uncurry_def = new_definition
 ;;
 
 (* Commonly used synonyms *)
-let () =
-    new_type_abbrev ("addr", `:int`);
-    new_type_abbrev ("ilist", `:int list`);
-;;
+new_type_abbrev ("Z", `:int`);;
+new_type_abbrev ("addr", `:int`);;
+new_type_abbrev ("ilist", `:int list`);;
 
 (* Get the address of a variable/R-expression in C (represented as a string currently) *)
+new_constant ("addr_of", `:string -> addr`);;
+
 (* Overload the previous interface ("&", `int_of_num`) *)
-let () =
-    new_constant ("addr_of", `:string -> addr`);
-    (* Warning: is this safe? *)
-    the_overload_skeletons := update_assoc ("&", `:A -> int`) !the_overload_skeletons;
-    overload_interface ("&", `addr_of`);
-    make_overloadable "==" `:A -> A -> B`;
-    (* Warning: the notation `==` is used for congruence relations in `int.ml` *)
-    overload_interface("==", `(==):A -> A -> (A->A->bool) -> bool`);
-    overload_interface("==", `(=):A -> A -> bool`)
-;;
+the_overload_skeletons := update_assoc ("&", `:A -> int`) !the_overload_skeletons;; (* Warning: is this safe? *)
+overload_interface ("&", `addr_of`);;
+
+(* Overload the notation `==` for equality *)
+make_overloadable "==" `:A -> A -> B`;;
+overload_interface("==", `(==):A -> A -> (A->A->bool) -> bool`);; (* Warning: the notation `==` is used for congruence relations in `int.ml` *)
+overload_interface("==", `(=):A -> A -> bool`);;
 
 (* C scalar types *)
 let ctype_induct, ctype_rec = define_type "
@@ -246,150 +243,167 @@ let valid_value_def = define `
     )`;;
 
 (* Axiomatize separation logic proposition type and operators *)
-let () =
-    new_type ("hprop", 0);
+new_type ("hprop", 0);;
+new_type_abbrev ("hlist", `:hprop list`);;
 
-    new_type_abbrev ("hlist", `:hprop list`);
+(* Implicit types for variables in the following axioms *)
+the_implicit_types := [
+    "p", `:bool`;
+    "hp", `:hprop`;
+    "hp1", `:hprop`;
+    "hp2", `:hprop`;
+    "hp3", `:hprop`;
+    "hp1'", `:hprop`;
+    "hp2'", `:hprop`;
+    "hp3'", `:hprop`;
+    "hpA", `:A -> hprop`;
+];;
 
-    new_constant ("hentail", `:hprop -> hprop -> bool`);
-    new_constant ("hpure", `:bool -> hprop`);
-    new_constant ("htrue", `:hprop`);
-    new_constant ("hfalse", `:hprop`);
-    new_constant ("hand", `:hprop -> hprop -> hprop`);
-    new_constant ("hor", `:hprop -> hprop -> hprop`);
-    new_constant ("himpl", `:hprop -> hprop -> hprop`);
-    new_constant ("hexists", `:(A -> hprop) -> hprop`);
-    new_constant ("hforall", `:(A -> hprop) -> hprop`);
-    new_constant ("hemp", `:hprop`);
-    new_constant ("hsep", `:hprop -> hprop -> hprop`);
-    new_constant ("hwand", `:hprop -> hprop -> hprop`);
-    new_constant ("hiter", `:hlist -> hprop`);
+(* Notations for parsing and printing separation logic assertions *)
+parse_as_infix ("|-", (2, "right"));;
+parse_as_infix ("-|-", (2, "right"));;
+parse_as_infix ("-*", (4, "right"));;
+parse_as_infix ("||", (6, "right"));;
+parse_as_infix ("&&", (8, "right"));;
+parse_as_infix ("**", (8, "right"));;
 
-    new_constant ("hfact", `:bool -> hprop`);
-    new_constant ("byte_at", `:addr # int -> hprop`);
-    new_constant ("data_at", `:addr # ctype # int -> hprop`);
-    new_constant ("undef_data_at", `:addr # ctype -> hprop`);
-    new_constant ("malloc_at", `:addr # int -> hprop`)
-;;
+override_interface ("|-", `hentail : hprop -> hprop -> bool`);;
+override_interface ("-|-", `(=):hprop->hprop->bool`);; (* hequiv extensionality by default *)
+override_interface ("pure", `hpure : bool -> hprop`);;
+override_interface ("fact", `hfact : bool -> hprop`);;
+override_interface ("emp", `hemp : hprop`);;
+override_interface ("**", `hsep : hprop -> hprop -> hprop`);;
+override_interface ("-*", `hwand : hprop -> hprop -> hprop`);;
 
-(* Notations for parsing and printing *)
-let () =
-    override_interface ("|-", `hentail`);
-    (* hequiv extensionality by default *)
-    override_interface ("-|-", `(=):hprop->hprop->bool`);
-    override_interface ("pure", `hpure`);
-    override_interface ("fact", `hfact`);
-    override_interface ("emp", `hemp`);
-    override_interface ("**", `hsep`);
-    override_interface ("-*", `hwand`)
-;;
+make_overloadable "true" `:A`;;
+make_overloadable "false" `:A`;;
+make_overloadable "||" `:A -> A -> A`;;
+make_overloadable "&&" `:A -> A -> A`;;
+make_overloadable "==>" `:A -> A -> A`;;
+make_overloadable "exists" `:(A -> B) -> B`;;
+make_overloadable "forall" `:(A -> B) -> B`;;
 
-let () = 
-    parse_as_infix ("|-", (2, "right"));
-    parse_as_infix ("-|-", (2, "right"));
-    parse_as_infix ("-*", (4, "right"));
-    parse_as_infix ("||", (6, "right"));
-    parse_as_infix ("&&", (8, "right"));
-    parse_as_infix ("**", (8, "right"))
-;;
+overload_interface("true", `true:bool`);;
+overload_interface("true", `htrue:hprop`);;
+overload_interface("false", `false:bool`);;
+overload_interface("false", `hfalse:hprop`);;
+overload_interface("||", `(\/):bool -> bool -> bool`);;
+overload_interface("||", `hor:hprop -> hprop -> hprop`);;
+overload_interface("&&", `(/\):bool -> bool -> bool`);;
+overload_interface("&&", `hand:hprop -> hprop -> hprop`);;
+overload_interface("==>", `(==>):bool -> bool -> bool`);;
+overload_interface("==>", `himpl:hprop -> hprop -> hprop`);;
+overload_interface("forall", `(!):(A -> bool) -> bool`);;
+overload_interface("forall", `hforall:(A -> hprop) -> hprop`);;
+overload_interface("exists", `(?):(A -> bool) -> bool`);;
+overload_interface("exists", `hexists:(A -> hprop) -> hprop`);;
 
-(* Overloadables *)
-let () =    
-    make_overloadable "true" `:A`;
-    make_overloadable "false" `:A`;
-    make_overloadable "||" `:A -> A -> A`;
-    make_overloadable "&&" `:A -> A -> A`;
-    make_overloadable "==>" `:A -> A -> A`;
-    make_overloadable "exists" `:(A -> B) -> B`;
-    make_overloadable "forall" `:(A -> B) -> B`;
-    
-    overload_interface("true", `true:bool`);
-    overload_interface("true", `htrue:hprop`);
-        
-    overload_interface("false", `false:bool`);
-    overload_interface("false", `hfalse:hprop`);
+new_constant ("hentail", `:hprop -> hprop -> bool`);;
 
-    overload_interface("||", `(\/):bool -> bool -> bool`);
-    overload_interface("||", `hor:hprop -> hprop -> hprop`);
-    
-    overload_interface("&&", `(/\):bool -> bool -> bool`);
-    overload_interface("&&", `hand:hprop -> hprop -> hprop`);
+new_constant ("hemp", `:hprop`);;
+new_constant ("hsep", `:hprop -> hprop -> hprop`);;
+new_constant ("hwand", `:hprop -> hprop -> hprop`);;
 
-    overload_interface("==>", `(==>):bool -> bool -> bool`);
-    overload_interface("==>", `himpl:hprop -> hprop -> hprop`);
+new_constant ("htrue", `:hprop`);;
+new_constant ("hfalse", `:hprop`);;
+new_constant ("hand", `:hprop -> hprop -> hprop`);;
+new_constant ("hor", `:hprop -> hprop -> hprop`);;
+new_constant ("himpl", `:hprop -> hprop -> hprop`);;
+new_constant ("hexists", `:(A -> hprop) -> hprop`);;
+new_constant ("hforall", `:(A -> hprop) -> hprop`);;
 
-    
-    overload_interface("forall", `(!):(A -> bool) -> bool`);
-    overload_interface("forall", `hforall:(A -> hprop) -> hprop`);
-    
-    overload_interface("exists", `(?):(A -> bool) -> bool`);
-    overload_interface("exists", `hexists:(A -> hprop) -> hprop`)
-;;
+new_constant ("hpure", `:bool -> hprop`);;
+new_constant ("hfact", `:bool -> hprop`);;
 
-let () =
-    the_implicit_types := [
-        "p", `:bool`;
-        "hp", `:hprop`;
-        "hp1", `:hprop`;
-        "hp2", `:hprop`;
-        "hp3", `:hprop`;
-        "hp1'", `:hprop`;
-        "hp2'", `:hprop`;
-        "hp3'", `:hprop`;
-        "hpA", `:A -> hprop`;
-        "hpA1", `:A -> hprop`;
-        "hpA2", `:A -> hprop`;
-        "hpA3", `:A -> hprop`;
-    ];
-    do_list add_to_database [
-        (* separation logic entailment defines an order on hprop *)
-        ("hentail_refl", new_axiom `!hp. hp |- hp`);
-        ("hentail_trans", new_axiom `!hp1 hp2 hp3. (hp1 |- hp2) ==> (hp2 |- hp3) ==> (hp1 |- hp3)`);
-        ("hentail_antisym", new_axiom `!hp1 hp2. (hp1 |- hp2) ==> (hp2 |- hp1) ==> (hp1 -|- hp2)`);
-        
-        (* (hsep, hemp) form a commutative monoid *)
-        ("hsep_assoc", new_axiom `!hp1 hp2 hp3. ((hp1 ** hp2) ** hp3) -|- (hp1 ** (hp2 ** hp3))`);
-        ("hsep_comm", new_axiom `!hp1 hp2. (hp1 ** hp2) -|- (hp2 ** hp1)`);
-        ("hsep_hemp_left", new_axiom `!hp. (emp ** hp) -|- hp`);
-        ("hsep_hemp_right", new_axiom `!hp. (hp ** emp) -|- hp`);
+new_constant ("hiter", `:hlist -> hprop`);;
+new_constant ("byte_at", `:addr # int -> hprop`);;
+new_constant ("data_at", `:addr # ctype # int -> hprop`);;
+new_constant ("undef_data_at", `:addr # ctype -> hprop`);;
+new_constant ("malloc_at", `:addr # int -> hprop`);;
+new_constant ("array_at", `:addr # ctype # ilist -> hprop`);;
+new_constant ("undef_array_at", `:addr # ctype # int -> hprop`);;
 
-        (* hsep cancellation rules *)
-        ("hsep_cancel_left", new_axiom `!hp2 hp2' hp1. (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1 ** hp2')`);
-        ("hsep_cancel_right", new_axiom `!hp1 hp1' hp2. (hp1 |- hp1') ==> (hp1 ** hp2 |- hp1' ** hp2)`);
-        ("hsep_monotone", new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |- hp1') ==> (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1' ** hp2')`);
-                
-        (* quantifier extraction rules; note the reverse side for forall-extraction doesn't hold *)
-        ("hsep_hexists_left", new_axiom `!hpA hp. (hexists x : A. hpA x) ** hp |- hexists x : A. (hpA x ** hp)`);
-        ("hsep_hexists_right", new_axiom `!hp hpA. hp ** (hexists x : A. hpA x) |- hexists x : A. (hp ** hpA x)`);
-        ("hsep_hforall_left", new_axiom `!hpA hp. (hforall x : A. hpA x) ** hp |- hforall x : A. (hpA x ** hp)`);
-        ("hsep_hforall_right", new_axiom `!hp hpA. hp ** (hforall x : A. hpA x) |- hforall x : A. (hp ** hpA x)`);
-        ("hexists_left", new_axiom `!hpA hp. (!x : A. hpA x |- hp) ==> (hexists x : A. hpA x) |- hp`);
-        
-        (* definition of hfact (requires an empty heap) and derived properties *)
-        ("hfact_def", new_axiom `!p. hfact p = (hpure p && emp)`);
-        ("hfact_hpure_left", new_axiom `!p hp. hfact p ** hp -|- hpure p && hp`);
-        ("hfact_hpure_right", new_axiom `!p hp. hp ** hfact p -|- hp && hpure p`);
+(* Debug mode *)
+set_preference true;;
 
-        (* definition of data_at *)
-        (* ("data_at_def", new_axiom `!p hp. data_at p hp = (hpure p ** hp)`); *)
+(* separation logic entailment defines an order on hprop *)
+do_list add_to_database [
+    ("hentail_refl", new_axiom `!hp. hp |- hp`);
+    ("hentail_trans", new_axiom `!hp1 hp2 hp3. (hp1 |- hp2) ==> (hp2 |- hp3) ==> (hp1 |- hp3)`);
+    ("hentail_antisym", new_axiom `!hp1 hp2. (hp1 |- hp2) ==> (hp2 |- hp1) ==> (hp1 -|- hp2)`);
+];;
 
-        (* hpure *)
-        ("hpure_intro", new_axiom`!p. p ==> !hp. (hp |- hpure p ** hp)`);
-        ("hpure_elim", new_axiom`!p hp. (hp |- hpure p) ==> p`);
-        
-        ("hand_comm", new_axiom`!hp1 hp2. (hp1 ** hp2) = (hp2 ** hp1)`);
-        ("hor_comm", new_axiom`!hp1 hp2. (hp1 || hp2) = (hp2 || hp1)`);
-        ("hand_assoc", new_axiom`!hp1 hp2 hp3. ((hp1 ** hp2) ** hp3) = (hp1 ** (hp2 ** hp3))`);
-        ("hor_assoc", new_axiom`!hp1 hp2 hp3. ((hp1 || hp2) || hp3) = (hp1 || (hp2 || hp3))`);
-        ("hand_emp_left", new_axiom`!hp. (emp ** hp) = hp`);
-        ("hor_emp_left", new_axiom`!hp. (emp || hp) = hp`);
-        ("hand_emp_right", new_axiom`!hp. (hp ** emp) = hp`);
-        ("hor_emp_right", new_axiom`!hp. (hp || emp) = hp`)
-    ]
-;;
+(* (hsep, hemp) form a commutative monoid *)
+do_list add_to_database [
+    ("hsep_assoc", new_axiom `!hp1 hp2 hp3. (hp1 ** hp2) ** hp3 -|- hp1 ** (hp2 ** hp3)`);
+    ("hsep_comm", new_axiom `!hp1 hp2. hp1 ** hp2 -|- hp2 ** hp1`);
+    ("hsep_hemp_left", new_axiom `!hp. emp ** hp -|- hp`);
+    ("hsep_hemp_right", new_axiom `!hp. hp ** emp -|- hp`);
+];;
 
-assoc "hand_emp_left" !theorems;;
+(* hwand-hsep adjoint law *)
+do_list add_to_database [
+    ("hwand_hsep_adjoint", new_axiom `!hp1 hp2 hp3. (hp1 ** hp2 |- hp3) <=> (hp1 |- hp2 -* hp3)`);
+];;
 
+(* hsep "frame" or cancellation rules *)
+do_list add_to_database [
+    ("hsep_cancel_left", new_axiom `!hp2 hp2' hp1. (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1 ** hp2')`);
+    ("hsep_cancel_right", new_axiom `!hp1 hp1' hp2. (hp1 |- hp1') ==> (hp1 ** hp2 |- hp1' ** hp2)`);
+    ("hsep_monotone", new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |- hp1') ==> (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1' ** hp2')`);
+];;
 
+(* htrue hfalse definitions *)
+do_list add_to_database [
+    ("htrue_def", new_axiom `!hp. htrue = (hpure T)`);
+    ("hfalse_def", new_axiom `!hp. hfalse = (hpure F)`);
+];;
 
-(* merge bits from a list of bytes (big-endian) and transform to the signed or unsigned integer *)
+(* natural deduction of ordinary higher-order logic *)
+do_list add_to_database [
+    ("htrue_intro", new_axiom `!hp. hp |- htrue`);
+    ("hfalse_elim", new_axiom `!hp. hfalse |- hp`);
+    ("hand_intro", new_axiom `!hp1 hp2 hp3. (hp1 |- hp2) ==> (hp1 |- hp3) ==> (hp1 |- hp2 && hp3)`);
+    ("hand_elim1", new_axiom `!hp1 hp2. (hp1 && hp2 |- hp1)`);
+    ("hand_elim2", new_axiom `!hp1 hp2. (hp1 && hp2 |- hp2)`);
+    ("hor_intro1", new_axiom `!hp1 hp2. (hp1 |- hp1 || hp2)`);
+    ("hor_intro2", new_axiom `!hp1 hp2. (hp2 |- hp1 || hp2)`);
+    ("hor_elim", new_axiom `!hp1 hp2 hp3. (hp1 |- hp3) ==> (hp2 |- hp3) ==> (hp1 || hp2 |- hp3)`);
+    ("himpl_hand_adjoint", new_axiom `!hp1 hp2 hp3. (hp1 && hp2 |- hp3) <=> (hp1 |- hp2 ==> hp3)`);
+    ("hexists_intro", new_axiom `!hp hpA (x : A). (hp |- hpA x) ==> (hp |- (exists x : A. hpA x))`);
+    ("hexists_elim", new_axiom `!hp hpA. (!x : A. hpA x |- hp) ==> ((exists x : A. hpA x) |- hp)`);
+    ("hforall_intro", new_axiom `!hp hpA. (!x : A. hp |- hpA x) ==> (hp |- (forall x : A. hpA x))`);
+    ("hforall_elim", new_axiom `!hp hpA (x : A). (hpA x |- hp) ==> ((forall x : A. hpA x) |- hp)`);
+];;
+
+(* hpure intro-and-elim rules *)
+do_list add_to_database [
+    ("hpure_intro", new_axiom `!p hp. p ==> (hp |- hpure p)`);
+    ("hpure_elim", new_axiom `!p hp. (p ==> (htrue |- hp)) ==> (hpure p |- hp)`);
+];;
+
+(* hpure extraction rules *)
+do_list add_to_database [
+    ("hsep_hpure_left", new_axiom `!p hp1 hp2. (hpure p && hp1) ** hp2 -|- hpure p && (hp1 ** hp2)`);
+    ("hsep_hpure_right", new_axiom `!p hp1 hp2. hp1 ** (hpure p && hp2) -|- hpure p && (hp1 ** hp2)`);
+];;
+
+(* hfact-hpure relation ship*)
+do_list add_to_database [
+    ("hfact_def", new_axiom `!p hp. hfact p = (hpure p && emp)`);
+    ("hfact_hpure", new_axiom `!p hp. hfact p ** hp -|- hpure p && hp`);
+];;
+
+(* quantifier extraction rules; note the reverse side for forall-extraction doesn't hold *)
+do_list add_to_database [
+    ("hsep_hexists_left", new_axiom `!hpA hp. (exists x : A. hpA x) ** hp -|- exists x : A. (hpA x ** hp)`);
+    ("hsep_hexists_right", new_axiom `!hp hpA. hp ** (exists x : A. hpA x) -|- exists x : A. (hp ** hpA x)`);
+    ("hsep_hforall_left", new_axiom `!hpA hp. (forall x : A. hpA x) ** hp |- forall x : A. (hpA x ** hp)`);
+    ("hsep_hforall_right", new_axiom `!hp hpA. hp ** (forall x : A. hpA x) |- forall x : A. (hp ** hpA x)`);
+    ("hand_hexists_left", new_axiom `!hpA hp. (exists x : A. hpA x) && hp -|- exists x : A. (hpA x && hp)`);
+    ("hand_hexists_right", new_axiom `!hp hpA. hp && (exists x : A. hpA x) -|- exists x : A. (hp && hpA x)`);
+    ("hand_hforall_left", new_axiom `!hpA hp. (forall x : A. hpA x) && hp |- forall x : A. (hpA x && hp)`); (* Reverse side holds in HOL? (no empty type) *)
+    ("hand_hforall_right", new_axiom `!hp hpA. hp && (forall x : A. hpA x) |- forall x : A. (hp && hpA x)`); (* Reverse side holds in HOL? (no empty type) *)    
+];;
+
+(* definition of data_at *)
