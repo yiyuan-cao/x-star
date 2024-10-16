@@ -48,7 +48,7 @@ let set_preference debug =
 unset_then_multiple_subgoals;;
 
 (* Helper function for uncurrying; C* usually exports an uncurried interfaces (except for operators) *)
-let uncurry_def = new_definition
+let uncurry_def = define
     `uncurry (f : A -> B -> C) = \(x,y). f x y`
 ;;
 
@@ -76,127 +76,70 @@ let ctype_induct, ctype_rec = define_type "
         Tshort | Tushort |
         Tint   | Tuint   |
         Tint64 | Tuint64 |
-        Tptr
+                 Tptr
 ";;
 
 (* Word size in bytes *)
-let word_size_def = new_basic_definition
-    `word_size = &4`;;
+let word_size_def = define `word_size = &4`
+;;
 
 (* Size of a C scalar type in bytes *)
-let size_of_def = new_recursive_definition ctype_rec `
-    size_of Tchar    = &1 /\
-    size_of Tuchar   = &1 /\
-    size_of Tshort   = &2 /\
-    size_of Tushort  = &2 /\
-    size_of Tint     = &4 /\
-    size_of Tuint    = &4 /\
-    size_of Tint64   = &8 /\
-    size_of Tuint64  = &8 /\
-    size_of Tptr     = word_size`
+let size_of_def = define `
+    size_of ty = 
+        match ty with
+        | Tchar    ->  &1
+        | Tuchar   ->  &1
+        | Tshort   ->  &2
+        | Tushort  ->  &2
+        | Tint     ->  &4
+        | Tuint    ->  &4
+        | Tint64   ->  &8
+        | Tuint64  ->  &8
+        | Tptr     ->  word_size`
 ;;
 
 (* Alignment requirement of a C scalar type *)
-let align_of_def = new_recursive_definition ctype_rec `
-    align_of Tchar    = &1 /\
-    align_of Tuchar   = &1 /\
-    align_of Tshort   = &2 /\
-    align_of Tushort  = &2 /\
-    align_of Tint     = &4 /\
-    align_of Tuint    = &4 /\
-    align_of Tint64   = min word_size (&8) /\
-    align_of Tuint64  = min word_size (&8) /\
-    align_of Tptr     = word_size`
+let align_of_def = define `
+    align_of ty = 
+        match ty with
+        | Tchar    ->  &1
+        | Tuchar   ->  &1
+        | Tshort   ->  &2
+        | Tushort  ->  &2
+        | Tint     ->  &4
+        | Tuint    ->  &4
+        | Tint64   ->  min word_size (&8)
+        | Tuint64  ->  min word_size (&8)
+        | Tptr     ->  word_size`
 ;;
 
-(* Tchar min *)
-let tchar_min_def = new_basic_definition
-    `tchar_min : int = --(&128)`
+(* Minimum and maximum values of C scalar types *)
+let min_of_def = define `
+    min_of ty = 
+        match ty with
+        | Tchar    ->  --(&2 pow (num_of_int (size_of Tchar)  - 1))
+        | Tshort   ->  --(&2 pow (num_of_int (size_of Tshort) - 1))
+        | Tint     ->  --(&2 pow (num_of_int (size_of Tint)   - 1))
+        | Tint64   ->  --(&2 pow (num_of_int (size_of Tint64) - 1))
+        | Tuchar   ->  &0
+        | Tushort  ->  &0
+        | Tuint    ->  &0
+        | Tuint64  ->  &0
+        | Tptr     ->  &0`
 ;;
 
-(* Tchar max *)
-let tchar_max_def = new_basic_definition
-    `tchar_max : int = &127`
-;;
-
-(* Tuchar min *)
-let tuchar_min_def = new_basic_definition
-    `tuchar_min : int = &0`
-;;
-
-(* Tuchar max *)
-let tuchar_max_def = new_basic_definition
-    `tuchar_max : int = &255`
-;;
-
-(* Tshort min *)
-let tshort_min_def = new_basic_definition
-    `tshort_min : int = --(&32768)`
-;;
-
-(* Tshort max *)
-let tshort_max_def = new_basic_definition
-    `tshort_max : int = &32767`
-;;
-
-(* Tushort min *)
-let tushort_min_def = new_basic_definition
-    `tushort_min : int = &0`
-;;
-
-(* Tushort max *)
-let tushort_max_def = new_basic_definition
-    `tushort_max : int = &65535`
-;;
-
-(* Tint min *)
-let tint_min_def = new_basic_definition
-    `tint_min : int = --(&2147483648)`
-;;
-
-(* Tint max *)
-let tint_max_def = new_basic_definition
-    `tint_max : int = &2147483647`
-;;
-
-(* Tuint min *)
-let tuint_min_def = new_basic_definition
-    `tuint_min : int = &0`
-;;
-
-(* Tuint max *)
-let tuint_max_def = new_basic_definition
-    `tuint_max : int = &4294967295`
-;;
-
-(* Tint64 min *)
-let tint64_min_def = new_basic_definition
-    `tint64_min : int = --(&9223372036854775808)`
-;;
-
-(* Tint64 max *)
-let tint64_max_def = new_basic_definition
-    `tint64_max : int = &9223372036854775807`
-;;
-
-(* Tuint64 min *)
-let tuint64_min_def = new_basic_definition
-    `tuint64_min : int = &0`
-;;
-
-(* Tuint64 max *)
-let tuint64_max_def = new_basic_definition
-    `tuint64_max : int = &18446744073709551615`
-;;
-
-(* Tptr min *)
-let tptr_min_def = new_basic_definition
-    `tptr_min : int = &0`
-;;
-
-(* Tptr max *)
-let tptr_max_def = new_basic_definition
-    `tptr_max : int = &2 pow (num_of_int word_size * 8) - &1`
+let max_of_def = define `
+    max_of ty = 
+        match ty with
+        | Tchar    ->  &2 pow (num_of_int (size_of Tchar)  - 1) - (&1)
+        | Tshort   ->  &2 pow (num_of_int (size_of Tshort) - 1) - (&1)
+        | Tint     ->  &2 pow (num_of_int (size_of Tint)   - 1) - (&1)
+        | Tint64   ->  &2 pow (num_of_int (size_of Tint64) - 1) - (&1)
+        | Tuchar   ->  &2 pow (num_of_int (size_of Tuchar))     - (&1)
+        | Tushort  ->  &2 pow (num_of_int (size_of Tushort))    - (&1)
+        | Tuint    ->  &2 pow (num_of_int (size_of Tuint))      - (&1)
+        | Tuint64  ->  &2 pow (num_of_int (size_of Tuint64))    - (&1)
+        | Tptr     ->  &2 pow (num_of_int (size_of Tptr))       - (&1)`
 ;;
 
 (* Size of a type is positive *)
@@ -224,23 +167,14 @@ let valid_addr_def = define `
     valid_addr (p : addr, ty : ctype) = (
         let al = align_of ty in
         let sz = size_of ty in
-        ((p == &0) (mod al)) /\ (p + sz < tptr_max)
+        ((p == &0) (mod al)) /\ (p + sz < max_of Tptr)
     )`;;
 
 (* Valid value for a C scalar type *)
 let valid_value_def = define `
-    valid_value (v : int, ty : ctype) = (
-        match ty with
-        | Tchar -> (v >= tchar_min) /\ (v <= tchar_max)
-        | Tuchar -> (v >= tuchar_min) /\ (v <= tuchar_max)
-        | Tshort -> (v >= tshort_min) /\ (v <= tshort_max)
-        | Tushort -> (v >= tushort_min) /\ (v <= tushort_max)
-        | Tint -> (v >= tint_min) /\ (v <= tint_max)
-        | Tuint -> (v >= tuint_min) /\ (v <= tuint_max)
-        | Tint64 -> (v >= tint64_min) /\ (v <= tint64_max)
-        | Tuint64 -> (v >= tuint64_min) /\ (v <= tuint64_max)
-        | Tptr -> (v >= tptr_min) /\ (v <= tptr_max)
-    )`;;
+    valid_value (v : int, ty : ctype) =
+        ((min_of ty <= v) /\ (v <= max_of ty))
+`;;
 
 (* Axiomatize separation logic proposition type and operators *)
 new_type ("hprop", 0);;
@@ -257,6 +191,9 @@ the_implicit_types := [
     "hp2'", `:hprop`;
     "hp3'", `:hprop`;
     "hpA", `:A -> hprop`;
+    "hps", `:hlist`;
+    "hps1", `:hlist`;
+    "hps2", `:hlist`;
 ];;
 
 (* Notations for parsing and printing separation logic assertions *)
@@ -275,6 +212,7 @@ override_interface ("emp", `hemp : hprop`);;
 override_interface ("**", `hsep : hprop -> hprop -> hprop`);;
 override_interface ("-*", `hwand : hprop -> hprop -> hprop`);;
 
+(* TODO: install user-printer instead of overloading! *)
 make_overloadable "true" `:A`;;
 make_overloadable "false" `:A`;;
 make_overloadable "||" `:A -> A -> A`;;
@@ -384,6 +322,8 @@ do_list add_to_database [
 
 (* hpure extraction rules *)
 do_list add_to_database [
+    ("hand_assoc", new_axiom `!hp1 hp2 hp3. (hp1 && hp2) && hp3 -|- hp1 && (hp2 && hp3)`);
+    ("hand_comm", new_axiom `!hp1 hp2. hp1 && hp2 -|- hp2 && hp1`);
     ("hsep_hpure_left", new_axiom `!p hp1 hp2. (hpure p && hp1) ** hp2 -|- hpure p && (hp1 ** hp2)`);
     ("hsep_hpure_right", new_axiom `!p hp1 hp2. hp1 ** (hpure p && hp2) -|- hpure p && (hp1 ** hp2)`);
 ];;
@@ -392,6 +332,12 @@ do_list add_to_database [
 do_list add_to_database [
     ("hfact_def", new_axiom `!p hp. hfact p = (hpure p && emp)`);
     ("hfact_hpure", new_axiom `!p hp. hfact p ** hp -|- hpure p && hp`);
+];;
+
+(* hfact intro-and-elim rules *)
+do_list add_to_database [
+    ("hfact_intro", new_axiom `!p hp1 hp2. p ==> (hp1 |- hp2) ==> (hp1 |- hfact p ** hp2)`);
+    ("hfact_elim", new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hfact p ** hp1 |- hp2)`);
 ];;
 
 (* quantifier extraction rules; note the reverse side for forall-extraction doesn't hold *)
@@ -406,4 +352,54 @@ do_list add_to_database [
     ("hand_hforall_right", new_axiom `!hp hpA. hp && (forall x : A. hpA x) |- forall x : A. (hp && hpA x)`); (* Reverse side holds in HOL? (no empty type) *)    
 ];;
 
-(* definition of data_at *)
+(* monotonicity of quantifiers *)
+do_list add_to_database [
+    ("hexists_mono", new_axiom `!hpA hpA'. (!x:A. hpA x |- hpA' x) ==> ((exists x:A. hpA x) |- (exists x:A. hpA' x))`);
+    ("hforall_mono", new_axiom `!hpA hpA'. (!x:A. hpA x |- hpA' x) ==> ((forall x:A. hpA x) |- (forall x:A. hpA' x))`);
+];;
+
+(* definition of hiter and its split rules *)
+do_list add_to_database [
+    ("hiter_def", new_axiom `hiter hps = ITLIST (**) hps emp`); (* TODO: hiter could be defined in terms of iterate *)
+    ("hiter_split", new_axiom `!hps1 hps2. hiter (APPEND hps1 hps2) -|- hiter hps1 ** hiter hps2`);
+];;
+
+(* Demo: sample proof of hiter_split *)
+prove (`!hps1 hps2. hiter (APPEND hps1 hps2) -|- hiter hps1 ** hiter hps2`,
+    REWRITE_TAC [get_theorem "hiter_def"] THEN
+    REWRITE_TAC [ITLIST_APPEND] THEN
+    FIX_TAC "hps2" THEN
+    MATCH_MP_TAC (list_INDUCT) THEN
+    STRIP_TAC THENL
+    [
+        (* base case *)
+        SIMP_TAC [ITLIST; get_theorem "hsep_hemp_left"];
+        (* inductive case *)
+        INTRO_TAC "![hp][hps];IH" THEN
+        REWRITE_TAC [ITLIST; get_theorem "hsep_assoc"] THEN
+        MK_COMB_TAC THENL
+        [
+            REFL_TAC;
+            USE_THEN "IH" MATCH_ACCEPT_TAC;
+        ];
+    ]
+);;
+
+(* axioms of byte_at *)
+do_list add_to_database [
+    ("byte_at_dup", new_axiom `!x:addr v1 v2. byte_at (x, v1) ** byte_at (x, v2) |- hfalse`);
+    ("byte_at_in_range", new_axiom `!x:addr v. byte_at (x, v) |- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`);
+];;
+
+(* axioms of malloc_at *)
+do_list add_to_database [
+    ("malloc_at_inv", new_axiom `!x:addr n:int. malloc_at (x, n) |- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`);
+];;
+
+(* definitions of data_at and undef_data_at *)
+(* do_list add_to_database [
+    ("data_at_char_def", new_axiom `!x ty i. data_at (x, ty, i) = hiter (ITER (size_of ty) (byte_at (x + i, *)))`);
+    ("undef_data_at_def", new_axiom `!x ty. undef_data_at (x, ty) = hiter (ITER (size_of ty) (byte_at (x, *)))`);
+];; *)
+
+
