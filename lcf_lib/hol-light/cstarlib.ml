@@ -1,4 +1,3 @@
-(* For bounded integer reasoning and bit manipulation *)
 needs "Library/words.ml";;
 needs "Library/bitmatch.ml";;
 needs "Library/binary.ml";;
@@ -14,7 +13,8 @@ let rec update_assoc (k, v) = function
 
 (* Add a theorem to the search database *)
 let add_to_database (name, thm) =
-    theorems := update_assoc (name, thm) !theorems
+    theorems := update_assoc (name, thm) !theorems;
+    thm
 ;;
 
 (* Get a theorem from the search database *)
@@ -36,6 +36,7 @@ let set_preference debug =
     if debug then begin
         delete_user_printer "print_typed_var";
         type_invention_error := true;
+        print_types_of_subterms := 2;
         reduce_interface ("true", `T:bool`);
         reduce_interface ("false", `F:bool`);
         reduce_interface ("&&", `(/\):bool->bool->bool`);
@@ -48,19 +49,27 @@ let set_preference debug =
 (* Unset multiple subgoals (a lexer option handled by preprocessor) *)
 unset_then_multiple_subgoals;;
 
+(* Print types of subterms: debugging aid *)
+print_types_of_subterms := 2;
+
+(* Commonly used synonyms *)
+new_type_abbrev ("Z", `:int`);;
+new_type_abbrev ("addr", `:int`);;
+new_type_abbrev ("ilist", `:int list`);;
+
 (* Helper function for uncurrying; C* usually exports an uncurried interfaces (except for operators) *)
 let uncurry_def = define
     `uncurry (f : A -> B -> C) = \(x,y). f x y`
 ;;
 
 (* exported functions *)
-let ilength_def = define `ilength l : int = &(LENGTH l)`;;
+let ilength_def = define `ilength (l : A list) : int = &(LENGTH l)`;;
 
 (* range of ints from lo (inclusive) to hi (exclusive) *)
-let irange_def = define `irange (lo : int, hi : int) = list_of_seq (\i. lo + (&i)) (num_of_int (hi - lo))`;;
+let irange_def = define `irange (lo : int, hi : int) = list_of_seq (\i. lo + (&i) : int) (num_of_int (hi - lo))`;;
+let irange0_def = define `irange0 (n : int) : ilist = list_of_seq int_of_num (num_of_int n)`;;
 
-let irange_split = new_axiom
-    `!lo mid hi. (lo <= mid /\ mid <= hi) ==> (irange (lo, hi) = APPEND (irange (lo, mid)) (irange (mid, hi)))`;;
+let irange_split = new_axiom `!lo mid hi. (lo <= mid /\ mid <= hi) ==> (irange (lo, hi) = APPEND (irange (lo, mid)) (irange (mid, hi)))`;;
 
 (* Convert a list of bytes to an represented unsigned integer, with the most significant byte first *)
 (* For example, the list [0x12; 0x34; 0x56; 0x78] represents the integer 0x12345678 *)
@@ -69,17 +78,12 @@ let int_of_bytes_def = define `
     int_of_bytes bs : int = 
         ITLIST (\b n. n * (&256) + b) bs (&0)`;;
 
-(* Commonly used synonyms *)
-new_type_abbrev ("Z", `:int`);;
-new_type_abbrev ("addr", `:int`);;
-new_type_abbrev ("ilist", `:int list`);;
-
 (* Get the address of a variable/R-expression in C (represented as a string currently) *)
 new_constant ("addr_of", `:string -> addr`);;
 
 (* Overload the previous interface ("&", `int_of_num`) *)
 the_overload_skeletons := update_assoc ("&", `:A -> int`) !the_overload_skeletons;; (* Warning: is this safe? *)
-overload_interface ("&", `addr_of`);;
+overload_interface ("&", `addr_of:string -> addr`);;
 
 (* Overload the notation `==` for equality *)
 make_overloadable "==" `:A -> A -> B`;;
