@@ -35,6 +35,7 @@ let set_preference debug =
     install_user_printer("print_typed_var", print_typed_var);
     if debug then begin
         delete_user_printer "print_typed_var";
+        type_invention_error := true;
         reduce_interface ("true", `T:bool`);
         reduce_interface ("false", `F:bool`);
         reduce_interface ("&&", `(/\):bool->bool->bool`);
@@ -51,6 +52,22 @@ unset_then_multiple_subgoals;;
 let uncurry_def = define
     `uncurry (f : A -> B -> C) = \(x,y). f x y`
 ;;
+
+(* exported functions *)
+let ilength_def = define `ilength l : int = &(LENGTH l)`;;
+
+(* range of ints from lo (inclusive) to hi (exclusive) *)
+let irange_def = define `irange (lo : int, hi : int) = list_of_seq (\i. lo + (&i)) (num_of_int (hi - lo))`;;
+
+let irange_split = new_axiom
+    `!lo mid hi. (lo <= mid /\ mid <= hi) ==> (irange (lo, hi) = APPEND (irange (lo, mid)) (irange (mid, hi)))`;;
+
+(* Convert a list of bytes to an represented unsigned integer, with the most significant byte first *)
+(* For example, the list [0x12; 0x34; 0x56; 0x78] represents the integer 0x12345678 *)
+(* Should be a natural number if vs is a valid list of byte values (uchar) *)
+let int_of_bytes_def = define `
+    int_of_bytes bs : int = 
+        ITLIST (\b n. n * (&256) + b) bs (&0)`;;
 
 (* Commonly used synonyms *)
 new_type_abbrev ("Z", `:int`);;
@@ -78,6 +95,8 @@ let ctype_induct, ctype_rec = define_type "
         Tint64 | Tuint64 |
                  Tptr
 ";;
+
+(* TODO: add support of compound types: arrays, structs, unions *)
 
 (* Word size in bytes *)
 let word_size_def = define `word_size = &4`
@@ -254,12 +273,22 @@ new_constant ("hpure", `:bool -> hprop`);;
 new_constant ("hfact", `:bool -> hprop`);;
 
 new_constant ("hiter", `:hlist -> hprop`);;
+new_constant ("hiter_range", `:(int -> hprop) # int # int -> hprop`);; (* fprop, lo (inclusive), hi (exclusive) *)
+
 new_constant ("byte_at", `:addr # int -> hprop`);;
+new_constant ("bytes_at", `:addr # ilist -> hprop`);;
+
 new_constant ("data_at", `:addr # ctype # int -> hprop`);;
 new_constant ("undef_data_at", `:addr # ctype -> hprop`);;
-new_constant ("malloc_at", `:addr # int -> hprop`);;
+
+new_constant ("cell_at", `:addr # ctype # int # int -> hprop`);;    (* base, elem type, index, represented integer *)
+new_constant ("undef_cell_at", `:addr # ctype # int -> hprop`);;
+new_constant ("slice_at", `:addr # ctype # int # ilist -> hprop`);; (* base, elem type, start index, list of represented integers *)
+new_constant ("undef_slice_at", `:addr # ctype # int # int -> hprop`);;
 new_constant ("array_at", `:addr # ctype # ilist -> hprop`);;
 new_constant ("undef_array_at", `:addr # ctype # int -> hprop`);;
+
+new_constant ("malloc_at", `:addr # int -> hprop`);;                 (* base, size of malloced region *)
 
 (* Debug mode *)
 set_preference true;;
@@ -358,10 +387,14 @@ do_list add_to_database [
     ("hforall_mono", new_axiom `!hpA hpA'. (!x:A. hpA x |- hpA' x) ==> ((forall x:A. hpA x) |- (forall x:A. hpA' x))`);
 ];;
 
-(* definition of hiter and its split rules *)
+(* definition of hiter, hiter_range, and their split rules *)
 do_list add_to_database [
     ("hiter_def", new_axiom `hiter hps = ITLIST (**) hps emp`); (* TODO: hiter could be defined in terms of iterate *)
+    ("hiter_range_def", new_axiom `hiter_range (hpf, lo, hi) = hiter (MAP hpf (irange (lo, hi)))`);
     ("hiter_split", new_axiom `!hps1 hps2. hiter (APPEND hps1 hps2) -|- hiter hps1 ** hiter hps2`);
+    ("hiter_range_split", new_axiom `!hpf lo mid hi.
+                                       (lo <= mid /\ mid <= hi) ==>
+                                       (hiter_range (hpf, lo, hi) -|- hiter_range (hpf, lo, mid) ** hiter_range (hpf, mid, hi))`);
 ];;
 
 (* Demo: sample proof of hiter_split *)
@@ -385,21 +418,45 @@ prove (`!hps1 hps2. hiter (APPEND hps1 hps2) -|- hiter hps1 ** hiter hps2`,
     ]
 );;
 
-(* axioms of byte_at *)
+(* axioms of byte_at and bytes_at *)
 do_list add_to_database [
     ("byte_at_dup", new_axiom `!x:addr v1 v2. byte_at (x, v1) ** byte_at (x, v2) |- hfalse`);
-    ("byte_at_in_range", new_axiom `!x:addr v. byte_at (x, v) |- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`);
+    ("byte_at_valid", new_axiom `!x:addr v. byte_at (x, v) |- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`);
+    ("bytes_at_def", new_axiom `!x:addr vs. bytes_at (x, vs) = hiter_range ((\i. byte_at (x + i, EL (num_of_int i) vs)), &0, ilength vs)`);
+];;
+
+(* definitions of data_at and undef_data_at *)
+do_list add_to_database [
+    ("data_at_def", new_axiom `!x ty v. data_at (x, ty, v) =
+                                exists bs. (
+                                    fact ((v == int_of_bytes bs) (mod (&256 pow (num_of_int (size_of ty))))) **
+                                    bytes_at (x, bs)
+                                )`);
+    ("undef_data_at_def", new_axiom `!x ty. undef_data_at (x, ty) = exists bs. fact (ilength bs == size_of ty) ** bytes_at (x, bs)`);
+    ("data_at_to_undef_data_at", new_axiom `!x ty. data_at (x, ty, v) |- undef_data_at (x, ty)`);
+];;
+
+(* definition of cell_at and undef_cell_at *)
+do_list add_to_database [
+    ("cell_at_def", new_axiom `!x ty i v. cell_at (x, ty, i, v) = data_at (x + i * (size_of ty), ty, v)`);
+    ("undef_cell_at_def", new_axiom `!x ty i. undef_cell_at (x, ty, i) = undef_data_at (x + i * (size_of ty), ty)`);
+];;
+
+(* definition of slice_at and array_at *)
+do_list add_to_database [
+    ("slice_at_def", new_axiom `!x ty i vs. slice_at (x, ty, i, vs) = hiter_range ((\j. cell_at (x, ty, i + j, EL (num_of_int j) vs)), &0, ilength vs)`);
+    ("undef_slice_at_def", new_axiom `!x ty i n. undef_slice_at (x, ty, i, n) = hiter_range ((\j. undef_cell_at (x, ty, i + j)), &0, n)`);
+    ("array_at_def", new_axiom `!x ty vs. array_at (x, ty, vs) = slice_at (x, ty, &0, vs)`);
+    ("undef_array_at_def", new_axiom `!x ty n. undef_array_at (x, ty, n) = undef_slice_at (x, ty, &0, n)`);
+];;
+
+(* slice split rule *)
+do_list add_to_database [
+    ("slice_merge_split", new_axiom `!x ty i vs1 vs2.
+                        (slice_at (x, ty, i, vs1) ** slice_at (x, ty, i + ilength vs1, vs2) -|- slice_at (x, ty, i, APPEND vs1 vs2))`);
 ];;
 
 (* axioms of malloc_at *)
 do_list add_to_database [
     ("malloc_at_inv", new_axiom `!x:addr n:int. malloc_at (x, n) |- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`);
 ];;
-
-(* definitions of data_at and undef_data_at *)
-(* do_list add_to_database [
-    ("data_at_char_def", new_axiom `!x ty i. data_at (x, ty, i) = hiter (ITER (size_of ty) (byte_at (x + i, *)))`);
-    ("undef_data_at_def", new_axiom `!x ty. undef_data_at (x, ty) = hiter (ITER (size_of ty) (byte_at (x, *)))`);
-];; *)
-
-
