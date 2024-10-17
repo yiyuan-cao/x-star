@@ -9,6 +9,6 @@
  (name main)
  (public_name cstarc)
  (modules main ast declarator context options lexer parser printer env extractor)
- (libraries menhirLib core pprint)
+ (libraries menhirLib core core_unix.command_unix pprint)
  (preprocess
-  (pps ppx_deriving.show)))
+  (pps ppx_deriving.show ppx_let)))
