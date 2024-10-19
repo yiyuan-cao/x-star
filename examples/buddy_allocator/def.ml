@@ -90,7 +90,7 @@ let REST_DEF = define `
 
 (* EQ_EXT *)
 
-let IFILTER_DEF = define `ifilter (l : (num#num)list) (i : num) = ((REF (nth l i) = 0) /\ ~(ORD (nth l i) = NO_ORDER))`;;
+let IFILTER_DEF = define `ifilter (l : (num#num)list) (id : num) = ((REF (nth l (id2i id)) = 0) /\ ~(ORD (nth l (id2i id)) = NO_ORDER))`;;
 
 let () = new_constant("DATA_AT_PTR_ANY", `: PTR -> HPROP`);;
 
@@ -125,16 +125,16 @@ let DLIST_NODE_DEF = define `
                 /\ (PRV (nth hl (ORD (nth l (id2i lo)))) = id2vi lo))
             \/
             ((PRV (nth dl (vi2i (NXT h))) = id2vi lo) /\ 
-            (REF (nth l (vi2i (NXT h))) = 0) /\ 
-            ~(ORD (nth l (vi2i (NXT h))) = NO_ORDER) /\ 
+            ((REF (nth l (vi2i (NXT h))) = 0) /\ 
+            ~(ORD (nth l (vi2i (NXT h))) = NO_ORDER)) /\ 
             (ORD (nth l (vi2i (NXT h))) = (ORD (nth l (id2i lo)))))) 
             /\
             (((PRV h = addr + &(LIST_HEAD_SIZE * (ORD (nth l (id2i lo))))) 
                 /\ (NXT (nth hl (ORD (nth l (id2i lo)))) = id2vi lo))
             \/
             ((NXT (nth dl (vi2i (PRV h))) = id2vi lo) /\ 
-            (REF (nth l (vi2i (PRV h))) = 0) /\ 
-            ~(ORD (nth l (vi2i (PRV h))) = NO_ORDER) /\ 
+            ((REF (nth l (vi2i (PRV h))) = 0) /\ 
+            ~(ORD (nth l (vi2i (PRV h))) = NO_ORDER)) /\ 
             (ORD (nth l (vi2i (PRV h))) = (ORD (nth l (id2i lo))))))
         else T
     ) /\ dlist_node addr f l dl hl (SUC lo) hi t))`;;
@@ -147,12 +147,12 @@ let DLIST_HEAD_DEF = define `
         ((NXT h = addr + &(LIST_HEAD_SIZE * order)) /\ (PRV h = addr + &(LIST_HEAD_SIZE * order)))
         \/
         ((PRV (nth dl (vi2i (NXT h))) = addr + &(LIST_HEAD_SIZE * order)) /\ 
-        (REF (nth l (vi2i (NXT h))) = 0) /\ 
-        ~(ORD (nth l (vi2i (NXT h))) = NO_ORDER) /\ 
+        ((REF (nth l (vi2i (NXT h))) = 0) /\ 
+        ~(ORD (nth l (vi2i (NXT h))) = NO_ORDER)) /\ 
         (ORD (nth l (vi2i (NXT h))) = order) /\
         (NXT (nth dl (vi2i (PRV h))) = addr + &(LIST_HEAD_SIZE * order)) /\ 
-        (REF (nth l (vi2i (PRV h))) = 0) /\ 
-        ~(ORD (nth l (vi2i (PRV h))) = NO_ORDER) /\ 
+        ((REF (nth l (vi2i (PRV h))) = 0) /\ 
+        ~(ORD (nth l (vi2i (PRV h))) = NO_ORDER)) /\ 
         (ORD (nth l (vi2i (PRV h))) = order))
     ) /\ dlist_head addr l dl (SUC order) maxorder t))`;;
 

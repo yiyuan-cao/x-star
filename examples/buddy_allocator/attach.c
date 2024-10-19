@@ -114,19 +114,50 @@ NOW:
 
 /*
 ENTAILMENTS:
-1.	REF (nth l pi) > 0 ==>
-	ifilter l = ifilter (modified l pi (0, NO_ORDER))
-2.	filter pi = F ==>
+1.filter_inv:
+	i < LENGTH l ==>
+	((REF v = 0 /\ ~(ORD v = NO_ORDER)) <=>
+		(REF (nth l i) = 0 /\ ~(ORD (nth l i) = NO_ORDER))) ==>
+	ifilter l = ifilter (modified l i v)
+
+-	REF (nth l pi) > 0 ==>
+-	ifilter l = ifilter (modified l pi (0, NO_ORDER))
+
+2.far_inv:
+	i < len ==>
+	len = LENGTH l ==>
+	filter (start + i) = F ==>
 	free_area_repr filter start end l = 
-	free_area_repr filter start end (modified l pi v)
+	free_area_repr filter start end (modified l i v)
+
+-	filter pid = F ==>
+-	free_area_repr filter start end l = 
+-	free_area_repr filter start end (modified l pi v)
+
 3.	apply merge_modified_list_lemma on store_pageinfo_array
-4.	REF (nth l pi) > 0 \/ ORD (nth l pi) = NO_ORDER ==>
-	dlist_node pool_ptr filter l hl start end dl =
-	dlist_node pool_ptr filter (modified l pi v) hl start end dl
-5.	REF (nth l pi) > 0 \/ ORD (nth l pi) = NO_ORDER ==>
-	dlist_head pool_ptr l 0 max_order hl =
-	dlist_head pool_ptr (modified l pi v) 0 max_order hl
-6.	LENGTH l = LENGTH (modified l pi v)
+
+4.dn_inv:
+	i < LENGTH l ==>
+	~(REF (nth l i) = 0 /\ ~(ORD (nth l i) = NO_ORDER)) ==>
+	dlist_node pool_ptr (ifilter l) l dl hl start end dl =
+	dlist_node pool_ptr (ifilter l) (modified l i v) dl hl start end dl
+
+-	REF (nth l pi) > 0 ==>
+-	dlist_node pool_ptr (ifilter l) l dl hl start end dl =
+-	dlist_node pool_ptr (ifilter l) (modified l pi v) dl hl start end dl
+
+5.dh_inv:
+	i < LENGTH l ==>
+	~(REF (nth l i) = 0 /\ ~(ORD (nth l i) = NO_ORDER)) ==>
+	dlist_head pool_ptr l 0 max_order hl ==>
+	dlist_head pool_ptr (modified l i v) 0 max_order hl
+
+-	REF (nth l pi) > 0 ==>
+-	dlist_head pool_ptr l 0 max_order hl =
+-	dlist_head pool_ptr (modified l pi v) 0 max_order hl
+
+6.modified_len:
+	LENGTH l = LENGTH (modified l pi v)
 
 inv_l := modified l pi (0, NO_ORDER)
 inv_dl := dl
@@ -261,19 +292,32 @@ new_l := modified inv_l bi (0, NO_ORDER)
 
 /*
 ENTAILMENTS:
-1.	ifilter l bid = T ==>
+1.far_split:
+	start <= lo ==> lo <= start + i ==> start + i < hi ==> i < LENGTH l ==>
+	ifilter l (start + i) = T ==> 
 	free_area_repr (ifilter l) start end l =
-	free_area_repr (ifilter (modified inv_l bi (0, NO_ORDER))) start end l **
-	store_zero_array (id2vi (&bid)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l bi)))) (PAGE_SIZE * (2 EXP (ORD (nth l bi))) - PAGE_SIZE * 2)
-2.	filter bid = F ==>
-	free_area_repr filter start end l =
-	free_area_repr filter start end l (modified inv_l bi v)
+	free_area_repr (ifilter (modified inv_l i (0, NO_ORDER))) start end l **
+	store_zero_array (id2vi (start + i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PAGE_SIZE * 2)
+
+-	ifilter l bid = T ==>
+-	free_area_repr (ifilter l) start end l =
+-	free_area_repr (ifilter (modified inv_l bi (0, NO_ORDER))) start end l **
+-	store_zero_array (id2vi (&bid)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l bi)))) (PAGE_SIZE * (2 EXP (ORD (nth l bi))) - PAGE_SIZE * 2)
+
+2.far_inv
+-	filter bid = F ==>
+-	free_area_repr filter start end l =
+-	free_area_repr filter start end l (modified inv_l bi v)
+
 3.	apply merge_modified_list_lemma on store_pageinfo_array
-4.	DATA_AT_PTR (id2vi (&bid), &0) **
+
+4.?
+	DATA_AT_PTR (id2vi (&bid), &0) **
 	DATA_AT_PTR (id2vi (&bid) + &PTR_SIZE, &0) **
 	store_zero_array (id2vi (&bid)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PAGE_SIZE * 2) =
 	store_zero_array (id2vi (&bid)) 0 (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order))
-5.	new_pid = min pid bid /\ ... ==>
+5.?
+	new_pid = min pid bid /\ ... ==>
 	store_zero_array (id2vi (&pid)) 0 (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order)) **
 	store_zero_array (id2vi (&bid)) 0 (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order)) =
 	store_zero_array (id2vi (&new_pid)) 0 (PAGE_SIZE * (2 EXP (SUC order))) (PAGE_SIZE * (2 EXP (SUC order)))
@@ -371,10 +415,10 @@ NOW:
 
 /*
 ENTAILMENT:
-1.	(REF (nth l pi) = 0) /\ ORD (nth l pi) = NO_ORDER) ==>
-	free_area_repr (ifilter l) start end l **
-	store_zero_array (id2vi (&pid)) (PAGE_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PAGE_SIZE * 2) =
-	free_area_repr (ifilter (modified l pi (0, order))) start end (modified l pi (0, order))
+1.far_merge
+-	(REF (nth l pi) = 0) /\ (ORD (nth l pi) = NO_ORDER) ==>
+-	free_area_repr (ifilter l) start end l **
+-	store_zero_array (id2vi (&pid)) (PAGE_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PAGE_SIZE * 2) =
+-	free_area_repr (ifilter (modified l pi (0, order))) start end (modified l pi (0, order))
 */
 }
-	
