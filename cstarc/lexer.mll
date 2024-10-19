@@ -155,6 +155,7 @@ rule initial = parse
   | preprocessing_number          { failwith "These characters form a preprocessor number, but not a constant" }
   | (['L' 'u' 'U']|"") "'"        { ignore (char lexbuf); char_literal_end lexbuf; failwith "unsupported" }
   | (['L' 'u' 'U']|""|"u8") "\""  { STRING_LITERAL (string_literal (new_string_literal_buf ()) lexbuf) }
+  | "`"                           { RAW_STRING_LITERAL (raw_string_literal (Buffer.create 17) lexbuf) }
 
   | "[["                          { LBRACK_BRACK }
   | "]]"                          { RBRACK_BRACK }
@@ -234,6 +235,7 @@ rule initial = parse
   | "_Static_assert"              { STATIC_ASSERT }
   | "_Thread_local"               { THREAD_LOCAL }
   | "auto"                        { AUTO }
+  | "bool"                        { BOOL }
   | "break"                       { BREAK }
   | "case"                        { CASE }
   | "char"                        { CHAR }
@@ -313,6 +315,14 @@ and string_literal buf = parse
                   Buffer.add_char buf.value c;
                   Buffer.add_string buf.literal l;
                   string_literal buf lexbuf }
+
+and raw_string_literal buf = parse
+  | '`'        { Buffer.contents buf }
+  | '\n'       { Buffer.add_string buf "\n"; raw_string_literal buf lexbuf }
+  | eof        { failwith "missing terminating \"`\" character" }
+  | _          { let l = Lexing.lexeme lexbuf in
+                  Buffer.add_string buf l;
+                  raw_string_literal buf lexbuf }
 
 (* We assume gcc -E syntax but try to tolerate variations. *)
 and hash = parse
