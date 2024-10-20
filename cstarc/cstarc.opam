@@ -6,6 +6,7 @@ depends: [
   "dune" {>= "3.14"}
   "menhir"
   "core"
+  "core_unix"
   "pprint"
   "ppx_deriving"
   "odoc" {with-doc}

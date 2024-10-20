@@ -455,8 +455,12 @@ and declarator_to_doc t i =
   match t with
   | Tvoid -> (ty "void", i)
   | T_Bool -> (ty "_Bool", i)
+  | Tchar -> (ty "char", i)
+  | Tuchar -> (ty "unsigned char", i)
   | Tint -> (ty "int", i)
-  | Tunsigned -> (ty "unsigned", i)
+  | Tuint -> (ty "unsigned int", i)
+  | Tlong -> (ty "long", i)
+  | Tulong -> (ty "unsigned long", i)
   | Tprop -> (ty "PROP", i)
   | Thprop -> (ty "HPROP", i)
   | Tptr t ->
@@ -503,6 +507,7 @@ and constant_to_doc = function
   | Cboolean b -> if b then kwd "true" else kwd "false"
   | Cstring s ->
       seperate_map empty s.literal ~f:(fun s -> surround_quotes "\"" (str s))
+  | Cquoted s -> surround_quotes "`" (str s)
   | Cnullval -> expr_to_doc (Econst (Cinteger 0))
 
 and attribute_list_to_doc attrs follow_break =
@@ -529,15 +534,9 @@ and cstar_attribute_to_doc = function
   | Aassert a -> ("cstar::assert", expr_to_doc a)
   | Aghostvar v -> ("cstar::ghostvar", declaration_to_doc_inner v)
   | Ainvariant i -> ("cstar::invariant", expr_to_doc i)
-  | Aghostcommand c ->
-      let stmt =
-        match c with
-        | Sexpr (expr, attrs, _) ->
-            attribute_list_to_doc attrs true ^^ expr_to_doc expr
-            |> group
-        | s -> stmt_to_doc s
-      in
-      ("cstar::ghostcommand", stmt)
+  | Aghostcmd ss ->
+      let stmts = ss |> List.map ~f:stmt_to_doc |> seperate break in
+      ("cstar::ghostcmd", stmts)
   | Aargument a ->
       ("cstar::argument", seperate_map comma_break ~f:expr_to_doc a)
 

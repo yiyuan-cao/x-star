@@ -57,7 +57,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   type primitive_type = { data_type: data_type; signed: bool }
   let typ_of_primitive { data_type; signed } = 
     match data_type with
-    | Dint -> if signed then Tint else Tunsigned
+    | Dchar -> if signed then Tchar else Tuchar
+    | Dint -> if signed then Tint else Tuint
+    | Dlong -> if signed then Tlong else Tulong
     | _ -> failwith "unsupported primitive type"
 
   type type_specifier = 
@@ -82,6 +84,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token VARIABLE TYPE
 %token<Ast.constant> CONSTANT 
 %token<Ast.string_literal> STRING_LITERAL
+%token<string> RAW_STRING_LITERAL
 
 %token ALIGNAS "_Alignas"
 %token ALIGNOF "_Alignof"
@@ -188,7 +191,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token CSTAR_INVARIANT "cstar::invariant"
 %token CSTAR_GHOSTVAR "cstar::ghostvar"
 %token CSTAR_ASSERT "cstar::assert"
-%token CSTAR_GHOSTCOMMAND "cstar::ghostcommand"
+%token CSTAR_GHOSTCMD "cstar::ghostcmd"
 %token CSTAR_ARGUMENT "cstar::argument"
 
 %token SEP "SEP"
@@ -356,6 +359,8 @@ primary_expression:
     { Econst c }
 | s=string_literal
     { Econst (Cstring s) }
+| s=RAW_STRING_LITERAL
+    { Econst (Cquoted s) }
 | "(" e=expression ")"
     { e }
 | generic_selection
@@ -845,15 +850,17 @@ parameter_type_list:
 
 parameter_list:
 | p=parameter_declaration
-    { [p] }
+    { p }
 | ps=parameter_list "," p=parameter_declaration
-    { ps @ [p] }
+    { ps @ p }
 
 parameter_declaration:
 | t=declaration_specifiers d=declarator_varname
-    { (declarator_type d t, identifier d) }
-| declaration_specifiers abstract_declarator?
-    { failwith "unsupported abstract declarator" }
+    { [(declarator_type d t, identifier d)] }
+| t=declaration_specifiers d=abstract_declarator?
+    { match (d, t) with
+      | None, Tvoid -> []
+      | _ -> failwith "unsupported abstract declarator" }
 
 identifier_list:
 | var_name
@@ -1262,16 +1269,12 @@ cstar_assert_attribute:
     { [Acstar (Aassert e)] }
 
 cstar_ghostcommand_attribute:
-| CSTAR_GHOSTCOMMAND "(" s=cstar_command_statement ")"
-    { [Acstar (Aghostcommand s)] }
+| CSTAR_GHOSTCMD "(" s=cstar_command_statement ")"
+    { [Acstar (Aghostcmd s)] }
 
 cstar_command_statement:
-| s=scoped(compound_statement)
-| s=scoped(selection_statement)
-| s=scoped(iteration_statement)
-    { s }
-| e=expression
-    { Sexpr (e, [], mk_range $sloc) }
+| ss=block_item_list?
+    { ss -? [] }
 
 cstar_argument_attribute:
 | CSTAR_ARGUMENT "(" es=argument_expression_list?  ")"
