@@ -1,0 +1,260 @@
+// DEV notes:
+//   Possible syntactric improvements: syntax for repeat ([x] * n), append (x ++ y), list slice (x[i..j]), ...
+//   Use early return to get the symbolic state __state at a program point, and manually insert a [[cstar::assert]].
+//   No extraction in this example: all object logic-level entities are in quotes.
+//   For now, we can also delegate directly to VST-IDE support for `which-implies`.
+//   Add [[cstar::assert]] before and after [[cstar::proof]] to see communication with VST-IDE.
+// CStar attributes:
+//   MUST support: proof, require, ensure, assert, invariant, parameter, argument
+//   OPTIONAL: type (check the type of an object logic term)
+// Possible issues:
+//   Negative number syntax is different from C: -1 vs (--(&1))
+//   Only allows antiquotation of `term`-typed variables of object logic type `:hprop`
+
+#include "cstar.h"
+
+#define PAGE_SHIFT 12
+#define PAGE_SIZE 4096
+
+size_t base;
+size_t end;
+size_t cur;
+
+size_t hyp_early_alloc_nr_pages(void)
+    [[cstar::parameter(`_base : Z`)]]
+    [[cstar::parameter(`_cur : Z`)]]
+    [[cstar::require(`
+        fact(_base <= _cur) **
+        data_at(&"base", Tptr, _base) **
+        data_at(&"cur", Tptr, _cur)
+    `)]]
+    [[cstar::ensure(`
+        fact(__result == (_cur - _base) / &PAGE_SIZE) **
+        data_at(&"base", Tptr, _base) **
+        data_at(&"cur", Tptr, _cur)
+    `)]]
+{
+	return (cur - base) >> PAGE_SHIFT;
+}
+
+[[cstar::proof(
+
+    [[cstar::type(`:bool`)]]
+    term in_range(
+        [[cstar::type(`:int`)]] term i,
+        [[cstar::type(`:int`)]] term lo,
+        [[cstar::type(`:int`)]] term hi
+    ) = {
+        return `${lo:int} <= ${i:int} && ${i:int} <= ${hi:int}`;
+    }
+
+    // Above is a meta-level function definition that assembles object logic terms.
+    // An alternative is to define a object logic level function, e.g.
+    //     thm in_range_def = define `in_range(i:int, lo:int, hi:int) = lo <= i && i <= hi`;
+    // Choose meta-level function definition over object logic level definition if it's just for simple `macros` in the object logic terms.
+    // Object logic level definition is useful if it has general properties or should be folded most of the time.
+    // Moreover, one can also provide a meta-level function definition that returns the application of the object logic level function, e.g.
+    //     term in_range_app(term i, term lo, term hi) { return `in_range(${i}, ${lo}, ${hi})`; }
+    // Although I don't see much value in this.
+)]];
+
+void clear_page(void *to)
+    [[cstar::require(`
+        undef_array_at(to, Tchar, &PAGE_SIZE)
+    `)]]
+    [[cstar::ensure(`
+        array_at(to, Tchar, ireplicate(&PAGE_SIZE, &0))
+    `)]]
+{
+    [[cstar::assert(`
+        exists (_to:addr).
+        data_at(&"to", Tptr, _to) **
+        undef_array_at(_to, Tchar, &PAGE_SIZE)
+    `)]]; // All cstar::asserts are obtained from symbolic execution results (with manual fixes)
+
+    int i = 0;
+
+    [[cstar::assert(`
+        exists (_i:Z) (_to:addr).
+        fact(_i == &0) **
+        data_at(&"i", Tint, _i) **
+        data_at(&"to", Tptr, _to) **
+        undef_array_at(_to, Tchar, &PAGE_SIZE)
+    `)]];
+
+    [[cstar::proof( // Proof blocks have function scope inside of functions
+        
+        [[cstar::type(`:hprop`)]]
+        term locals = `
+            data_at(&"i", Tint, _i) **
+            data_at(&"to", Tptr, _to)
+        `;
+
+        [[cstar::type(`:hprop`)]]
+        term whole_array = `
+            undef_array_at(_to, Tchar, &PAGE_SIZE)
+        `;
+        
+        [[cstar::type(`:hprop`)]]
+        term splitted_array_at(
+            [[cstar::type(`:int`)]] term i
+        ) = {
+            return `
+                array_at(_to, Tchar, ireplicate(${i:int}, &0)) **
+                undef_slice_at(_to, Tchar, ${i:int}, &PAGE_SIZE - ${i:int})
+            `;
+        }
+        
+        term splitted_array_at_i = splitted_array_at(`_i:int`);
+        // Clumsy because don't support expression in antiquotation for now...
+
+        tmp_goal = `
+            _i == &0 // under these facts that holds at this point
+            ==>
+            (${whole_array:hprop}
+            |--
+            ${splitted_array_at_i:hprop})
+        `;
+        
+        // ... constructing actual proof steps here ...
+        
+        thm split_thm = axiom(tmp_goal);
+        
+        // apply the partial transformation to the symbolic state
+        // __transform = which_implies(__state, split_thm);
+        __transform = axiom(`
+            ${__state:hprop}
+            |--
+            exists (_i:Z) (_to:addr).
+            fact(_i == &0) **
+            ${locals:hprop} **
+            ${splitted_array_at_i:hprop}
+        `);
+        
+    )]]; // this block split the array into two parts
+
+    [[cstar::proof(
+
+        [[cstar::type(`:bool`)]]
+        term i_in_range = in_range(`_i:int`, `&0`, `&PAGE_SIZE`);
+
+        tmp_goal = `
+            fact(_i == &0)
+            |--
+            fact(${i_in_range:bool})
+        `;
+
+        // ... constructing actual proof steps here ...
+
+        tmp_thm = axiom(tmp_goal);
+
+        __transform = axiom(`
+            ${__state:hprop}
+            |--
+            exists (_i:Z) (_to:addr).
+            fact(${i_in_range:bool}) **
+            ${locals:hprop} **
+            ${splitted_array_at_i:hprop}
+        `);
+
+    )]]; // This block establishes the invariant initially
+    
+    
+    [[cstar::invariant(`
+        exists (_i:Z) (_to:addr).
+        fact(${i_in_range:bool}) **
+        ${locals:hprop} **
+        ${splitted_array_at_i:hprop}
+    `)]]
+
+    while (i < PAGE_SIZE)
+    {
+        [[cstar::assert(`
+            exists (_i:Z) (_to:addr).
+            fact(_i < &PAGE_SIZE) **
+            fact(${i_in_range:bool}) **
+            ${locals:hprop} **
+            ${splitted_array_at_i:hprop}
+        `)]];
+        
+        [[cstar::proof(
+
+            term before_split = `
+                fact(_i < &PAGE_SIZE) **
+                fact(${i_in_range:bool}) **
+                undef_slice_at(_to, Tchar, _i, &PAGE_SIZE - _i)
+            `;
+            
+            term i_plus_in_range = in_range(`_i + (&1)`, `&1`, `&PAGE_SIZE`); // greater than 0 is necessary
+            
+            term after_split = `
+                fact(${i_plus_in_range:bool}) **
+                undef_data_at(_to + _i * size_of(Tchar), Tchar) ** // What does VST-IDE need here?
+                undef_slice_at(_to, Tchar, _i + 1, &PAGE_SIZE - (_i + 1))
+            `;
+            
+            tmp_goal = `
+                ${before_split:hprop}
+                |--
+                ${after_split:hprop}
+            `;
+            
+            // ... constructing actual proof steps here ...
+            
+            tmp_thm = axiom(tmp_goal);
+            
+            // __transform = which_implies(__state, tmp_thm);
+            __transform = axiom(`
+                ${__state:hprop}
+                |--
+                exists (_i:Z) (_to:addr).
+                ${locals:hprop} **
+                ${after_split:hprop}
+            `);
+        )]]; // Picks out the first element of the unintialized part and knows the i+1 part is still in the range.
+
+        *((char *)to + i) = (char) 0;
+        
+        [[cstar::assert(`
+            exists (_i:Z) (_to:addr).
+            fact(${i_plus_in_range:bool}) **
+            ${locals:hprop} **
+            data_at(_to + _i * size_of(Tchar), Tchar, &0) ** // (to + i) is assigned 0
+            array_at(_to, Tchar, ireplicate(_i, &0)) **
+            undef_slice_at(_to, Tchar, _i + 1, &PAGE_SIZE - (_i + 1))
+        `)]];
+
+        i++; // Need to check how VST-IDE handles existentially quantified _i.
+
+        [[cstar::assert(`
+            exists (_i:Z) (_to:addr). // _i is still the old value of i
+            fact(${i_plus_in_range:bool}) **
+            data_at(&"i", Tint, _i + (&1)) ** // i is incremented
+            data_at(&"to", Tptr, _to) **
+            data_at(_to + _i * size_of(Tchar), Tchar, &0) **
+            array_at(_to, Tchar, ireplicate(_i, &0)) **
+            undef_slice_at(_to, Tchar, _i + 1, &PAGE_SIZE - (_i + 1))
+        `)]];
+
+        [[cstar::proof(
+            // establish the invariant
+            thm merge = axiom `
+                _i >= &0
+                ==>
+                (data_at(_to + _i * size_of(Tchar), Tchar, &0) **
+                array_at(_to, Tchar, ireplicate(_i, &0))
+                |--
+                array_at(_to, Tchar, ireplicate(_i + 1, &0)))
+            `;
+            // merge and reinstantiate existential variables to (_i + (&1))
+            __transform = axiom `42 = 21 + 21`; // Omit the proof details here.
+        )]];
+
+        [[cstar::assert(`
+            exists (_i:Z) (_to:addr).
+            fact(${i_in_range:bool}) **
+            ${locals:hprop} **
+            ${splitted_array_at_i:hprop}
+        `)]];
+    }
+}
