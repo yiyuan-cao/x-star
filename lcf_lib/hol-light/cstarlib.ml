@@ -35,7 +35,7 @@ let set_preference debug =
     install_user_printer("print_typed_var", print_typed_var);
     if debug then begin
         type_invention_error := true;
-        (* print_types_of_subterms := 2; *)
+        print_types_of_subterms := 2;
         reduce_interface ("true", `T:bool`);
         reduce_interface ("false", `F:bool`);
         reduce_interface ("&&", `(/\):bool->bool->bool`);
@@ -44,6 +44,8 @@ let set_preference debug =
         reduce_interface ("exists", `(?):(A->bool)->bool`);
     end
 ;;
+
+set_preference false;;
 
 (* Unset multiple subgoals (a lexer option handled by preprocessor) *)
 unset_then_multiple_subgoals;;
@@ -314,9 +316,6 @@ new_constant ("array_at", `:addr # ctype # ilist -> hprop`);;
 new_constant ("undef_array_at", `:addr # ctype # int -> hprop`);;
 
 new_constant ("malloc_at", `:addr # int -> hprop`);;                 (* malloc_at base, size of malloced region *)
-
-(* Debug mode *)
-set_preference true;;
 
 (* separation logic entailment defines an order on hprop *)
 let hentail_refl = new_axiom `!hp. hp |- hp`;;
