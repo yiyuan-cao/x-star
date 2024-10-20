@@ -243,7 +243,7 @@ override_interface("<=>", `(=):bool->bool->bool`);;
 override_interface ("/", `(div):int->int->int`);;
 
 (* Notations for parsing and printing separation logic assertions *)
-parse_as_infix ("|-", (2, "right"));;
+parse_as_infix ("|--", (2, "right"));;
 parse_as_infix ("-|-", (2, "right"));;
 parse_as_infix ("-*", (4, "right"));;
 parse_as_infix ("-->", (4, "right"));;
@@ -251,7 +251,7 @@ parse_as_infix ("||", (6, "right"));;
 parse_as_infix ("&&", (8, "right"));;
 parse_as_infix ("**", (8, "right"));;
 
-override_interface ("|-", `hentail : hprop -> hprop -> bool`);;
+override_interface ("|--", `hentail : hprop -> hprop -> bool`);;
 override_interface ("-|-", `(=):hprop->hprop->bool`);; (* hequiv extensionality by default *)
 override_interface ("pure", `hpure : bool -> hprop`);;
 override_interface ("fact", `hfact : bool -> hprop`);;
@@ -318,13 +318,13 @@ new_constant ("undef_array_at", `:addr # ctype # int -> hprop`);;
 new_constant ("malloc_at", `:addr # int -> hprop`);;                 (* malloc_at base, size of malloced region *)
 
 (* separation logic entailment defines an order on hprop *)
-let hentail_refl = new_axiom `!hp. hp |- hp`;;
+let hentail_refl = new_axiom `!hp. hp |-- hp`;;
 add_to_database "hentail_refl" hentail_refl;;
 
-let hentail_trans = new_axiom `!hp1 hp2 hp3. (hp1 |- hp2) ==> (hp2 |- hp3) ==> (hp1 |- hp3)`;;
+let hentail_trans = new_axiom `!hp1 hp2 hp3. (hp1 |-- hp2) ==> (hp2 |-- hp3) ==> (hp1 |-- hp3)`;;
 add_to_database "hentail_trans" hentail_trans;;
 
-let hentail_antisym = new_axiom `!hp1 hp2. (hp1 |- hp2) ==> (hp2 |- hp1) ==> (hp1 -|- hp2)`;;
+let hentail_antisym = new_axiom `!hp1 hp2. (hp1 |-- hp2) ==> (hp2 |-- hp1) ==> (hp1 -|- hp2)`;;
 add_to_database "hentail_antisym" hentail_antisym;;
 
 (* (hsep, hemp) form a commutative monoid *)
@@ -341,17 +341,17 @@ let hsep_hemp_right = new_axiom `!hp. hp ** emp -|- hp`;;
 add_to_database "hsep_hemp_right" hsep_hemp_right;;
 
 (* hwand-hsep adjoint law *)
-let hwand_hsep_adjoint = new_axiom `!hp1 hp2 hp3. (hp1 ** hp2 |- hp3) <=> (hp1 |- hp2 -* hp3)`;;
+let hwand_hsep_adjoint = new_axiom `!hp1 hp2 hp3. (hp1 ** hp2 |-- hp3) <=> (hp1 |-- hp2 -* hp3)`;;
 add_to_database "hwand_hsep_adjoint" hwand_hsep_adjoint;;
 
 (* hsep "frame" or cancellation rules *)
-let hsep_cancel_left = new_axiom `!hp2 hp2' hp1. (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1 ** hp2')`;;
+let hsep_cancel_left = new_axiom `!hp2 hp2' hp1. (hp2 |-- hp2') ==> (hp1 ** hp2 |-- hp1 ** hp2')`;;
 add_to_database "hsep_cancel_left" hsep_cancel_left;;
 
-let hsep_cancel_right = new_axiom `!hp1 hp1' hp2. (hp1 |- hp1') ==> (hp1 ** hp2 |- hp1' ** hp2)`;;
+let hsep_cancel_right = new_axiom `!hp1 hp1' hp2. (hp1 |-- hp1') ==> (hp1 ** hp2 |-- hp1' ** hp2)`;;
 add_to_database "hsep_cancel_right" hsep_cancel_right;;
 
-let hsep_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |- hp1') ==> (hp2 |- hp2') ==> (hp1 ** hp2 |- hp1' ** hp2')`;;
+let hsep_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |-- hp1') ==> (hp2 |-- hp2') ==> (hp1 ** hp2 |-- hp1' ** hp2')`;;
 add_to_database "hsep_monotone" hsep_monotone;;
 
 (* htrue hfalse definitions *)
@@ -362,50 +362,50 @@ let hfalse_def = new_axiom `!hp. hfalse = (hpure F)`;;
 add_to_database "hfalse_def" hfalse_def;;
 
 (* natural deduction of ordinary higher-order logic connectives *)
-let htrue_intro = new_axiom `!hp. hp |- htrue`;;
+let htrue_intro = new_axiom `!hp. hp |-- htrue`;;
 add_to_database "htrue_intro" htrue_intro;;
 
-let hfalse_elim = new_axiom `!hp. hfalse |- hp`;;
+let hfalse_elim = new_axiom `!hp. hfalse |-- hp`;;
 add_to_database "hfalse_elim" hfalse_elim;;
 
-let hand_intro = new_axiom `!hp1 hp2 hp3. (hp1 |- hp2) ==> (hp1 |- hp3) ==> (hp1 |- hp2 && hp3)`;;
+let hand_intro = new_axiom `!hp1 hp2 hp3. (hp1 |-- hp2) ==> (hp1 |-- hp3) ==> (hp1 |-- hp2 && hp3)`;;
 add_to_database "hand_intro" hand_intro;;
 
-let hand_elim1 = new_axiom `!hp1 hp2. (hp1 && hp2 |- hp1)`;;
+let hand_elim1 = new_axiom `!hp1 hp2. (hp1 && hp2 |-- hp1)`;;
 add_to_database "hand_elim1" hand_elim1;;
 
-let hand_elim2 = new_axiom `!hp1 hp2. (hp1 && hp2 |- hp2)`;;
+let hand_elim2 = new_axiom `!hp1 hp2. (hp1 && hp2 |-- hp2)`;;
 add_to_database "hand_elim2" hand_elim2;;
 
-let hor_intro1 = new_axiom `!hp1 hp2. (hp1 |- hp1 || hp2)`;;
+let hor_intro1 = new_axiom `!hp1 hp2. (hp1 |-- hp1 || hp2)`;;
 add_to_database "hor_intro1" hor_intro1;;
 
-let hor_intro2 = new_axiom `!hp1 hp2. (hp2 |- hp1 || hp2)`;;
+let hor_intro2 = new_axiom `!hp1 hp2. (hp2 |-- hp1 || hp2)`;;
 add_to_database "hor_intro2" hor_intro2;;
 
-let hor_elim = new_axiom `!hp1 hp2 hp3. (hp1 |- hp3) ==> (hp2 |- hp3) ==> (hp1 || hp2 |- hp3)`;;
+let hor_elim = new_axiom `!hp1 hp2 hp3. (hp1 |-- hp3) ==> (hp2 |-- hp3) ==> (hp1 || hp2 |-- hp3)`;;
 add_to_database "hor_elim" hor_elim;;
 
-let himpl_hand_adjoint = new_axiom `!hp1 hp2 hp3. (hp1 && hp2 |- hp3) <=> (hp1 |- hp2 --> hp3)`;;
+let himpl_hand_adjoint = new_axiom `!hp1 hp2 hp3. (hp1 && hp2 |-- hp3) <=> (hp1 |-- hp2 --> hp3)`;;
 add_to_database "himpl_hand_adjoint" himpl_hand_adjoint;;
 
-let hexists_intro = new_axiom `!hp hpA (x : A). (hp |- hpA x) ==> (hp |- (exists x : A. hpA x))`;; (* Instantiation on the right *)
+let hexists_intro = new_axiom `!hp hpA (x : A). (hp |-- hpA x) ==> (hp |-- (exists x : A. hpA x))`;; (* Instantiation on the right *)
 add_to_database "hexists_intro" hexists_intro;;
 
-let hexists_elim = new_axiom `!hp hpA. (!x : A. hpA x |- hp) ==> ((exists x : A. hpA x) |- hp)`;; (* Used for extraction *)
+let hexists_elim = new_axiom `!hp hpA. (!x : A. hpA x |-- hp) ==> ((exists x : A. hpA x) |-- hp)`;; (* Used for extraction *)
 add_to_database "hexists_elim" hexists_elim;;
 
-let hforall_intro = new_axiom `!hp hpA. (!x : A. hp |- hpA x) ==> (hp |- (forall x : A. hpA x))`;; (* Used for extraction *)
+let hforall_intro = new_axiom `!hp hpA. (!x : A. hp |-- hpA x) ==> (hp |-- (forall x : A. hpA x))`;; (* Used for extraction *)
 add_to_database "hforall_intro" hforall_intro;;
 
-let hforall_elim = new_axiom `!hp hpA (x : A). (hpA x |- hp) ==> ((forall x : A. hpA x) |- hp)`;; (* Instantiation on the left *)
+let hforall_elim = new_axiom `!hp hpA (x : A). (hpA x |-- hp) ==> ((forall x : A. hpA x) |-- hp)`;; (* Instantiation on the left *)
 add_to_database "hforall_elim" hforall_elim;;
 
 (* hpure intro-and-elim rules *)
-let hpure_intro = new_axiom `!p hp1 hp2. p ==> (hp1 |- hp2) ==> (hp1 |- hpure p && hp2)`;; (* Add pure fact to the right *)
+let hpure_intro = new_axiom `!p hp1 hp2. p ==> (hp1 |-- hp2) ==> (hp1 |-- hpure p && hp2)`;; (* Add pure fact to the right *)
 add_to_database "hpure_intro" hpure_intro;;
 
-let hpure_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hpure p && hp1 |- hp2)`;; (* Extraction of pure fact to the higher-order logic context on the left *)
+let hpure_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |-- hp2)) ==> (hpure p && hp1 |-- hp2)`;; (* Extraction of pure fact to the higher-order logic context on the left *)
 add_to_database "hpure_elim" hpure_elim;;
 
 (* hpure extraction rules *)
@@ -429,10 +429,10 @@ let hfact_hpure = new_axiom `!p hp. hfact p ** hp -|- hpure p && hp`;;
 add_to_database "hfact_hpure" hfact_hpure;;
 
 (* hfact intro-and-elim rules *)
-let hfact_intro = new_axiom `!p hp1 hp2. p ==> (hp1 |- hp2) ==> (hp1 |- hfact p ** hp2)`;;
+let hfact_intro = new_axiom `!p hp1 hp2. p ==> (hp1 |-- hp2) ==> (hp1 |-- hfact p ** hp2)`;;
 add_to_database "hfact_intro" hfact_intro;;
 
-let hfact_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hfact p ** hp1 |- hp2)`;;
+let hfact_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |-- hp2)) ==> (hfact p ** hp1 |-- hp2)`;;
 add_to_database "hfact_elim" hfact_elim;;
 
 (* hfact extraction rules *)
@@ -449,10 +449,10 @@ add_to_database "hsep_hexists_left" hsep_hexists_left;;
 let hsep_hexists_right = new_axiom `!hp hpA. hp ** (exists x : A. hpA x) -|- exists x : A. (hp ** hpA x)`;;
 add_to_database "hsep_hexists_right" hsep_hexists_right;;
 
-let hsep_hforall_left = new_axiom `!hpA hp. (forall x : A. hpA x) ** hp |- forall x : A. (hpA x ** hp)`;; (* Note the reverse side for forall-extraction doesn't hold *)
+let hsep_hforall_left = new_axiom `!hpA hp. (forall x : A. hpA x) ** hp |-- forall x : A. (hpA x ** hp)`;; (* Note the reverse side for forall-extraction doesn't hold *)
 add_to_database "hsep_hforall_left" hsep_hforall_left;;
 
-let hsep_hforall_right = new_axiom `!hp hpA. hp ** (forall x : A. hpA x) |- forall x : A. (hp ** hpA x)`;; (* Note the reverse side for forall-extraction doesn't hold *)
+let hsep_hforall_right = new_axiom `!hp hpA. hp ** (forall x : A. hpA x) |-- forall x : A. (hp ** hpA x)`;; (* Note the reverse side for forall-extraction doesn't hold *)
 add_to_database "hsep_hforall_right" hsep_hforall_right;;
 
 let hand_hexists_left = new_axiom `!hpA hp. (exists x : A. hpA x) && hp -|- exists x : A. (hpA x && hp)`;;
@@ -461,24 +461,24 @@ add_to_database "hand_hexists_left" hand_hexists_left;;
 let hand_hexists_right = new_axiom `!hp hpA. hp && (exists x : A. hpA x) -|- exists x : A. (hp && hpA x)`;;
 add_to_database "hand_hexists_right" hand_hexists_right;;
 
-let hand_hforall_left = new_axiom `!hpA hp. (forall x : A. hpA x) && hp |- forall x : A. (hpA x && hp)`;; (* Reverse side holds in HOL? (no empty type) *)
+let hand_hforall_left = new_axiom `!hpA hp. (forall x : A. hpA x) && hp |-- forall x : A. (hpA x && hp)`;; (* Reverse side holds in HOL? (no empty type) *)
 add_to_database "hand_hforall_left" hand_hforall_left;;
 
-let hand_hforall_right = new_axiom `!hp hpA. hp && (forall x : A. hpA x) |- forall x : A. (hp && hpA x)`;; (* Reverse side holds in HOL? (no empty type) *)
+let hand_hforall_right = new_axiom `!hp hpA. hp && (forall x : A. hpA x) |-- forall x : A. (hp && hpA x)`;; (* Reverse side holds in HOL? (no empty type) *)
 add_to_database "hand_hforall_right" hand_hforall_right;;
 
 
 (* Other monotonicity rules; used for constructing entailments under quantifiers or operators *)
-let hexists_monotone = new_axiom `!hpA hpA'. (!x:A. hpA x |- hpA' x) ==> ((exists x:A. hpA x) |- (exists x:A. hpA' x))`;;
+let hexists_monotone = new_axiom `!hpA hpA'. (!x:A. hpA x |-- hpA' x) ==> ((exists x:A. hpA x) |-- (exists x:A. hpA' x))`;;
 add_to_database "hexists_monotone" hexists_monotone;;
 
-let hforall_monotone = new_axiom `!hpA hpA'. (!x:A. hpA x |- hpA' x) ==> ((forall x:A. hpA x) |- (forall x:A. hpA' x))`;;
+let hforall_monotone = new_axiom `!hpA hpA'. (!x:A. hpA x |-- hpA' x) ==> ((forall x:A. hpA x) |-- (forall x:A. hpA' x))`;;
 add_to_database "hforall_monotone" hforall_monotone;;
 
-let hand_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |- hp1') ==> (hp2 |- hp2') ==> (hp1 && hp2 |- hp1' && hp2')`;;
+let hand_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |-- hp1') ==> (hp2 |-- hp2') ==> (hp1 && hp2 |-- hp1' && hp2')`;;
 add_to_database "hand_monotone" hand_monotone;;
 
-let hor_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |- hp1') ==> (hp2 |- hp2') ==> (hp1 || hp2 |- hp1' || hp2')`;;
+let hor_monotone = new_axiom `!hp1 hp1' hp2 hp2'. (hp1 |-- hp1') ==> (hp2 |-- hp2') ==> (hp1 || hp2 |-- hp1' || hp2')`;;
 add_to_database "hor_monotone" hor_monotone;;
 
 (* definition of hiter, hiter_range, and their split rules *)
@@ -524,10 +524,10 @@ prove (`!hps1 hps2. hiter (APPEND hps1 hps2) -|- hiter hps1 ** hiter hps2`,
 );;
 
 (* axioms of byte_at and bytes_at *)
-let byte_at_dup = new_axiom `!x:addr v1 v2. byte_at (x, v1) ** byte_at (x, v2) |- hfalse`;;
+let byte_at_dup = new_axiom `!x:addr v1 v2. byte_at (x, v1) ** byte_at (x, v2) |-- hfalse`;;
 add_to_database "byte_at_dup" byte_at_dup;;
 
-let byte_at_valid = new_axiom `!x:addr v. byte_at (x, v) |- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`;;
+let byte_at_valid = new_axiom `!x:addr v. byte_at (x, v) |-- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`;;
 add_to_database "byte_at_valid" byte_at_valid;;
 
 let bytes_at_def = new_axiom `!x:addr bs. bytes_at (x, bs) = hiter_irange0 ((\i. byte_at (x + i, EL (num_of_int i) bs)), ilength bs)`;;
@@ -551,7 +551,7 @@ let undef_data_at_def = new_axiom `!x ty. undef_data_at (x, ty) =
                                     bytes_at (x, bs)`;;
 add_to_database "undef_data_at_def" undef_data_at_def;;
 
-let data_at_to_undef_data_at = new_axiom `!x ty. data_at (x, ty, v) |- undef_data_at (x, ty)`;;
+let data_at_to_undef_data_at = new_axiom `!x ty. data_at (x, ty, v) |-- undef_data_at (x, ty)`;;
 add_to_database "data_at_to_undef_data_at" data_at_to_undef_data_at;;
 
 (* definition of cell_at and undef_cell_at *)
@@ -595,13 +595,50 @@ add_to_database "undef_array_split" undef_array_split;;
 
 (* axioms of malloc_at *)
 let malloc_at_inv = new_axiom `!x:addr n:int.
-            malloc_at (x, n) |- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`;;
+            malloc_at (x, n) |-- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`;;
 add_to_database "malloc_at_inv" malloc_at_inv;;
 
 (* Example: hsep_hfalse_left *)
-let hsep_hfalse_left = prove (`!hp. false ** hp |- false`,
+let hsep_hfalse_left = prove (`!hp. false ** hp |-- false`,
     FIX_TAC "hp" THEN
     REWRITE_TAC [hwand_hsep_adjoint] THEN
     REWRITE_TAC [hfalse_elim]
 );;
 add_to_database "hsep_hfalse_left" hsep_hfalse_left;;
+
+(* Canonical form of hprop *)
+let hfactize_hprop = REWRITE_CONV [GSYM hfact_hpure];;
+let hpureize_hprop = REWRITE_CONV [hfact_hpure];;
+
+let which_implies (hp_pre, th_part_entail) =
+    assert (type_of hp_pre = `:hprop`);
+    
+    (* printf "hp_pre: \n";
+    print_qterm hp_pre;
+    printf "\n";
+
+    printf "th_part_entail: \n";
+    print_thm th_part_entail;
+    printf "\n"; *)
+
+    let assumps, part_entail = dest_thm th_part_entail in
+    let hp_pre_part, hp_post_part = dest_binop `(|-)` part_entail in
+    (* First, assumps should be pure facts that can be proved (by very simple means) from the pure facts in hp_pre *)
+    assert (assumps = []); (* TODO: add support for non-empty assumps *)
+    (* Then, hp_pre_part should be a subset of hp_pre *)
+    let hp_pre_canon = hp_pre |> hfactize_hprop |> concl |> rhs in
+    let hp_pre_part_canon = hp_pre_part |> hfactize_hprop |> concl |> rhs in
+
+    
+    printf "hp_pre: \n!";
+    print_qterm hp_pre;
+    printf "\n!";
+
+    printf "hp_pre_part: \n!";
+    print_qterm hp_pre_part;
+    printf "\n!";
+
+    (* Finally, then resulting theorem prove an entailment from hp_pre to hp_pre with hp_pre_part substituted by hp_post_part *)
+    (* To use VST-IDE symbolic execution, the output should be in the canonical form *)
+    ()
+;;
