@@ -34,9 +34,8 @@ let set_preference debug =
     type_invention_warning := true;
     install_user_printer("print_typed_var", print_typed_var);
     if debug then begin
-        delete_user_printer "print_typed_var";
         type_invention_error := true;
-        print_types_of_subterms := 2;
+        (* print_types_of_subterms := 2; *)
         reduce_interface ("true", `T:bool`);
         reduce_interface ("false", `F:bool`);
         reduce_interface ("&&", `(/\):bool->bool->bool`);
@@ -49,22 +48,16 @@ let set_preference debug =
 (* Unset multiple subgoals (a lexer option handled by preprocessor) *)
 unset_then_multiple_subgoals;;
 
-(* Print types of subterms: debugging aid *)
-type_invention_error := true;
-print_types_of_subterms := 2;;
-
 (* Commonly used synonyms *)
 new_type_abbrev ("Z", `:int`);;
 new_type_abbrev ("addr", `:int`);;
 new_type_abbrev ("ilist", `:int list`);;
 
-(* Helper function for uncurrying; C* usually exports an uncurried interfaces (except for operators) *)
-let uncurry_def = define `uncurry (f : A -> B -> C) = \(x,y). f x y`;;
-add_to_database "uncurry_def" uncurry_def;;
-
 (* exported functions *)
 let ilength_def = define `ilength (l : A list) : int = &(LENGTH l)`;;
 add_to_database "ilength_def" ilength_def;;
+let ireplicate_def = define `ireplicate (n : int, x : int) : ilist = REPLICATE (num_of_int n) x`;;
+add_to_database "ireplicate_def" ireplicate_def;;
 
 (* range of ints from lo (inclusive) to hi (exclusive) *)
 let irange_def = define `irange (lo : int, hi : int) = list_of_seq (\i. lo + (&i) : int) (num_of_int (hi - lo))`;;
@@ -86,7 +79,7 @@ add_to_database "irange_split" irange_split;;
 (* For example, the list [0x12; 0x34; 0x56; 0x78] represents the integer 0x78563412 *)
 (* Should be a natural number if vs is a valid list of byte values (uchar) *)
 let int_of_bytes_def = define `
-    int_of_bytes bs : int = 
+    int_of_bytes (bs : ilist) : int = 
         ITLIST (\b n. n * (&256) + b) bs (&0)`;;
 add_to_database "int_of_bytes_def" int_of_bytes_def;;
 
@@ -237,6 +230,15 @@ the_implicit_types := [
     "hps1", `:hlist`;
     "hps2", `:hlist`;
 ];;
+
+(* Overload the notation `==` for equality *)
+make_overloadable "==" `:A -> A -> B`;;
+overload_interface("==", `(==):A -> A -> (A->A->bool) -> bool`);; (* Warning: the notation `==` is used for congruence relations in `int.ml` *)
+overload_interface("==", `(=):A -> A -> bool`);;
+override_interface("<=>", `(=):bool->bool->bool`);;
+
+(* arithmetic operators *)
+override_interface ("/", `(div):int->int->int`);;
 
 (* Notations for parsing and printing separation logic assertions *)
 parse_as_infix ("|-", (2, "right"));;
@@ -401,10 +403,10 @@ let hforall_elim = new_axiom `!hp hpA (x : A). (hpA x |- hp) ==> ((forall x : A.
 add_to_database "hforall_elim" hforall_elim;;
 
 (* hpure intro-and-elim rules *)
-let hpure_intro = new_axiom `!p hp. p ==> (hp |- hpure p)`;; (* Together with hand_intro, add pure fact to the right *)
+let hpure_intro = new_axiom `!p hp1 hp2. p ==> (hp1 |- hp2) ==> (hp1 |- hpure p && hp2)`;; (* Add pure fact to the right *)
 add_to_database "hpure_intro" hpure_intro;;
 
-let hpure_elim = new_axiom `!p hp. (p ==> (htrue |- hp)) ==> (hpure p |- hp)`;;
+let hpure_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hpure p && hp1 |- hp2)`;; (* Extraction of pure fact to the higher-order logic context on the left *)
 add_to_database "hpure_elim" hpure_elim;;
 
 (* hpure extraction rules *)
@@ -420,10 +422,6 @@ add_to_database "hsep_hpure_left" hsep_hpure_left;;
 let hsep_hpure_right = new_axiom `!p hp1 hp2. hp1 ** (hpure p && hp2) -|- hpure p && (hp1 ** hp2)`;;
 add_to_database "hsep_hpure_right" hsep_hpure_right;;
 
-(* TODO: cannot be derived? *)
-let hand_hpure_left = new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hpure p && hp1 |- hp2)`;; (* last step of pure extraction *)
-add_to_database "hand_hpure_left" hand_hpure_left;;
-
 (* hfact-hpure relation ship; can also use hfact to do hpure extraction *)
 let hfact_def = new_axiom `!p hp. hfact p = (hpure p && emp)`;;
 add_to_database "hfact_def" hfact_def;;
@@ -437,6 +435,13 @@ add_to_database "hfact_intro" hfact_intro;;
 
 let hfact_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |- hp2)) ==> (hfact p ** hp1 |- hp2)`;;
 add_to_database "hfact_elim" hfact_elim;;
+
+(* hfact extraction rules *)
+let hsep_hfact_left = new_axiom `!p hp1 hp2. (hfact p ** hp1) ** hp2 -|- hfact p ** (hp1 ** hp2)`;;
+add_to_database "hsep_hfact_left" hsep_hfact_left;;
+
+let hsep_hfact_right = new_axiom `!p hp1 hp2. hp1 ** (hfact p ** hp2) -|- hfact p ** (hp1 ** hp2)`;;
+add_to_database "hsep_hfact_right" hsep_hfact_right;;
 
 (* quantifier extraction rules *)
 let hsep_hexists_left = new_axiom `!hpA hp. (exists x : A. hpA x) ** hp -|- exists x : A. (hpA x ** hp)`;;
@@ -526,12 +531,13 @@ add_to_database "byte_at_dup" byte_at_dup;;
 let byte_at_valid = new_axiom `!x:addr v. byte_at (x, v) |- fact(valid_value (v, Tuchar)) ** byte_at (x, v)`;;
 add_to_database "byte_at_valid" byte_at_valid;;
 
-let bytes_at_def = new_axiom `!x:addr vs. bytes_at (x, vs) = hiter_irange0 ((\i. byte_at (x + i, EL (num_of_int i) vs)), ilength vs)`;;
+let bytes_at_def = new_axiom `!x:addr bs. bytes_at (x, bs) = hiter_irange0 ((\i. byte_at (x + i, EL (num_of_int i) bs)), ilength bs)`;;
 add_to_database "bytes_at_def" bytes_at_def;;
 
 (* definitions of data_at and undef_data_at *)
 let data_at_def = new_axiom `!x ty v. data_at (x, ty, v) =
                                 exists bs. (
+                                    fact (ilength bs = size_of ty) **
                                     fact ((v == int_of_bytes bs) (mod (&256 pow (num_of_int (size_of ty))))) **
                                     fact (valid_value (v, ty)) **
                                     fact (valid_addr (x, ty)) **
@@ -580,14 +586,23 @@ let array_split = new_axiom `!x ty vs1 vs2.
             array_at (x, ty, APPEND vs1 vs2) -|- array_at (x, ty, vs1) ** array_at (x + (size_of ty) * (ilength vs1), ty, vs2)`;;
 add_to_database "array_split" array_split;;
 
-let undef_array_split = new_axiom `!x ty n1 n2.
-            undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (size_of ty) * n1, ty, n2)`;;
-add_to_database "undef_array_split" undef_array_split;;
-
 let undef_slice_split = new_axiom `!x ty i n1 n2.
             undef_slice_at (x, ty, i, n1 + n2) -|- undef_slice_at (x, ty, i, n1) ** undef_slice_at (x, ty, i + n1, n2)`;;
 add_to_database "undef_slice_split" undef_slice_split;;
 
+let undef_array_split = new_axiom `!x ty n1 n2.
+            undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (size_of ty) * n1, ty, n2)`;;
+add_to_database "undef_array_split" undef_array_split;;
+
 (* axioms of malloc_at *)
-let malloc_at_inv = new_axiom `!x:addr n:int. malloc_at (x, n) |- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`;;
+let malloc_at_inv = new_axiom `!x:addr n:int.
+            malloc_at (x, n) |- fact(x > &0) ** fact(n > &0) ** malloc_at (x, n)`;;
 add_to_database "malloc_at_inv" malloc_at_inv;;
+
+(* Example: hsep_hfalse_left *)
+let hsep_hfalse_left = prove (`!hp. false ** hp |- false`,
+    FIX_TAC "hp" THEN
+    REWRITE_TAC [hwand_hsep_adjoint] THEN
+    REWRITE_TAC [hfalse_elim]
+);;
+add_to_database "hsep_hfalse_left" hsep_hfalse_left;;
