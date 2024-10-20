@@ -170,7 +170,7 @@ rule initial = parse
   | "cstar::invariant"            { CSTAR_INVARIANT }
   | "cstar::ghostvar"             { CSTAR_GHOSTVAR }
   | "cstar::assert"               { CSTAR_ASSERT }
-  | "cstar::ghostcommand"         { CSTAR_GHOSTCOMMAND }
+  | "cstar::ghostcmd"             { CSTAR_GHOSTCMD }
   | "cstar::argument"             { CSTAR_ARGUMENT }
   | "SEP"                         { SEP }
   | "SEPAND"                      { SEPAND }

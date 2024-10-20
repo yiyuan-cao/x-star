@@ -191,7 +191,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token CSTAR_INVARIANT "cstar::invariant"
 %token CSTAR_GHOSTVAR "cstar::ghostvar"
 %token CSTAR_ASSERT "cstar::assert"
-%token CSTAR_GHOSTCOMMAND "cstar::ghostcommand"
+%token CSTAR_GHOSTCMD "cstar::ghostcmd"
 %token CSTAR_ARGUMENT "cstar::argument"
 
 %token SEP "SEP"
@@ -1269,16 +1269,12 @@ cstar_assert_attribute:
     { [Acstar (Aassert e)] }
 
 cstar_ghostcommand_attribute:
-| CSTAR_GHOSTCOMMAND "(" s=cstar_command_statement ")"
-    { [Acstar (Aghostcommand s)] }
+| CSTAR_GHOSTCMD "(" s=cstar_command_statement ")"
+    { [Acstar (Aghostcmd s)] }
 
 cstar_command_statement:
-| s=scoped(compound_statement)
-| s=scoped(selection_statement)
-| s=scoped(iteration_statement)
-    { s }
-| e=expression
-    { Sexpr (e, [], mk_range $sloc) }
+| ss=block_item_list?
+    { ss -? [] }
 
 cstar_argument_attribute:
 | CSTAR_ARGUMENT "(" es=argument_expression_list?  ")"

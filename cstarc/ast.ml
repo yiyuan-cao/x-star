@@ -153,7 +153,7 @@ and cstar_attribute =
   | Aghostvar of declaration
   | Ainvariant of expr
   | Aassert of expr
-  | Aghostcommand of stmt
+  | Aghostcmd of stmt list
   | Aargument of expr list
 [@@deriving show]
 

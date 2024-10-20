@@ -534,15 +534,9 @@ and cstar_attribute_to_doc = function
   | Aassert a -> ("cstar::assert", expr_to_doc a)
   | Aghostvar v -> ("cstar::ghostvar", declaration_to_doc_inner v)
   | Ainvariant i -> ("cstar::invariant", expr_to_doc i)
-  | Aghostcommand c ->
-      let stmt =
-        match c with
-        | Sexpr (expr, attrs, _) ->
-            attribute_list_to_doc attrs true ^^ expr_to_doc expr
-            |> group
-        | s -> stmt_to_doc s
-      in
-      ("cstar::ghostcommand", stmt)
+  | Aghostcmd ss ->
+      let stmts = ss |> List.map ~f:stmt_to_doc |> seperate break in
+      ("cstar::ghostcmd", stmts)
   | Aargument a ->
       ("cstar::argument", seperate_map comma_break ~f:expr_to_doc a)
 
