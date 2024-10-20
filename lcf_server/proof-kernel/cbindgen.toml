@@ -1,0 +1,2 @@
+language = "C"
+include_guard = "PROOF_KERNEL_H"

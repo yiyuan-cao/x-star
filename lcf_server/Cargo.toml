@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["caml-dyn-call", "hol-rpc", "proof-kernel"]
+
+[workspace.dependencies]
+eyre = "0.6.12"
+slotmap = { version = "1.0.7", features = ["serde"] }
+ocaml-interop = "0.10.0"
+ocaml-sys = "0.23.0"
+serde = "1.0.197"
+tuples = "1.15.0"

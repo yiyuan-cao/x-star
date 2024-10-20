@@ -1,0 +1,1 @@
+-I/home/wybxc/x-star/lcf_server/includes -O3 -Lproof-user -Ltarget/release -lgc -lpthread -ldl -lproof_user -lproof_kernel
