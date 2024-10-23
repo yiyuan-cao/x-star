@@ -28,6 +28,7 @@ type constant =
   | Cboolean of bool
       (** Overloaded boolean literals [true] and [false]: [_Bool], [bool], [prop], [hprop]. *)
   | Cstring of string_literal  (** string literals. *)
+  | Cquoted of string (** quoted strings. *)
   | Cnullval  (** [val nullval]. *)
 [@@deriving show]
 
@@ -35,8 +36,12 @@ type constant =
 and typ =
   | Tvoid  (** [void] *)
   | T_Bool  (** [_Bool], the C program bool type **)
+  | Tchar  (** [char], the C 8-bit integer *)
+  | Tuchar  (** [unsigned char], the C 8-bit unsigned integer *)
   | Tint  (** [int], the C 32-bit integer *)
-  | Tunsigned  (** [unsigned], the C 32-bit unsigned integer *)
+  | Tuint  (** [unsigned int], the C 32-bit unsigned integer *)
+  | Tlong  (** [long], the C long integer *)
+  | Tulong  (** [unsigned long], the C unsigned long integer *)
   | Tprop  (** [PROP], the Cstar prop type *)
   | Thprop  (** [HPROP], seperation logic propsition *)
   | Tptr of typ  (** [<typ> *] *)
@@ -148,7 +153,7 @@ and cstar_attribute =
   | Aghostvar of declaration
   | Ainvariant of expr
   | Aassert of expr
-  | Aghostcommand of stmt
+  | Aghostcmd of stmt list
   | Aargument of expr list
 [@@deriving show]
 
