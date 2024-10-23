@@ -14,6 +14,7 @@ use tarpc::{
     server::{incoming::Incoming, BaseChannel, Channel},
     tokio_serde::formats::Bincode,
 };
+use hol_rpc::caml_dyn_call;
 
 #[macro_use]
 mod session;

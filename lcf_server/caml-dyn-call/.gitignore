@@ -1,7 +1,0 @@
-/target
-*.so
-*.cmi
-*.cmo
-*.cma
-*.cmx
-*.o

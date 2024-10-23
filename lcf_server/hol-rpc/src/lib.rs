@@ -1,6 +1,8 @@
 //! A tarpc service for interacting with the HOL Light theorem prover.
 #![deny(missing_docs)]
 
+#[macro_use]
+pub mod caml_dyn_call;
 pub mod client;
 pub mod error;
 mod interface_client;
@@ -74,7 +76,7 @@ pub trait Interface {
     /// ```
     async fn gen(tm: TermKey, th: TheoremKey) -> Result<TheoremKey>;
 
-    /// Specializes the conclusion of a theorem with its own quantified variables. 
+    /// Specializes the conclusion of a theorem with its own quantified variables.
     ///
     /// ```text
     /// A |- !x1...xn. t
@@ -83,8 +85,8 @@ pub trait Interface {
     /// ```
     async fn spec_all(th: TheoremKey) -> Result<TheoremKey>;
 
-    /// Specializes the conclusion of a theorem. 
-    /// 
+    /// Specializes the conclusion of a theorem.
+    ///
     /// ```text
     /// A |- !x. t
     /// ----------- SPEC `u`
@@ -102,14 +104,14 @@ pub trait Interface {
     async fn mp(th1: TheoremKey, th2: TheoremKey) -> Result<TheoremKey>;
 
     /// Equality version of the Modus Ponens rule.
-    /// 
+    ///
     /// ```text
     /// A1 |- t1 <=> t2   A2 |- t1'
     /// ---------------------------
     ///       A1 u A2 |- t2
     /// ```
     async fn eq_mp(th1: TheoremKey, th2: TheoremKey) -> Result<TheoremKey>;
-    
+
     /// Conjunction.
     ///
     /// ```text
@@ -119,19 +121,19 @@ pub trait Interface {
     /// ```
     async fn conjunct(th1: TheoremKey, th2: TheoremKey) -> Result<TheoremKey>;
 
-    /// Extracts left conjunct of theorem. 
-    /// 
+    /// Extracts left conjunct of theorem.
+    ///
     /// ```text
-    /// A |- t1 /\ t2 
+    /// A |- t1 /\ t2
     /// -------------
     ///    A |- t1
     /// ```
     async fn conjunct1(th: TheoremKey) -> Result<TheoremKey>;
 
     /// Extracts right conjunct of theorem.
-    /// 
+    ///
     /// ```text
-    /// A |- t1 /\ t2 
+    /// A |- t1 /\ t2
     /// -------------
     ///    A |- t2
     /// ```
@@ -147,7 +149,7 @@ pub trait Interface {
     async fn symm(th: TheoremKey) -> Result<TheoremKey>;
 
     /// Eliminates disjunction by cases.
-    /// 
+    ///
     /// ```text
     /// A |- t1 \/ t2   A1 |- t   A2 |- t
     /// ----------------------------------
@@ -155,17 +157,17 @@ pub trait Interface {
     /// ```
     async fn disj_cases(th1: TheoremKey, th2: TheoremKey, th3: TheoremKey) -> Result<TheoremKey>;
 
-    /// Deduces logical equivalence from deduction in both directions. 
-    /// 
+    /// Deduces logical equivalence from deduction in both directions.
+    ///
     /// ```text
-    ///      A |- p        B |- q 
+    ///      A |- p        B |- q
     /// --------------------------------
-    /// (A - {q}) u (B - {p}) |- p <=> q 
+    /// (A - {q}) u (B - {p}) |- p <=> q
     /// ```
     async fn deduct_antisym(th1: TheoremKey, th2: TheoremKey) -> Result<TheoremKey>;
 
-    /// Existentially quantifies a hypothesis of a theorem. 
-    /// 
+    /// Existentially quantifies a hypothesis of a theorem.
+    ///
     /// ```text
     /// A |- t   `x` is not free in `A |- t`
     /// ------------------------------------ CHOOSE `x` th
@@ -187,7 +189,7 @@ pub trait Interface {
 
     /// Substitute terms for other terms inside a term.
     async fn subst(tm1: TermKey, tm2: TermKey, tm: TermKey) -> Result<TermKey>;
-    
+
     /// Check if a term is a variable.
     async fn is_var(th: TermKey) -> Result<bool>;
 
@@ -230,7 +232,7 @@ pub trait Interface {
     /// Set up a new axiom.
     async fn new_axiom(tm: TermKey) -> Result<TheoremKey>;
 
-    /// Define a relation or family of relations inductively. 
+    /// Define a relation or family of relations inductively.
     async fn new_inductive_definition(tm: TermKey) -> Result<IndDefKey>;
 }
 
@@ -263,10 +265,10 @@ pub struct IndTypeKey {
 /// Key for an inductive relation.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct IndDefKey {
-  /// definition.
-  pub def: TheoremKey, 
-  /// inductive rule.
-  pub ind: TheoremKey,
-  /// cases rule.
-  pub cases: TheoremKey,
+    /// definition.
+    pub def: TheoremKey,
+    /// inductive rule.
+    pub ind: TheoremKey,
+    /// cases rule.
+    pub cases: TheoremKey,
 }

@@ -1,14 +1,21 @@
 use std::{io::BufRead, path::PathBuf};
 
 fn main() -> std::io::Result<()> {
-    let hol_light_dir = std::env::var("HOLLIGHT_DIR").expect("HOLLIGHT_DIR not set");
+    let hol_light_dir = std::env::var("HOLLIGHT_DIR").map(PathBuf::from).unwrap_or(
+        std::env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("hol-light"),
+    );
     std::process::Command::new("make")
         .current_dir(&hol_light_dir)
         .status()?;
+    let hol_light_dir = hol_light_dir.display().to_string();
     println!("cargo:rerun-if-changed={}", hol_light_dir);
 
     let ocaml_files = [
-        "src/eval.ml",
+        "src/caml_dyn_call/eval.ml",
         &format!("{}/bignum.cmo", hol_light_dir),
         &format!("{}/hol_loader.cmo", hol_light_dir),
     ];
@@ -34,13 +41,35 @@ const CC_LIB_PREFIX: &str = "NATIVECCLIBS=";
 fn compile(out_dir: PathBuf, ocaml_files: &[&str], ocaml_packages: &[&str]) -> std::io::Result<()> {
     let object_file = out_dir.join("caml").with_extension("o");
 
+    let libgmp = if let Ok(locate) = which::which("locate") {
+        let output = std::process::Command::new(locate)
+            .arg("libgmp.a")
+            .output()
+            .expect("Failed to locate libgmp.a");
+        let output = std::str::from_utf8(&output.stdout).expect("Failed to parse locate output");
+        output.trim().to_string()
+    } else if let Ok(find) = which::which("find") {
+        let output = std::process::Command::new(find)
+            .arg("/usr")
+            .arg("-name")
+            .arg("libgmp.a")
+            .output()
+            .expect("Failed to find libgmp.a");
+        let output = std::str::from_utf8(&output.stdout).expect("Failed to parse find output");
+        output.trim().to_string()
+    } else {
+        "/usr/lib/libgmp.a".to_string()
+    };
+    let libgmp = std::path::PathBuf::from(libgmp);
+
     // Compile OCaml files
+    let libgmp = format!("-L{}", libgmp.parent().unwrap().display());
     let mut args = vec![
         "ocamlc",
         "-o",
         object_file.to_str().unwrap(),
         "-cclib",
-        "-L/usr/lib",
+        &libgmp,
         "-linkall",
         "-output-complete-obj",
         "-linkpkg",

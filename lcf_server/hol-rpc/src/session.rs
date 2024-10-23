@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use caml_dyn_call::Token;
+use crate::caml_dyn_call::Token;
 use hol_rpc::{TermKey, TheoremKey, TypeKey};
 
 #[derive(Clone, Default)]
@@ -11,7 +11,7 @@ pub struct Session(Rc<SessionInner>);
 
 #[derive(Default)]
 struct SessionInner {
-    session: caml_dyn_call::Session,
+    session: crate::caml_dyn_call::Session,
     terms: RefCell<slotmap::SlotMap<TermKey, Token>>,
     theorems: RefCell<slotmap::SlotMap<TheoremKey, Token>>,
     types: RefCell<slotmap::SlotMap<TypeKey, Token>>,
@@ -24,8 +24,8 @@ impl Session {
 
     pub(crate) unsafe fn dyn_call<'a>(
         &self,
-        func: &caml_dyn_call::DynFunction,
-        args: impl AsRef<[caml_dyn_call::Val<'a>]>,
+        func: &crate::caml_dyn_call::DynFunction,
+        args: impl AsRef<[crate::caml_dyn_call::Val<'a>]>,
     ) -> eyre::Result<Token> {
         self.0.session.dyn_call(func, args)
     }
@@ -81,7 +81,7 @@ macro_rules! load_dyn_function {
     ($name: ident as $alias: ident) => {
         ::stack_tokens::stack_token!(local);
         let $alias = {
-            use ::caml_dyn_call::DynFunction;
+            use $crate::caml_dyn_call::DynFunction;
             use ::stack_tokens::LocalKeyExt;
             use ::std::cell::OnceCell;
             thread_local! {

@@ -7,11 +7,12 @@ edition = "2021"
 
 [dependencies]
 envconfig = "0.11.0"
-caml-dyn-call = { path = "../caml-dyn-call" }
 ctrlc = { version = "3.4.4", features = ["termination"] }
 eyre = { workspace = true }
 futures = "0.3.30"
 indicatif = "0.17.8"
+ocaml-interop = { workspace = true }
+ocaml-sys = { workspace = true }
 serde = { workspace = true }
 slotmap = { workspace = true }
 stack-tokens = "0.1.0"
@@ -21,8 +22,11 @@ tarpc = { version = "0.34.0", features = [
     "tcp",
 ] }
 tokio = { version = "1.36.0", features = ["net", "rt", "macros"] }
-tuples = { workspace = true }
+tuples = "1.15.0"
 
 [[bin]]
 name = "hol-rpc-wrapper"
 path = "src/bin/wrapper.rs"
+
+[build-dependencies]
+which = "6.0.3"

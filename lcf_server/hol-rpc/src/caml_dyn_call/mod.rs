@@ -43,7 +43,7 @@
 //!
 //! ```rust,no_run
 //! use std::path::Path;
-//! use caml_dyn_call::*;
+//! use crate::caml_dyn_call::*;
 //! use eyre::Result;
 //!
 //! fn main() -> Result<()> {
@@ -71,7 +71,6 @@
 //!     Ok(())
 //! }
 //! ```
-#![deny(missing_docs)]
 use std::{cell::RefCell, rc::Rc};
 
 use eyre::{eyre, Result};

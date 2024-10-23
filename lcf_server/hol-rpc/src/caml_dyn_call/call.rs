@@ -4,7 +4,7 @@ use eyre::{eyre, Result};
 use ocaml_interop::{OCaml, OCamlRuntime, ToOCaml};
 use tuples::TupleCollect;
 
-use crate::{
+use super::{
     store::{Session, Token},
     DynFunction,
 };

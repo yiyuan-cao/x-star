@@ -1,4 +1,4 @@
-use caml_dyn_call::args;
+use hol_rpc::args;
 use hol_rpc::{IndTypeKey, IndDefKey, Interface, Result, TermKey, TheoremKey, TypeKey};
 use tarpc::context::Context;
 
