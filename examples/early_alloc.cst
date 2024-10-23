@@ -117,8 +117,51 @@ void clear_page(void *to)
         `;
         
         // ... constructing actual proof steps here ...
+
+        term tm1 = `_i == &0`;
+        term tm3 = `undef_slice_at(_to, Tchar, _i, &PAGE_SIZE - _i)`;
+        term tm4 = `array_at(_to, Tchar, ireplicate(_i, &0))`;
+        thm th1 = ASSUME(tm1);
+        // (_i:int) == &0 |- (_i:int) == &0
+        thm th2 = ONCE_REWRITE_CONV1(undef_array_at_def, whole_array);;
+        // |- undef_array_at ((_to:int),Tchar,&4096) 
+        //-|- undef_slice_at ((_to:int),Tchar,&0,&4096)
+        thm minus0 = ARITH_RULE(`! (a : int). a - &0 = a`);
+        thm th3 = REWRITE_CONV2(th1, minus0, tm3);
+        // (_i:int) == &0
+        // |- undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        //-|- undef_slice_at ((_to:int),Tchar,&0,&4096)
+        thm th4 = TRANS(th2, SYM(th3));
+        // (_i:int) == &0
+        // |- undef_array_at ((_to:int),Tchar,&4096) 
+        //-|- undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        // numofint0 : (num_of_int (&0)) == 0
+        // thm th5 = REWRITE_CONV [th1; array_at_def; slice_at_def; hiter_irange0_def; hiter_def; ireplicate_def; dy0; REPLICATE; ilength_def; LENGTH; irange0_def; list_of_seq; MAP; ITLIST] tm4;
+        thm array_at_0 = new_axiom(`! x ty c. array_at (x, ty, ireplicate(&0, c)) -|- emp`);
+        thm th5 = REWRITE_CONV2(th1, array_at_0, tm3);
+        // (_i:int) == &0
+        // |- array_at ((_to:int),Tchar,ireplicate ((_i:int),&0)) -|- emp
+        thm th6 = ONCE_REWRITE_CONV1(hsep_hemp_left, mk_comb(mk_comb(`**`, `emp`), tm3));
+        // |- emp ** undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        //-|- undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        thm th7 = TRANS(th4, SYM(th6));
+        // (_i:int) == &0
+        // |- undef_array_at ((_to:int),Tchar,&4096) 
+        //-|- emp ** undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        thm th8 = ONCE_REWRITE_RULE1(SYM(th5), th7);
+        // (_i:int) == &0
+        // |- undef_array_at ((_to:int),Tchar,&4096)
+        //-|- array_at ((_to:int),Tchar,ireplicate ((_i:int),&0)) **
+        //    undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        thm iff_imp = new_axiom(`! hp1 hp2. (hp1 -|- hp2) ==> (hp1 |-- hp2)`);
+        thm th9 = MATCH_MP(iff_imp, th8);
+        // (_i:int) == &0
+        // |- undef_array_at ((_to:int),Tchar,&4096)
+        // |-- array_at ((_to:int),Tchar,ireplicate ((_i:int),&0)) **
+        //     undef_slice_at ((_to:int),Tchar,(_i:int),&4096 - (_i:int))
+        split_thm = DISCH(tm1, th9);
         
-        thm split_thm = axiom(tmp_goal);
+        // thm split_thm = axiom(tmp_goal);
         
         // apply the partial transformation to the symbolic state
         // __transform = which_implies(__state, split_thm);
@@ -145,8 +188,27 @@ void clear_page(void *to)
         `;
 
         // ... constructing actual proof steps here ...
+        term tm1 = `(_i : int) = &0`;
+        term tm2 = `&0 <= &0 && &0 <= &4096`;
+        thm th1 = ASSUME(tm1);
+        // (_i:int) == &0 |- (_i:int) == &0
+        thm th2 = ONCE_REWRITE_CONV1(th1, i_in_range);
+        // (_i:int) == &0 |- ${i_in_range} = &0 <= &0 && &0 <= &4096
+        thm th3 = ONCE_REWRITE_RULE1(ARITH_RULE(tm2), th2);
+        // (_i:int) == &0 |- ${i_in_range}
+        thm th4 = SPEC(`emp`, hentail_refl);
+        // |- emp |-- emp
+        thm th5 = MATCH_MP(MATCH_MP(hpure_intro, th3), th4);
+        // (_i:int) == &0 |- emp |-- hpure ${i_in_range} && emp
+        thm th6 = DISCH(tm1, th5);
+        // |- (_i:int) == &0 ==> emp |-- hpure ${i_in_range} && emp
+        thm th7 = MATCH_MP(hpure_elim, th6);
+        // |- hpure (_i:int) == &0 && emp |-- hpure ${i_in_range} && emp
+        thm th8 = REWRITE_CONV1(hfact_def, tmp_goal);
+        // tmp_goal = hpure (_i:int) == &0 && emp |-- hpure ${i_in_range} && emp
+        tmp_thm = REWRITE_CONV1(SYM(th8), th7);
 
-        tmp_thm = axiom(tmp_goal);
+        // tmp_thm = axiom(tmp_goal);
 
         __transform = axiom(`
             ${__state:hprop}
@@ -200,8 +262,49 @@ void clear_page(void *to)
             `;
             
             // ... constructing actual proof steps here ...
-            
-            tmp_thm = axiom(tmp_goal);
+            term tm1 = `_i < &PAGE_SIZE`;
+            term tm2 = `(_i : int) < &PAGE_SIZE ==> &PAGE_SIZE - (_i + &1) >= &0`;
+            term tm3 = `&PAGE_SIZE - _i = &1 + (&PAGE_SIZE - (_i + &1))`;
+            term tm4 = `undef_slice_at(_to, Tchar, _i, &PAGE_SIZE - _i)`;
+            term tm5 = `&1 >= &0`;
+            term tm6 = `fact(${i_in_range:bool})`;
+            thm th1 = ASSUME(tm1);
+            // _i < &4096 |- _i < &4096
+            thm th2 = MATCH_MP(ARITH_RULE(tm2), th1);
+            // _i < &4096 |- &4096 - (_i + &1) >= &0
+            thm th3 = ONCE_REWRITE_CONV1(ARITH_RULE(tm3), tm4);
+            // |- undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            //-|- undef_slice_at(_to, Tchar, _i, &1 + (&4096 - (_i + &1)))
+            thm undef_slice_split = new_axiom(`!x ty i n1 n2. (n1 >= &0) ==> (n2 >= &0) ==> undef_slice_at (x, ty, i, n1 + n2) -|- undef_slice_at (x, ty, i, n1) ** undef_slice_at (x, ty, i + n1, n2)`);
+            thm th4 = MATCH_MP(MATCH_MP(undef_slice_split, ARITH_RULE(tm5)), th2);
+            // _i < &4096
+            // |- !x ty i. undef_slice_at(x, ty, i, &1 + (&4096 - (_i + &1)))
+            //-|- undef_slice_at(x, ty, i, &1) ** undef_slice_at(x, ty, i + &1, &4096 - (_i + &1))
+            thm th5 = ONCE_REWRITE_RULE1(th4, th3);
+            // _i < &4096
+            // |- undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            //-|- undef_slice_at(_to, Tchar, _i, &1) ** undef_slice_at (_to, Tchar, _i + &1, &4096 - (_i + &1))
+            thm undef_slice_at1 = new_axiom(`! x ty i. undef_slice_at(x, ty, i, &1) -|- undef_data_at(x + i * size_of(ty), ty)`);
+            thm th6 = ONCE_REWRITE_RULE1(undef_slice_at1, th5);
+            // _i < &4096
+            // |- undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            //-|- undef_data_at(_to + _i * size_of(Tchar), Tchar) ** undef_slice_at (_to, Tchar, _i + &1, &4096 - (_i + &1))
+            thm iff_imp = new_axiom(`! hp1 hp2. (hp1 -|- hp2) ==> (hp1 |-- hp2)`);
+            thm th7 = MATCH_MP(iff_imp, th6);
+            // _i < &4096
+            // |-  undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            // |-- undef_data_at(_to + _i * size_of(Tchar), Tchar) ** undef_slice_at (_to, Tchar, _i + &1, &4096 - (_i + &1))
+            thm th8 = SPEC(tm6, MATCH_MP(hsep_cancel_left, th7));
+            // _i < &4096
+            // |-  fact(${i_in_range:bool}) ** undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            // |-- fact(${i_in_range:bool}) ** undef_data_at(_to + _i * size_of(Tchar), Tchar) ** undef_slice_at (_to, Tchar, _i + &1, &4096 - (_i + &1))
+            thm th9 = DISCH(tm1, th8);
+            // _i < &4096
+            // ==> fact(${i_in_range:bool}) ** undef_slice_at(_to, Tchar, _i, &4096 - _i)
+            // |-- fact(${i_in_range:bool}) ** undef_data_at(_to + _i * size_of(Tchar), Tchar) ** undef_slice_at (_to, Tchar, _i + &1, &4096 - (_i + &1))
+            tmp_thm = MATCH_MP(hfact_elim, th9);
+
+            // tmp_thm = axiom(tmp_goal);
             
             // __transform = which_implies(__state, tmp_thm);
             __transform = axiom(`
