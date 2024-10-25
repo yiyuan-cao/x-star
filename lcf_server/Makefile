@@ -19,7 +19,7 @@ ifeq ($(DEBUG), 1)
 else
 	LIB_CFLAGS += -O3
 endif
-CFLAGS = $(LIB_CFLAGS) -Lproof-user -L$(TARGET_DIR) $(BDWGC_FLAGS) -lproof_user -lproof_kernel
+CFLAGS = $(LIB_CFLAGS) -Lproof-user -L$(TARGET_DIR) $(BDWGC_FLAGS) -lproof_user -lproof_kernel -lm
 
 ############### default ###############
 
