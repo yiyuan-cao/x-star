@@ -1,7 +1,7 @@
 use tarpc::context;
 
 use crate::{
-    client::{Client, IndType, IndDef, Term, Theorem, Type},
+    client::{Client, IndType, IndDef, Term, Theorem, Type, Conversion},
     Result,
 };
 
@@ -23,6 +23,15 @@ impl Client {
         )??;
         Ok(Type::new(key, self.clone()))
     }
+
+    /// Parse a conversion from a conversion.
+    pub fn parse_conv_from_string(&self, s: String) -> Result<Conversion> {
+      let key = self.execute(
+          self.interface()
+              .parse_conv_from_string(context::current(), s),
+      )??;
+      Ok(Conversion::new(key, self.clone()))
+  }
 
     /// Convert a term to a string.
     pub fn string_of_term(&self, term: &Term) -> Result<String> {
@@ -237,18 +246,14 @@ impl Client {
     }
 
     /// Define an inductive type.
-    pub fn define_type(&self, name: String, variants: Vec<String>) -> Result<IndType> {
+    pub fn define_type(&self, tm: String) -> Result<IndType> {
         let key = self.execute(self.interface().define_type(
             context::current(),
-            name,
-            variants,
+            tm,
         ))??;
         Ok(IndType {
             ind: Theorem::new(key.ind, self.clone()),
             rec: Theorem::new(key.rec, self.clone()),
-            distinct: Theorem::new(key.distinct, self.clone()),
-            cases: Theorem::new(key.cases, self.clone()),
-            inject: Theorem::new(key.inject, self.clone()),
         })
     }
 
@@ -262,6 +267,12 @@ impl Client {
     pub fn rewrite(&self, th: &Theorem, tm: &Term) -> Result<Theorem> {
         let key = self.execute(self.interface().rewrite(context::current(), th.key, tm.key))??;
         Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    pub fn rewrite_rule(&self, th: &Theorem, t: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().rewrite_rule(context::current(), th.key, t.key))??;
+      Ok(Theorem::new(key, self.clone()))
     }
 
     /// Instantiation of induction principle.
@@ -371,5 +382,41 @@ impl Client {
         ind: Theorem::new(key.ind, self.clone()),
         cases: Theorem::new(key.cases, self.clone()),
       })
+    }
+
+    /// Automatically proves natural number arithmetic theorems. 
+    pub fn arith_rule(&self, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().arith_rule(context::current(), tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Get a theorem from the search database.
+    pub fn get_theorem(&self, name: String) -> Result<Theorem> {
+      let key = self.execute(self.interface().get_theorem(context::current(), name))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// `sep lift` conversion.
+    pub fn sep_lift(&self, lft: &Term, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().sep_lift(context::current(), lft.key, tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// `which implies` conversion.
+    pub fn which_implies(&self, state: &Term, trans: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().which_implies(context::current(), state.key, trans.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Applies a conversion to the operand of an application. 
+    pub fn rand_conv(&self, conv: &Conversion) -> Result<Conversion> {
+      let key = self.execute(self.interface().rand_conv(context::current(), conv.key))??;
+      Ok(Conversion::new(key, self.clone()))
+    }
+
+    /// Applies a conversion.
+    pub fn apply_conv(&self, conv: &Conversion, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().apply_conv(context::current(), conv.key, tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
     }
 }

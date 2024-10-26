@@ -8,7 +8,7 @@ use std::{
 };
 
 use envconfig::Envconfig;
-use hol_rpc::client::{Client, Term, Theorem, Type};
+use hol_rpc::client::{Client, Term, Theorem, Type, Conversion};
 
 use crate::{
     error::clear_last_error,
@@ -102,6 +102,26 @@ pub unsafe extern "C" fn parse_type(s: *const c_char) -> *const Gc<Type> {
     let client = ensures_ok!(get_client(), std::ptr::null());
     let term = ensures_ok!(client.parse_type_from_string(string), std::ptr::null());
     term.into_gc()
+}
+
+/// Parse a type from a conversion.
+///
+/// # Parameters
+/// - `s`: The string to parse.
+///
+/// # Returns
+/// A pointer to the parsed type on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn get_conversion(s: *const c_char) -> *const Gc<Conversion> {
+    clear_last_error();
+    ensures!(!s.is_null(), "`s` is null", std::ptr::null());
+
+    let string = unsafe { CStr::from_ptr(s) }.to_str();
+    let string = ensures_ok!(string, std::ptr::null()).to_string();
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let conv = ensures_ok!(client.parse_conv_from_string(string), std::ptr::null());
+    conv.into_gc()
 }
 
 /// Convert a term to a string.
@@ -609,41 +629,21 @@ pub unsafe extern "C" fn choose(tm: *const Gc<Term>, th: *const Gc<Theorem>) -> 
 /// cbindgen:ptrs-as-arrays=[[variants;]]
 #[no_mangle]
 pub unsafe extern "C" fn define_type(
-    name: *const c_char,
-    variants: *const *const c_char,
+    tm: *const c_char,
 ) -> *const IndType {
     clear_last_error();
-    ensures!(!name.is_null(), "`name` is null", std::ptr::null());
-    ensures!(!variants.is_null(), "`variants` is null", std::ptr::null());
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
 
-    let name = unsafe { CStr::from_ptr(name) }.to_str();
-    let name = ensures_ok!(name, std::ptr::null()).to_string();
-
-    let variants = {
-        let mut ptr = variants;
-        let mut variants = Vec::new();
-        while !(*ptr).is_null() {
-            let variant = unsafe { CStr::from_ptr(*ptr) }.to_str();
-            let variant = ensures_ok!(variant, std::ptr::null()).to_string();
-            variants.push(variant);
-            ptr = ptr.add(1);
-        }
-        variants
-    };
+    let tm = unsafe { CStr::from_ptr(tm) }.to_str();
+    let tm = ensures_ok!(tm, std::ptr::null()).to_string();
 
     let client = ensures_ok!(get_client(), std::ptr::null());
-    let ind_type = ensures_ok!(client.define_type(name, variants), std::ptr::null());
+    let ind_type = ensures_ok!(client.define_type(tm), std::ptr::null());
     let ind = ind_type.ind.into_gc();
     let rec = ind_type.rec.into_gc();
-    let distinct = ind_type.distinct.into_gc();
-    let cases = ind_type.cases.into_gc();
-    let inject = ind_type.inject.into_gc();
     let ind_type = IndType {
         ind,
         rec,
-        distinct,
-        cases,
-        inject,
     };
     ind_type.into_gc()
 }
@@ -687,6 +687,30 @@ pub unsafe extern "C" fn rewrite(
     let th = unsafe { &*th }.as_ref();
     let tm = unsafe { &*tm }.as_ref();
     let thm = ensures_ok!(client.rewrite(th, tm), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+/// 
+/// # Parameter 
+/// - `th`: The theorem to use for rewriting.
+/// - `t`: The theorem to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn rewrite_rule(
+    th: *const Gc<Theorem>,
+    t: *const Gc<Theorem>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!t.is_null(), "`t` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let t = unsafe { &*t }.as_ref();
+    let thm = ensures_ok!(client.rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
 
@@ -934,4 +958,115 @@ pub unsafe extern "C" fn new_inductive_definition(tm: *const Gc<Term>) -> *const
     let cases = ind_def.cases.into_gc();
     let ind_def = IndDef { def, ind, cases };
     ind_def.into_gc()
+}
+
+/// Automatically proves natural number arithmetic theorems. 
+#[no_mangle]
+pub unsafe extern "C" fn arith_rule(tm: *const Gc<Term>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let tm = unsafe { &*tm }.as_ref();
+  let thm = ensures_ok!(client.arith_rule(tm), std::ptr::null());
+  thm.into_gc()
+}
+
+/// Get a theorem from the search database.
+#[no_mangle]
+pub unsafe extern "C" fn get_theorem(name: *const c_char) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!name.is_null(), "`name` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let name = unsafe { CStr::from_ptr(name) }.to_str();
+  let name = ensures_ok!(name, std::ptr::null()).to_string();
+
+  let thm = ensures_ok!(client.get_theorem(name), std::ptr::null());
+  thm.into_gc()
+}
+
+/// `sep lift` conversion.
+/// 
+/// # Parameters
+/// - `lft` : The term to be lifted.
+/// - `tm`: The term to do conversion.
+///
+/// # Returns
+/// Suppose both lft and tm are separating conjunction of atomic assertion.
+/// If `lft` = `A * B * C` and {A,B,C} in `tm`,
+/// then the return theorem is `tm = (A * B * C) * (D * ...)`.
+#[no_mangle]
+pub unsafe extern "C" fn sep_lift(
+  lft: *const Gc<Term>,
+  tm: *const Gc<Term>
+) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!lft.is_null(), "`lft` is null", std::ptr::null());
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let lft = unsafe { &*lft }.as_ref();
+  let tm = unsafe { &*tm }.as_ref();
+
+  let thm = ensures_ok!(client.sep_lift(lft, tm), std::ptr::null());
+  thm.into_gc()
+}
+
+/// `which implies` conversion.
+/// 
+/// # Parameters
+/// - `state` : The symbolic state before `which implies`.
+/// - `trans`: The transformation entailment.
+///
+/// # Returns
+/// Suppose `state` is a separating conjunction of atomic assertion with `hexists` outside,
+/// and `trans` is entailment of two separating conjunctions of atomic assertion.
+/// The return theorem is `state |-- state'`, where `state'`` is sep_apply `trans` on `state`.
+#[no_mangle]
+pub unsafe extern "C" fn which_implies(
+  state: *const Gc<Term>, 
+  trans: *const Gc<Theorem>
+) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!state.is_null(), "`state` is null", std::ptr::null());
+  ensures!(!trans.is_null(), "`trans` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let state = unsafe { &*state }.as_ref();
+  let trans = unsafe { &*trans }.as_ref();
+  
+  let thm = ensures_ok!(client.which_implies(state, trans), std::ptr::null());
+  thm.into_gc()
+}
+
+/// Applies a conversion to the operand of an application. 
+#[no_mangle]
+pub unsafe extern "C" fn rand_conv(conv: *const Gc<Conversion>) -> *const Gc<Conversion> {
+  clear_last_error();
+  ensures!(!conv.is_null(), "`conv` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let conv = unsafe { &*conv }.as_ref();
+
+  let result = ensures_ok!(client.rand_conv(conv), std::ptr::null());
+  result.into_gc()
+}
+
+/// Applies a conversion.
+#[no_mangle]
+pub unsafe extern "C" fn apply_conv(
+  conv: *const Gc<Conversion>,
+  tm: *const Gc<Term>
+) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!conv.is_null(), "`conv` is null", std::ptr::null());
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let conv = unsafe { &*conv }.as_ref();
+  let tm = unsafe { &*tm }.as_ref();
+
+  let thm = ensures_ok!(client.apply_conv(conv, tm), std::ptr::null());
+  thm.into_gc()
 }

@@ -23,11 +23,17 @@ pub trait Interface {
     /// Dispose a type.
     async fn dispose_type(key: TypeKey) -> Result<()>;
 
+    /// Dispose a conversion. 
+    async fn dispose_conversion(key: ConversionKey) -> Result<()>;
+
     /// Parse a term from a string.
     async fn parse_term_from_string(s: String) -> Result<TermKey>;
 
     /// Parse a type from a string.
     async fn parse_type_from_string(s: String) -> Result<TypeKey>;
+
+    /// Parse a type from a conversion.
+    async fn parse_conv_from_string(s: String) -> Result<ConversionKey>;
 
     /// Convert a term to a string.
     async fn string_of_term(key: TermKey) -> Result<String>;
@@ -176,13 +182,16 @@ pub trait Interface {
     async fn choose(tm: TermKey, th: TheoremKey) -> Result<TheoremKey>;
 
     /// Define an inductive type.
-    async fn define_type(name: String, variants: Vec<String>) -> Result<IndTypeKey>;
+    async fn define_type(tm: String) -> Result<IndTypeKey>;
 
     /// Define a new constant or function.
     async fn define(tm: TermKey) -> Result<TheoremKey>;
 
     /// Uses an instance of a given equation to rewrite a term.
     async fn rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    async fn rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
 
     /// Instantiation of induction principle.
     async fn induction_aux(th: TheoremKey, tm1: TermKey, tm2: TermKey) -> Result<TheoremKey>;
@@ -234,6 +243,24 @@ pub trait Interface {
 
     /// Define a relation or family of relations inductively.
     async fn new_inductive_definition(tm: TermKey) -> Result<IndDefKey>;
+
+    /// Automatically proves natural number arithmetic theorems. 
+    async fn arith_rule(tm: TermKey) -> Result<TheoremKey>;
+
+    /// Get a theorem from the search database.
+    async fn get_theorem(name: String) -> Result<TheoremKey>;
+
+    /// `sep lift` conversion.
+    async fn sep_lift(lft: TermKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// `which implies` conversion.
+    async fn which_implies(state: TermKey, trans: TheoremKey) -> Result<TheoremKey>;
+
+    /// Applies a conversion to the operand of an application. 
+    async fn rand_conv(conv: ConversionKey) -> Result<ConversionKey>;
+
+    /// Applies a conversion.
+    async fn apply_conv(conv: ConversionKey, tm: TermKey) -> Result<TheoremKey>;
 }
 
 slotmap::new_key_type! {
@@ -245,6 +272,9 @@ slotmap::new_key_type! {
 
     /// Key for a type.
     pub struct TypeKey;
+
+    /// Key for a conversion.
+    pub struct ConversionKey; 
 }
 
 /// Key for an inductive type.
@@ -254,12 +284,6 @@ pub struct IndTypeKey {
     pub ind: TheoremKey,
     /// The recursion theorem.
     pub rec: TheoremKey,
-    /// distinctness theorem.
-    pub distinct: TheoremKey,
-    /// cases theorem.
-    pub cases: TheoremKey,
-    /// injectivity theorem.
-    pub inject: TheoremKey,
 }
 
 /// Key for an inductive relation.

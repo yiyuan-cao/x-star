@@ -1,12 +1,13 @@
 use std::mem::size_of;
 
-use hol_rpc::client::{Term, Theorem, Type};
+use hol_rpc::client::{Term, Theorem, Type, Conversion};
 
 use crate::gc::{gc_sys, AutoIntoGc, Gc, IntoGc};
 
 impl AutoIntoGc for Term {}
 impl AutoIntoGc for Type {}
 impl AutoIntoGc for Theorem {}
+impl AutoIntoGc for Conversion {}
 
 /// Inductive type.
 #[repr(C)]
@@ -15,12 +16,6 @@ pub struct IndType {
     pub ind: *const Gc<Theorem>,
     /// The recursion theorem.
     pub rec: *const Gc<Theorem>,
-    /// distinctness theorem.
-    pub distinct: *const Gc<Theorem>,
-    /// cases theorem.
-    pub cases: *const Gc<Theorem>,
-    /// injectivity theorem.
-    pub inject: *const Gc<Theorem>,
 }
 
 unsafe impl IntoGc for IndType {

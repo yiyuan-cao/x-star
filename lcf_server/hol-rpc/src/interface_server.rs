@@ -1,5 +1,5 @@
 use hol_rpc::args;
-use hol_rpc::{IndTypeKey, IndDefKey, Interface, Result, TermKey, TheoremKey, TypeKey};
+use hol_rpc::{IndTypeKey, IndDefKey, Interface, Result, TermKey, TheoremKey, TypeKey, ConversionKey};
 use tarpc::context::Context;
 
 use crate::session::Session;
@@ -23,6 +23,12 @@ impl Interface for Session {
         Ok(())
     }
 
+    /// Dispose a conversion.
+    async fn dispose_conversion(mut self, _ctx: Context, key: ConversionKey) -> Result<()> {
+      self.conversions_mut().remove(key);
+      Ok(())
+    }
+
     /// Parse a term from a string.
     async fn parse_term_from_string(mut self, _ctx: Context, s: String) -> Result<TermKey> {
         load_dyn_function!(parse_term_from_string);
@@ -36,6 +42,13 @@ impl Interface for Session {
         let ty = unsafe { self.dyn_call(parse_type_from_string, args!(&s)) }?;
         Ok(self.types_mut().insert(ty))
     }
+
+    /// Parse a conversion from a string.
+    async fn parse_conv_from_string(mut self, _ctx: Context, s: String) -> Result<ConversionKey> {
+      load_dyn_function!(parse_conv_from_string);
+      let conv = unsafe { self.dyn_call(parse_conv_from_string, args!(&s)) }?;
+      Ok(self.conversions_mut().insert(conv))
+  }
 
     /// Convert a term to a string.
     async fn string_of_term(self, _ctx: Context, key: TermKey) -> Result<String> {
@@ -358,30 +371,17 @@ impl Interface for Session {
     async fn define_type(
         mut self,
         _ctx: Context,
-        name: String,
-        variants: Vec<String>,
+        tm: String,
     ) -> Result<IndTypeKey> {
         load_dyn_function!(define_type);
-        load_dyn_function!(distinctness);
-        load_dyn_function!(cases);
-        load_dyn_function!(injectivity);
 
-        let variants = variants.join("|");
-        let variants = format!("{} = {}", name, variants);
-
-        let token = unsafe { self.dyn_call(define_type, args!(&variants)) }?;
+        let token = unsafe { self.dyn_call(define_type, args!(&tm)) }?;
         let (ind, rec) = unsafe { self.destruct::<2, _>(&token)? };
         let (ind, rec) = {
             let mut theorems = self.theorems_mut();
             (theorems.insert(ind), theorems.insert(rec))
         };
-        let token = unsafe { self.dyn_call(distinctness, args!(&name))}?;
-        let distinct = self.theorems_mut().insert(token);
-        let token = unsafe { self.dyn_call(cases, args!(&name))}?;
-        let cases = self.theorems_mut().insert(token);
-        let token = unsafe { self.dyn_call(injectivity, args!(&name))}?;
-        let inject = self.theorems_mut().insert(token);
-        Ok(IndTypeKey { ind, rec, distinct, cases, inject })
+        Ok(IndTypeKey { ind, rec })
     }
 
     /// Define a new constant or function.
@@ -406,6 +406,18 @@ impl Interface for Session {
             unsafe { self.dyn_call(rewrite, args!(th, tm)) }?
         };
         Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    async fn rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(SREWRITE_RULE as rewrite_rule); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let t = theorems.get(t).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(rewrite_rule, args!(th, t)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
     }
 
     /// Instantiation of induction principle.
@@ -619,5 +631,73 @@ impl Interface for Session {
         (theorems.insert(def), theorems.insert(ind), theorems.insert(cases))
       };
       Ok(IndDefKey { def, ind, cases })
+    }
+
+    /// Automatically proves natural number arithmetic theorems. 
+    async fn arith_rule(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(ARITH_RULE as arith_rule);
+      let thm = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(arith_rule, args!(tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Get a theorem from the search database.
+    async fn get_theorem(mut self, _ctx: Context, name: String) -> Result<TheoremKey> {
+      load_dyn_function!(get_theorem);
+      let thm = unsafe { self.dyn_call(get_theorem, args!(&name)) }?;
+      let mut theorems = self.theorems_mut();
+      Ok(theorems.insert(thm))
+    }
+
+    /// `sep lift` conversion.
+    async fn sep_lift(mut self, _ctx: Context, lft: TermKey, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(SEP_LIFT as sep_lift);
+      let thm = {
+        let terms = self.terms();
+        let lft = terms.get(lft).ok_or("invalid term key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(sep_lift, args!(lft, tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// `which implies` conversion.
+    async fn which_implies(mut self, _ctx: Context, state: TermKey, trans: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(WHICH_IMPLIES as which_implies);
+      let thm = {
+        let terms = self.terms();
+        let theorems = self.theorems();
+        let state = terms.get(state).ok_or("invalid term key")?;
+        let trans = theorems.get(trans).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(which_implies, args!(state, trans)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    // Applies a conversion to the operand of an application. 
+    async fn rand_conv(mut self, _ctx: Context, conv: ConversionKey) -> Result<ConversionKey> {
+      load_dyn_function!(RAND_CONV as rand_conv);
+      let result = {
+        let conversions = self.conversions();
+        let conv = conversions.get(conv).ok_or("invalid conversion key")?;
+        unsafe { self.dyn_call(rand_conv, args!(conv)) }?
+      };
+      Ok(self.conversions_mut().insert(result))
+    }
+
+    /// Applies a conversion.
+    async fn apply_conv(mut self, _ctx: Context, conv: ConversionKey, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(apply_conv);
+      let thm = {
+        let conversions = self.conversions();
+        let terms = self.terms();
+        let conv = conversions.get(conv).ok_or("invalid conversion key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(apply_conv, args!(conv, tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
     }
 }

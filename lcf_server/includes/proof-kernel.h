@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct Gc_Conversion Gc_Conversion;
+
 typedef struct Gc_Term Gc_Term;
 
 typedef struct Gc_Theorem Gc_Theorem;
@@ -24,18 +26,6 @@ typedef struct IndType {
    * The recursion theorem.
    */
   const struct Gc_Theorem *rec;
-  /**
-   * distinctness theorem.
-   */
-  const struct Gc_Theorem *distinct;
-  /**
-   * cases theorem.
-   */
-  const struct Gc_Theorem *cases;
-  /**
-   * injectivity theorem.
-   */
-  const struct Gc_Theorem *inject;
 } IndType;
 
 /**
@@ -85,6 +75,17 @@ const struct Gc_Term *parse_term(const char *s);
  * A pointer to the parsed type on success, `NULL` on failure.
  */
 const struct Gc_Type *parse_type(const char *s);
+
+/**
+ * Parse a type from a conversion.
+ *
+ * # Parameters
+ * - `s`: The string to parse.
+ *
+ * # Returns
+ * A pointer to the parsed type on success, `NULL` on failure.
+ */
+const struct Gc_Conversion *get_conversion(const char *s);
 
 /**
  * Convert a term to a string.
@@ -408,7 +409,7 @@ const struct Gc_Theorem *choose(const struct Gc_Term *tm, const struct Gc_Theore
  * Two theorems on success, `NULL` on failure.
  *
  */
-const struct IndType *define_type(const char *name, const char *const variants[]);
+const struct IndType *define_type(const char *tm);
 
 /**
  * Define a new constant or function.
@@ -432,6 +433,18 @@ const struct Gc_Theorem *define(const struct Gc_Term *tm);
  * A theorem on success, `NULL` on failure.
  */
 const struct Gc_Theorem *rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
+
+/**
+ * Rewrites a theorem including built-in tautologies in the list of rewrites.
+ *
+ * # Parameter
+ * - `th`: The theorem to use for rewriting.
+ * - `t`: The theorem to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
 
 /**
  * Instantiation of induction principle.
@@ -569,6 +582,54 @@ const struct Gc_Theorem *new_axiom(const struct Gc_Term *tm);
  * Define a relation or family of relations inductively.
  */
 const struct IndDef *new_inductive_definition(const struct Gc_Term *tm);
+
+/**
+ * Automatically proves natural number arithmetic theorems.
+ */
+const struct Gc_Theorem *arith_rule(const struct Gc_Term *tm);
+
+/**
+ * Get a theorem from the search database.
+ */
+const struct Gc_Theorem *get_theorem(const char *name);
+
+/**
+ * `sep lift` conversion.
+ *
+ * # Parameters
+ * - `lft` : The term to be lifted.
+ * - `tm`: The term to do conversion.
+ *
+ * # Returns
+ * Suppose both lft and tm are separating conjunction of atomic assertion.
+ * If `lft` = `A * B * C` and {A,B,C} in `tm`,
+ * then the return theorem is `tm = (A * B * C) * (D * ...)`.
+ */
+const struct Gc_Theorem *sep_lift(const struct Gc_Term *lft, const struct Gc_Term *tm);
+
+/**
+ * `which implies` conversion.
+ *
+ * # Parameters
+ * - `state` : The symbolic state before `which implies`.
+ * - `trans`: The transformation entailment.
+ *
+ * # Returns
+ * Suppose `state` is a separating conjunction of atomic assertion with `hexists` outside,
+ * and `trans` is entailment of two separating conjunctions of atomic assertion.
+ * The return theorem is `state |-- state'`, where `state'`` is sep_apply `trans` on `state`.
+ */
+const struct Gc_Theorem *which_implies(const struct Gc_Term *state, const struct Gc_Theorem *trans);
+
+/**
+ * Applies a conversion to the operand of an application.
+ */
+const struct Gc_Conversion *rand_conv(const struct Gc_Conversion *conv);
+
+/**
+ * Applies a conversion.
+ */
+const struct Gc_Theorem *apply_conv(const struct Gc_Conversion *conv, const struct Gc_Term *tm);
 
 /**
  * Get the last error message.

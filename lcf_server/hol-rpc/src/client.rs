@@ -57,6 +57,11 @@ impl Client {
     pub(crate) fn dispose_type(&self, key: crate::TypeKey) -> Result<()> {
         self.execute(self.0.interface.dispose_type(context::current(), key))?
     }
+
+    /// Dispose a conversion.
+    pub(crate) fn dispose_conversion(&self, key: crate::ConversionKey) -> Result<()> {
+        self.execute(self.0.interface.dispose_conversion(context::current(), key))?
+    }
 }
 
 /// Term.
@@ -113,18 +118,30 @@ impl Drop for Type {
     }
 }
 
+/// Conversion.
+pub struct Conversion {
+  pub(crate) key: crate::ConversionKey,
+  client: Client,
+}
+
+impl Conversion {
+  pub(crate) fn new(key: crate::ConversionKey, client: Client) -> Self {
+    Self { key, client }
+  }
+}
+
+impl Drop for Conversion {
+  fn drop(&mut self) {
+    let _ = self.client.dispose_conversion(self.key);
+  }
+}
+
 /// Inductive type.
 pub struct IndType {
     /// The inductive theorem.
     pub ind: Theorem,
     /// The recursion theorem.
     pub rec: Theorem,
-    /// distinctness theorem.
-    pub distinct: Theorem,
-    /// cases theorem.
-    pub cases: Theorem,
-    /// injectivity theorem.
-    pub inject: Theorem,
 }
 
 /// Inductive Relation.

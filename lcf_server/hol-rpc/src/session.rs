@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::caml_dyn_call::Token;
-use hol_rpc::{TermKey, TheoremKey, TypeKey};
+use hol_rpc::{TermKey, TheoremKey, TypeKey, ConversionKey};
 
 #[derive(Clone, Default)]
 pub struct Session(Rc<SessionInner>);
@@ -15,6 +15,7 @@ struct SessionInner {
     terms: RefCell<slotmap::SlotMap<TermKey, Token>>,
     theorems: RefCell<slotmap::SlotMap<TheoremKey, Token>>,
     types: RefCell<slotmap::SlotMap<TypeKey, Token>>,
+    conversions: RefCell<slotmap::SlotMap<ConversionKey, Token>>,
 }
 
 impl Session {
@@ -59,6 +60,14 @@ impl Session {
 
     pub(crate) fn types_mut(&mut self) -> RefMut<slotmap::SlotMap<TypeKey, Token>> {
         self.0.types.borrow_mut()
+    }
+
+    pub(crate) fn conversions(&self) -> Ref<slotmap::SlotMap<ConversionKey, Token>> {
+        self.0.conversions.borrow()
+    }
+
+    pub(crate) fn conversions_mut(&mut self) -> RefMut<slotmap::SlotMap<ConversionKey, Token>> {
+        self.0.conversions.borrow_mut()
     }
 }
 
