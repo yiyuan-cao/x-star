@@ -170,7 +170,7 @@ rule initial = parse
   | "cstar::invariant"            { CSTAR_INVARIANT }
   | "cstar::ghostvar"             { CSTAR_GHOSTVAR }
   | "cstar::assert"               { CSTAR_ASSERT }
-  | "cstar::ghostcmd"             { CSTAR_GHOSTCMD }
+  | "cstar::proof"                { CSTAR_PROOF }
   | "cstar::argument"             { CSTAR_ARGUMENT }
   | "SEP"                         { SEP }
   | "SEPAND"                      { SEPAND }
@@ -318,7 +318,7 @@ and string_literal buf = parse
 
 and raw_string_literal buf = parse
   | '`'        { Buffer.contents buf }
-  | '\n'       { Buffer.add_string buf "\n"; raw_string_literal buf lexbuf }
+  | '\n'       { new_line lexbuf; Buffer.add_string buf "\n"; raw_string_literal buf lexbuf }
   | eof        { failwith "missing terminating \"`\" character" }
   | _          { let l = Lexing.lexeme lexbuf in
                   Buffer.add_string buf l;

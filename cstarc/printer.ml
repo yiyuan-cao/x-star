@@ -311,7 +311,8 @@ and stmt_to_doc = function
   | Sreturn (None, _) -> kwd "return" ^^ semi
   | Sreturn (Some expr, _) ->
       kwd "return" ^^ space ^^ expr_to_doc expr ^^ semi
-  | Sdecl decl -> declaration_to_doc decl
+  | Sdecl (decl, attrs) ->
+      attribute_list_to_doc attrs true ^^ declaration_to_doc decl
 
 and init_to_doc = function
   | Init_single e -> expr_to_doc e
@@ -528,15 +529,16 @@ and cstar_attribute_to_doc = function
   | Arepresentation r -> ("cstar::representation", declaration_to_doc_inner r)
   | Apredicate p -> ("cstar::predicate", declaration_to_doc_inner p)
   | Adatatype d -> ("cstar::datatype", cstar_datatype_to_doc d)
-  | Aparameter p -> ("cstar::parameter", parameters_to_doc p)
+  | Aparameter p -> ("cstar::parameter", expr_to_doc p)
   | Arequire r -> ("cstar::require", expr_to_doc r)
   | Aensure e -> ("cstar::ensure", expr_to_doc e)
   | Aassert a -> ("cstar::assert", expr_to_doc a)
   | Aghostvar v -> ("cstar::ghostvar", declaration_to_doc_inner v)
   | Ainvariant i -> ("cstar::invariant", expr_to_doc i)
-  | Aghostcmd ss ->
+  | Aproof ss ->
       let stmts = ss |> List.map ~f:stmt_to_doc |> seperate break in
-      ("cstar::ghostcmd", stmts)
+      ("cstar::proof", stmts)
+  | Atype t -> ("cstar::type", expr_to_doc t)
   | Aargument a ->
       ("cstar::argument", seperate_map comma_break ~f:expr_to_doc a)
 

@@ -147,13 +147,14 @@ and cstar_attribute =
   | Arepresentation of declaration
   | Apredicate of declaration
   | Adatatype of cstar_datatype
-  | Aparameter of parameter list
+  | Aparameter of expr
   | Arequire of expr
   | Aensure of expr
   | Aghostvar of declaration
   | Ainvariant of expr
   | Aassert of expr
-  | Aghostcmd of stmt list
+  | Aproof of stmt list
+  | Atype of expr
   | Aargument of expr list
 [@@deriving show]
 
@@ -168,7 +169,7 @@ and stmt =
   | Sbreak of range
   | Scontinue of range
   | Sreturn of expr option * range
-  | Sdecl of declaration  (** local declarations. *)
+  | Sdecl of declaration * attribute list (** local declarations. *)
 [@@deriving show]
 
 (** Declarations. *)

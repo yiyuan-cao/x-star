@@ -3,7 +3,7 @@
 
 (menhir
  (modules parser)
- (flags --unused-token IMAGINARY -lg 1 -la 1 -v))
+ (flags --unused-token IMAGINARY --table -lg 1 -la 1 -v))
 
 (executable
  (name main)

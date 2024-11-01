@@ -37,14 +37,14 @@ size_t hyp_early_alloc_nr_pages(void)
 	return (cur - base) >> PAGE_SHIFT;
 }
 
-[[cstar::proof(
+[[cstar::function(
 
     [[cstar::type(`:bool`)]]
     term in_range(
         [[cstar::type(`:int`)]] term i,
         [[cstar::type(`:int`)]] term lo,
         [[cstar::type(`:int`)]] term hi
-    ) = {
+    ) {
         return `${lo:int} <= ${i:int} && ${i:int} <= ${hi:int}`;
     }
 
@@ -56,6 +56,19 @@ size_t hyp_early_alloc_nr_pages(void)
     // Moreover, one can also provide a meta-level function definition that returns the application of the object logic level function, e.g.
     //     term in_range_app(term i, term lo, term hi) { return `in_range(${i}, ${lo}, ${hi})`; }
     // Although I don't see much value in this.
+)]];
+
+[[cstar::function(
+
+    [[cstar::type(`:hprop`)]]
+    term splitted_array_at(
+        [[cstar::type(`:int`)]] term i
+    ) {
+        return `
+            array_at(_to, Tchar, ireplicate(${i:int}, &0)) **
+            undef_slice_at(_to, Tchar, ${i:int}, &PAGE_SIZE - ${i:int})
+        `;
+    }
 )]];
 
 void clear_page(void *to)
@@ -94,16 +107,6 @@ void clear_page(void *to)
         term whole_array = `
             undef_array_at(_to, Tchar, &PAGE_SIZE)
         `;
-        
-        [[cstar::type(`:hprop`)]]
-        term splitted_array_at(
-            [[cstar::type(`:int`)]] term i
-        ) = {
-            return `
-                array_at(_to, Tchar, ireplicate(${i:int}, &0)) **
-                undef_slice_at(_to, Tchar, ${i:int}, &PAGE_SIZE - ${i:int})
-            `;
-        }
         
         term splitted_array_at_i = splitted_array_at(`_i:int`);
         // Clumsy because don't support expression in antiquotation for now...
@@ -327,7 +330,7 @@ void clear_page(void *to)
             undef_slice_at(_to, Tchar, _i + 1, &PAGE_SIZE - (_i + 1))
         `)]];
 
-        i++; // Need to check how VST-IDE handles existentially quantified _i.
+        i = i + 1; // Need to check how VST-IDE handles existentially quantified _i.
 
         [[cstar::assert(`
             exists (_i:Z) (_to:addr). // _i is still the old value of i
@@ -341,16 +344,16 @@ void clear_page(void *to)
 
         [[cstar::proof(
             // establish the invariant
-            thm merge = axiom `
+            thm merge = axiom(`
                 _i >= &0
                 ==>
                 (data_at(_to + _i * size_of(Tchar), Tchar, &0) **
                 array_at(_to, Tchar, ireplicate(_i, &0))
                 |--
                 array_at(_to, Tchar, ireplicate(_i + 1, &0)))
-            `;
+            `);
             // merge and reinstantiate existential variables to (_i + (&1))
-            __transform = axiom `42 = 21 + 21`; // Omit the proof details here.
+            __transform = axiom(`42 = 21 + 21`); // Omit the proof details here.
         )]];
 
         [[cstar::assert(`

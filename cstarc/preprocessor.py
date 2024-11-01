@@ -16,11 +16,12 @@ CC = os.getenv("CC", "cc")
 FLAGS = ["-E", "-C", "--std=c2x", "-o", "-"]
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python preprocessor.py <filename>")
+    if len(sys.argv) < 2:
+        print("Usage: python preprocessor.py <filename> [flags...]")
         sys.exit(1)
     filename = sys.argv[1]
-    preprocessing = subprocess.run([CC, *FLAGS, filename], stdout=subprocess.PIPE)
+    flags = [*FLAGS, *sys.argv[2:]]
+    preprocessing = subprocess.run([CC, *flags, filename], stdout=subprocess.PIPE)
     if preprocessing.returncode != 0:
         sys.exit(1)
     output = preprocessing.stdout.decode("utf-8")

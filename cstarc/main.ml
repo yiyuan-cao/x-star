@@ -47,6 +47,24 @@ let print_position outx lexbuf =
     fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
       (pos.pos_cnum - pos.pos_bol + 1) )
 
+module I = Parser.MenhirInterpreter
+
+let rec parse lexbuf (checkpoint : Ast.program I.checkpoint) =
+  match checkpoint with
+  | I.InputNeeded _env ->
+      let token = lexer lexbuf in
+      let startp = lexbuf.lex_start_p and endp = lexbuf.lex_curr_p in
+      let checkpoint = I.offer checkpoint (token, startp, endp) in
+      parse lexbuf checkpoint
+  | I.Shifting _ | I.AboutToReduce _ ->
+      let checkpoint = I.resume checkpoint in
+      parse lexbuf checkpoint
+  | I.HandlingError env ->
+      let state = I.current_state_number env in
+      failwith (sprintf "Syntax error at state %d" state)
+  | I.Accepted v -> v
+  | I.Rejected -> failwith "invalid syntax (parser rejected the input)"
+
 let command =
   Command.basic ~summary:"C* compiler"
     ~readme:(fun () ->
@@ -58,7 +76,7 @@ let command =
       fun () ->
         let lexbuf = open_file input_file in
         try
-          let ast = Parser.translation_unit_file lexer lexbuf in
+          let ast = parse lexbuf (Parser.Incremental.translation_unit_file lexbuf.lex_curr_p) in
           Printf.printf "%s\n"
             (Printer.Render.render_to_string (Printer.program_to_doc ast))
         with

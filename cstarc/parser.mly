@@ -191,7 +191,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %token CSTAR_INVARIANT "cstar::invariant"
 %token CSTAR_GHOSTVAR "cstar::ghostvar"
 %token CSTAR_ASSERT "cstar::assert"
-%token CSTAR_GHOSTCMD "cstar::ghostcmd"
+%token CSTAR_PROOF "cstar::proof"
 %token CSTAR_ARGUMENT "cstar::argument"
 
 %token SEP "SEP"
@@ -970,8 +970,8 @@ block_item_list:
     { (ss -? []) @ s }
 
 block_item:
-| d=declaration
-    { Core.List.map d ~f:(fun d -> Sdecl d) }
+| ts=attribute_specifier_sequence d=declaration
+    { Core.List.map d ~f:(fun d -> Sdecl (d, ts)) }
 | s=statement
     { [s] }
 
@@ -1073,21 +1073,22 @@ attribute:
     { [] }
 
 attribute_token:
-| standard_attribute
-| attribute_prefixed_token
-    {}
+| i=standard_attribute
+    { Core.Printf.eprintf "unknown attribute %s" i }
+| is=attribute_prefixed_token
+    { Core.Printf.eprintf "unknown attribute %s::%s" (fst is) (snd is) }
 
 standard_attribute:
-| general_identifier
-    {}
+| i=general_identifier
+    { i }
 
 attribute_prefixed_token:
-| attribute_prefix "::" general_identifier
-    {}
+| i1=attribute_prefix "::" i2=general_identifier
+    { (i1, i2) }
 
 attribute_prefix:
-| general_identifier
-    {}
+| i=general_identifier
+    { i }
 
 attribute_argument_clause:
 | "(" balanced_token_sequence? ")"
@@ -1105,6 +1106,7 @@ balanced_token:
 | TYPE
 | CONSTANT 
 | STRING_LITERAL
+| RAW_STRING_LITERAL
 | "_Alignas"
 | "_Alignof"
 | "_Atomic"
@@ -1190,6 +1192,8 @@ balanced_token:
 | ";"
 | ","
 | "."
+| "[["
+| "]]"
     {}
 
 cstar_attribute:
@@ -1203,7 +1207,7 @@ cstar_attribute:
 | x=cstar_invariant_attribute
 | x=cstar_ghostvar_attribute
 | x=cstar_assert_attribute
-| x=cstar_ghostcommand_attribute
+| x=cstar_proof_attribute
 | x=cstar_argument_attribute
     { x }
 
@@ -1242,10 +1246,8 @@ cstar_datatype_constructor:
     { (identifier d, parameters d) }
 
 cstar_parameter_attribute:
-| CSTAR_PARAMETER "(" ps=scoped(parameter_type_list)? ")"
-    { match ps with
-      | Some (_, ps) -> [Acstar (Aparameter ps)] 
-      | None -> [Acstar (Aparameter [])] }
+| CSTAR_PARAMETER "(" e=expression ")"
+    { [Acstar (Aparameter e)] }
 
 cstar_require_attribute:
 | CSTAR_REQUIRE "(" e=expression ")"
@@ -1268,9 +1270,9 @@ cstar_assert_attribute:
 | CSTAR_ASSERT "(" e=expression ")"
     { [Acstar (Aassert e)] }
 
-cstar_ghostcommand_attribute:
-| CSTAR_GHOSTCMD "(" s=cstar_command_statement ")"
-    { [Acstar (Aghostcmd s)] }
+cstar_proof_attribute:
+| CSTAR_PROOF "(" s=cstar_command_statement ")"
+    { [Acstar (Aproof s)] }
 
 cstar_command_statement:
 | ss=block_item_list?
