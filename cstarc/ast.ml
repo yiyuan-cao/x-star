@@ -11,6 +11,8 @@ let pp_loc fmt loc = Format.fprintf fmt "%d:%d" loc.line_no loc.col_no
 (** Source range information. *)
 type range = {start_p: loc; end_p: loc} [@@deriving show]
 
+let dummy_range = {start_p= {line_no= 0; col_no= 0}; end_p= {line_no= 0; col_no= 0}}
+
 let pp_range fmt r =
   Format.fprintf fmt "<%a-%a>" pp_loc r.start_p pp_loc r.end_p
 

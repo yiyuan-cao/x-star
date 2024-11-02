@@ -10,4 +10,4 @@
  (name cstarc)
  (maintainers "CStar Team")
  (synopsis "CStar Compiler")
- (depends menhir core core_unix pprint ppx_deriving))
+ (depends menhir core core_unix pprint re ppx_deriving))

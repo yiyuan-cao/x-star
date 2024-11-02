@@ -75,16 +75,21 @@ let command =
       let%map_open input_file = anon ("input_file" %: string) in
       fun () ->
         let lexbuf = open_file input_file in
-        try
-          let ast = parse lexbuf (Parser.Incremental.translation_unit_file lexbuf.lex_curr_p) in
-          Printf.printf "%s\n"
-            (Printer.Render.render_to_string (Printer.program_to_doc ast))
-        with
-        | Parser.Error ->
-            fprintf stderr "%a: syntax error\n" print_position lexbuf ;
-            exit 1
-        | Failure s ->
-            fprintf stderr "%a: %s\n" print_position lexbuf s ;
-            exit 1 )
+        let ast =
+          try
+            parse lexbuf
+              (Parser.Incremental.translation_unit_file lexbuf.lex_curr_p)
+          with
+          | Parser.Error ->
+              fprintf stderr "%a: syntax error\n" print_position lexbuf ;
+              exit 1
+          | Failure s ->
+              fprintf stderr "%a: %s\n" print_position lexbuf s ;
+              exit 1
+        in
+        let proof = Proof.make_proof ast in
+        (* Printer.Pretty.config.palette <- None ; *)
+        Printf.printf "%s\n"
+          (Printer.Render.render_to_string (Printer.program_to_doc proof)) )
 
 let () = Command_unix.run command

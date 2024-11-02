@@ -8,6 +8,7 @@ depends: [
   "core"
   "core_unix"
   "pprint"
+  "re"
   "ppx_deriving"
   "odoc" {with-doc}
 ]
