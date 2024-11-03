@@ -165,10 +165,11 @@ let rec make_proof_of_stmt ~only_attrs = function
             , make_proof_of_stmt stmt ~only_attrs |> flatten_stmts
             , []
             , r ) ]
-  | Sbreak r -> [Sbreak r]
-  | Scontinue r -> [Scontinue r]
-  | Sreturn (Some expr, r) -> [Sreturn (Some (make_proof_of_expr expr), r)]
-  | Sreturn (None, r) -> [Sreturn (None, r)]
+  | Sbreak r -> if only_attrs then [] else [Sbreak r]
+  | Scontinue r -> if only_attrs then [] else [Scontinue r]
+  | Sreturn (Some expr, r) ->
+      if only_attrs then [] else [Sreturn (Some (make_proof_of_expr expr), r)]
+  | Sreturn (None, r) -> if only_attrs then [] else [Sreturn (None, r)]
   | Sdecl (decl, _) ->
       make_proof_of_local_decl decl ~only_attrs
       |> List.map ~f:(fun d -> Sdecl (d, []))
@@ -212,6 +213,8 @@ let make_proof_of_global_cstar_attr = function
 let make_proof_of_global_decl = function
   | Dattribute (Acstar attr, _) -> make_proof_of_global_cstar_attr attr
   | Ddeffun (funsym, _, stmt) ->
+      let _, ident, _, r = funsym in
+      let funsym = (Tvoid, ident, [], r) in
       let stmt = make_proof_of_stmt stmt ~only_attrs:true |> flatten_stmts in
       [Ddeffun (funsym, [], stmt)]
   | Ddecltype (t, r) -> [Ddecltype (t, r)]

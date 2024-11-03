@@ -88,8 +88,7 @@ let command =
               exit 1
         in
         let proof = Proof.make_proof ast in
-        (* Printer.Pretty.config.palette <- None ; *)
-        Printf.printf "%s\n"
-          (Printer.Render.render_to_string (Printer.program_to_doc proof)) )
+        Printer.Render.render_to_string (Printer.program_to_doc proof)
+        |> Printer.Ansi.fprint stdout )
 
 let () = Command_unix.run command

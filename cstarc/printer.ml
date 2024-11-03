@@ -1,6 +1,8 @@
 module Ansi = struct
   (** Ansi terminal colors. *)
 
+  open Core
+
   let make_color c = Printf.sprintf "\x1b[%dm%s\x1b[0m" c
 
   let black = make_color 30
@@ -34,6 +36,27 @@ module Ansi = struct
   let bright_cyan = make_color 96
 
   let bright_white = make_color 97
+
+  let strip_ansi s =
+    let buffer = Buffer.create (String.length s) in
+    let state = ref `Text in
+    String.iter s ~f:(fun c ->
+        let open Char in
+        match !state with
+        | `Text ->
+            if c = '\x1b' then state := `Escape else Buffer.add_char buffer c
+        | `Escape -> if c = '[' then state := `Bracket else state := `Text
+        | `Bracket -> if is_digit c then state := `Digit else state := `Text
+        | `Digit ->
+            if is_digit c then ()
+            else if c = 'm' then state := `Text
+            else state := `Text ) ;
+    Buffer.contents buffer
+
+  let fprint channel s =
+    let open Core_unix in
+    let file = descr_of_out_channel channel in
+    Printf.fprintf channel "%s" (if isatty file then s else strip_ansi s)
 end
 
 module Pretty = struct
@@ -266,6 +289,7 @@ and declaration_to_doc_inner = function
   | Ddecltype (typ, _) -> typ_to_doc typ
   | Ddecltypedef (ident, typ, _) ->
       kwd "typedef" ^^ break ^^ parameter_to_doc (typ, ident)
+      |> nest |> group
   | Ddeclfun (func, _) -> funsym_to_doc func
   | Ddeffun (func, _, stmt) ->
       funsym_to_doc func ^^ space ^^ stmt_to_doc stmt
