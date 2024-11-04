@@ -185,6 +185,22 @@ const struct Gc_Theorem *refl(const struct Gc_Term *tm);
 const struct Gc_Theorem *disch(const struct Gc_Theorem *th, const struct Gc_Term *tm);
 
 /**
+ * Undischarges the antecedent of an implicative theorem.
+ *
+ * ```text
+ * A |- t1 ==> t2
+ * --------------
+ *   A, t1 |- t2
+ * ```
+ * # Parameters
+ * - `th`: The theorem to undischarge.
+ *
+ * # Returns
+ * A pointer to the theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *undisch(const struct Gc_Theorem *th);
+
+/**
  * Generalize a free term in a theorem.
  *
  * ```text
@@ -435,7 +451,7 @@ const struct Gc_Theorem *define(const struct Gc_Term *tm);
 const struct Gc_Theorem *rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
 
 /**
- * Rewrites a theorem including built-in tautologies in the list of rewrites.
+ * Uses an instance of a given equation to rewrite a theorem.
  *
  * # Parameter
  * - `th`: The theorem to use for rewriting.
@@ -445,6 +461,30 @@ const struct Gc_Theorem *rewrite(const struct Gc_Theorem *th, const struct Gc_Te
  * A theorem on success, `NULL` on failure.
  */
 const struct Gc_Theorem *rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
+
+/**
+ * Uses an instance of a given equation to rewrite a term only once.
+ *
+ * # Parameters
+ * - `th`: The theorem to use for rewriting.
+ * - `tm`: The term to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *once_rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
+
+/**
+ * Uses an instance of a given equation to rewrite a theorem only once.
+ *
+ * # Parameter
+ * - `th`: The theorem to use for rewriting.
+ * - `t`: The theorem to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *once_rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
 
 /**
  * Instantiation of induction principle.
@@ -488,6 +528,30 @@ const struct Gc_Term *subst(const struct Gc_Term *tm1,
 bool is_comb(const struct Gc_Term *tm);
 
 /**
+ * Check if a term is an application of the given binary operator.
+ *
+ * # Parameters
+ * - `op`: The binary operator.
+ * - `tm`: The term to check.
+ *
+ * # Returns
+ * `true` on it is an application of binary operator `op`, `false` on it is not (or failure).
+ */
+bool is_binop(const struct Gc_Term *op, const struct Gc_Term *tm);
+
+/**
+ * Check if a term is a binder construct with named constant.
+ *
+ * # Parameters
+ * - `s`: The name of binder.
+ * - `tm`: The term to check.
+ *
+ * # Returns
+ * `true` on it is a binder construct with name `s`, `false` on it is not (or failure).
+ */
+bool is_binder(const char *s, const struct Gc_Term *tm);
+
+/**
  * First element of the destruct of an application.
  *
  * # Parameters
@@ -508,6 +572,54 @@ const struct Gc_Term *fst_comb(const struct Gc_Term *tm);
  * A term on success, `NULL` on failure.
  */
 const struct Gc_Term *snd_comb(const struct Gc_Term *tm);
+
+/**
+ * First element of the destruct of an application of the given binary operator.
+ *
+ * # Parameters
+ * - `op`: The given binary operator
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *fst_binop(const struct Gc_Term *op, const struct Gc_Term *tm);
+
+/**
+ * Second element of the destruct of an application of the given binary operator.
+ *
+ * # Parameters
+ * - `op`: The given binary operator
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *snd_binop(const struct Gc_Term *op, const struct Gc_Term *tm);
+
+/**
+ * Variable of the destruct of a binder construct.
+ *
+ * # Parameters
+ * - `s`: The name of binder
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *binder_var(const char *s, const struct Gc_Term *tm);
+
+/**
+ * Body of the destruct of a binder construct.
+ *
+ * # Parameters
+ * - `s`: The name of binder
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *binder_body(const char *s, const struct Gc_Term *tm);
 
 /**
  * Construct a abstraction.
@@ -543,6 +655,17 @@ const struct Gc_Term *mk_comb(const struct Gc_Term *tm1, const struct Gc_Term *t
  * A term on success, `NULL` on failure.
  */
 const struct Gc_Term *concl(const struct Gc_Theorem *th);
+
+/**
+ * Return one hypothesis of a theorem.
+ *
+ * # Parameters
+ * - `th`: The theorem
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *hypth(const struct Gc_Theorem *th);
 
 /**
  * Create a new type.
@@ -592,34 +715,6 @@ const struct Gc_Theorem *arith_rule(const struct Gc_Term *tm);
  * Get a theorem from the search database.
  */
 const struct Gc_Theorem *get_theorem(const char *name);
-
-/**
- * `sep lift` conversion.
- *
- * # Parameters
- * - `lft` : The term to be lifted.
- * - `tm`: The term to do conversion.
- *
- * # Returns
- * Suppose both lft and tm are separating conjunction of atomic assertion.
- * If `lft` = `A * B * C` and {A,B,C} in `tm`,
- * then the return theorem is `tm = (A * B * C) * (D * ...)`.
- */
-const struct Gc_Theorem *sep_lift(const struct Gc_Term *lft, const struct Gc_Term *tm);
-
-/**
- * `which implies` conversion.
- *
- * # Parameters
- * - `state` : The symbolic state before `which implies`.
- * - `trans`: The transformation entailment.
- *
- * # Returns
- * Suppose `state` is a separating conjunction of atomic assertion with `hexists` outside,
- * and `trans` is entailment of two separating conjunctions of atomic assertion.
- * The return theorem is `state |-- state'`, where `state'`` is sep_apply `trans` on `state`.
- */
-const struct Gc_Theorem *which_implies(const struct Gc_Term *state, const struct Gc_Theorem *trans);
 
 /**
  * Applies a conversion to the operand of an application.

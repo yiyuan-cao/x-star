@@ -32,7 +32,7 @@ pub trait Interface {
     /// Parse a type from a string.
     async fn parse_type_from_string(s: String) -> Result<TypeKey>;
 
-    /// Parse a type from a conversion.
+    /// Parse a conversion from a string.
     async fn parse_conv_from_string(s: String) -> Result<ConversionKey>;
 
     /// Convert a term to a string.
@@ -72,6 +72,15 @@ pub trait Interface {
     /// A |- u ==> t
     /// ```
     async fn disch(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Undischarges the antecedent of an implicative theorem.
+    /// 
+    /// ```text
+    /// A |- t1 ==> t2
+    /// --------------
+    ///   A, t1 |- t2
+    /// ```
+    async fn undisch(th: TheoremKey) -> Result<TheoremKey>;
 
     /// Generalize a free term in a theorem.
     ///
@@ -190,8 +199,14 @@ pub trait Interface {
     /// Uses an instance of a given equation to rewrite a term.
     async fn rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
 
-    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    /// Uses an instance of a given equation to rewrite a theorem.
     async fn rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a given equation to rewrite a term only once.
+    async fn once_rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    async fn once_rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
 
     /// Instantiation of induction principle.
     async fn induction_aux(th: TheoremKey, tm1: TermKey, tm2: TermKey) -> Result<TheoremKey>;
@@ -211,6 +226,12 @@ pub trait Interface {
     /// Check if a term is an abstraction.
     async fn is_abs(th: TermKey) -> Result<bool>;
 
+    /// Check if a term is an application of the given binary operator. 
+    async fn is_binop(op: TermKey, tm: TermKey) -> Result<bool>;
+
+    /// Check if a term is a binder construct with named constant.
+    async fn is_binder(s: String, tm: TermKey) -> Result<bool>;
+
     /// Destruct a variable.
     async fn dest_var(th: TermKey) -> Result<(String, TypeKey)>;
 
@@ -223,6 +244,12 @@ pub trait Interface {
     /// Destruct an abstraction.
     async fn dest_abs(th: TermKey) -> Result<(TermKey, TermKey)>;
 
+    /// Destruct an application of the given binary operator.
+    async fn dest_binop(op: TermKey, tm: TermKey) -> Result<(TermKey, TermKey)>;
+
+    /// Destruct a binder construct.
+    async fn dest_binder(s: String, tm: TermKey) -> Result<(TermKey, TermKey)>;
+
     /// Construct a abstraction.
     async fn mk_abs(th1: TermKey, th2: TermKey) -> Result<TermKey>;
 
@@ -231,6 +258,9 @@ pub trait Interface {
 
     /// Conclusion of a theorem.
     async fn concl(th: TheoremKey) -> Result<TermKey>;
+
+    /// Return one hypothesis of a theorem. 
+    async fn hypth(th: TheoremKey) -> Result<TermKey>;
 
     /// Create a new type.
     async fn new_type(name: String, arity: u32) -> Result<()>;

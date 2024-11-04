@@ -287,6 +287,29 @@ pub unsafe extern "C" fn disch(th: *const Gc<Theorem>, tm: *const Gc<Term>) -> *
     thm.into_gc()
 }
 
+/// Undischarges the antecedent of an implicative theorem.
+/// 
+/// ```text
+/// A |- t1 ==> t2
+/// --------------
+///   A, t1 |- t2
+/// ```
+/// # Parameters
+/// - `th`: The theorem to undischarge.
+///
+/// # Returns
+/// A pointer to the theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn undisch(th: *const Gc<Theorem>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let th = unsafe { &*th }.as_ref();
+  let thm = ensures_ok!(client.undisch(th), std::ptr::null());
+  thm.into_gc()
+}
+
 /// Generalize a free term in a theorem.
 ///
 /// ```text
@@ -690,7 +713,7 @@ pub unsafe extern "C" fn rewrite(
     thm.into_gc()
 }
 
-/// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+/// Uses an instance of a given equation to rewrite a theorem.
 /// 
 /// # Parameter 
 /// - `th`: The theorem to use for rewriting.
@@ -711,6 +734,54 @@ pub unsafe extern "C" fn rewrite_rule(
     let th = unsafe { &*th }.as_ref();
     let t = unsafe { &*t }.as_ref();
     let thm = ensures_ok!(client.rewrite_rule(th, t), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Uses an instance of a given equation to rewrite a term only once.
+///
+/// # Parameters
+/// - `th`: The theorem to use for rewriting.
+/// - `tm`: The term to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn once_rewrite(
+    th: *const Gc<Theorem>,
+    tm: *const Gc<Term>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let tm = unsafe { &*tm }.as_ref();
+    let thm = ensures_ok!(client.once_rewrite(th, tm), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Uses an instance of a given equation to rewrite a theorem only once.
+/// 
+/// # Parameter 
+/// - `th`: The theorem to use for rewriting.
+/// - `t`: The theorem to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn once_rewrite_rule(
+    th: *const Gc<Theorem>,
+    t: *const Gc<Theorem>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!t.is_null(), "`t` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let t = unsafe { &*t }.as_ref();
+    let thm = ensures_ok!(client.once_rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
 
@@ -787,6 +858,46 @@ pub unsafe extern "C" fn is_comb(tm: *const Gc<Term>) -> bool {
     ensures_ok!(client.is_comb(tm), false)
 }
 
+/// Check if a term is an application of the given binary operator. 
+/// 
+/// # Parameters 
+/// - `op`: The binary operator. 
+/// - `tm`: The term to check.
+/// 
+/// # Returns
+/// `true` on it is an application of binary operator `op`, `false` on it is not (or failure).
+#[no_mangle]
+pub unsafe extern "C" fn is_binop(op: *const Gc<Term>, tm: *const Gc<Term>) -> bool {
+  clear_last_error();
+  ensures!(!op.is_null(), "`op` is null", false);
+  ensures!(!tm.is_null(), "`tm` is null", false);
+
+  let client = ensures_ok!(get_client(), false);
+  let op = unsafe { &*op }.as_ref();
+  let tm = unsafe { &*tm }.as_ref();
+  ensures_ok!(client.is_binop(op, tm), false)
+}
+
+/// Check if a term is a binder construct with named constant.
+/// 
+/// # Parameters
+/// - `s`: The name of binder.
+/// - `tm`: The term to check.
+/// 
+/// # Returns 
+/// `true` on it is a binder construct with name `s`, `false` on it is not (or failure).
+#[no_mangle]
+pub unsafe extern "C" fn is_binder(s: *const c_char, tm: *const Gc<Term>) -> bool {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", false);
+
+  let client = ensures_ok!(get_client(), false);
+  let s = unsafe { CStr::from_ptr(s) }.to_str();
+  let s = ensures_ok!(s, false).to_string();
+  let tm = unsafe { &*tm }.as_ref();
+  ensures_ok!(client.is_binder(s, tm), false)
+}
+
 /// First element of the destruct of an application.
 ///
 /// # Parameters
@@ -822,6 +933,92 @@ pub unsafe extern "C" fn snd_comb(tm: *const Gc<Term>) -> *const Gc<Term> {
     let term = ensures_ok!(client.dest_comb(tm), std::ptr::null()).1;
     term.into_gc()
 }
+
+/// First element of the destruct of an application of the given binary operator. 
+/// 
+/// # Parameters
+/// - `op`: The given binary operator
+/// - `tm`: The term to destruct
+/// 
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn fst_binop(op: *const Gc<Term>, tm: *const Gc<Term>) -> *const Gc<Term> {
+  clear_last_error();
+  ensures!(!op.is_null(), "`op` is null", std::ptr::null());
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let op = unsafe { &*op }.as_ref();
+  let tm = unsafe { &*tm }.as_ref();
+  let term = ensures_ok!(client.dest_binop(op, tm), std::ptr::null()).0;
+  term.into_gc()
+}
+
+/// Second element of the destruct of an application of the given binary operator. 
+/// 
+/// # Parameters
+/// - `op`: The given binary operator
+/// - `tm`: The term to destruct
+/// 
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn snd_binop(op: *const Gc<Term>, tm: *const Gc<Term>) -> *const Gc<Term> {
+  clear_last_error();
+  ensures!(!op.is_null(), "`op` is null", std::ptr::null());
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client: &Client = ensures_ok!(get_client(), std::ptr::null());
+  let op = unsafe { &*op }.as_ref();
+  let tm = unsafe { &*tm }.as_ref();
+  let term = ensures_ok!(client.dest_binop(op, tm), std::ptr::null()).1;
+  term.into_gc()
+}
+
+/// Variable of the destruct of a binder construct.
+/// 
+/// # Parameters 
+/// - `s`: The name of binder
+/// - `tm`: The term to destruct
+/// 
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn binder_var(s: *const c_char, tm: *const Gc<Term>) -> *const Gc<Term> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let s = unsafe { CStr::from_ptr(s) }.to_str();
+  let s = ensures_ok!(s, std::ptr::null()).to_string();
+  let tm = unsafe { &*tm }.as_ref();
+  let term = ensures_ok!(client.dest_binder(s, tm), std::ptr::null()).0;
+  term.into_gc()
+}
+
+/// Body of the destruct of a binder construct.
+/// 
+/// # Parameters 
+/// - `s`: The name of binder
+/// - `tm`: The term to destruct
+/// 
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn binder_body(s: *const c_char, tm: *const Gc<Term>) -> *const Gc<Term> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let s = unsafe { CStr::from_ptr(s) }.to_str();
+  let s = ensures_ok!(s, std::ptr::null()).to_string();
+  let tm = unsafe { &*tm }.as_ref();
+  let term = ensures_ok!(client.dest_binder(s, tm), std::ptr::null()).1;
+  term.into_gc()
+}
+
+
 
 /// Construct a abstraction.
 ///
@@ -880,6 +1077,24 @@ pub unsafe extern "C" fn concl(th: *const Gc<Theorem>) -> *const Gc<Term> {
     let client = ensures_ok!(get_client(), std::ptr::null());
     let th = unsafe { &*th }.as_ref();
     let tm = ensures_ok!(client.concl(th), std::ptr::null());
+    tm.into_gc()
+}
+
+/// Return one hypothesis of a theorem. 
+/// 
+/// # Parameters
+/// - `th`: The theorem
+///
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn hypth(th: *const Gc<Theorem>) -> *const Gc<Term> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let tm = ensures_ok!(client.hypth(th), std::ptr::null());
     tm.into_gc()
 }
 
@@ -986,6 +1201,7 @@ pub unsafe extern "C" fn get_theorem(name: *const c_char) -> *const Gc<Theorem> 
   thm.into_gc()
 }
 
+/*
 /// `sep lift` conversion.
 /// 
 /// # Parameters
@@ -1039,6 +1255,7 @@ pub unsafe extern "C" fn which_implies(
   let thm = ensures_ok!(client.which_implies(state, trans), std::ptr::null());
   thm.into_gc()
 }
+*/
 
 /// Applies a conversion to the operand of an application. 
 #[no_mangle]

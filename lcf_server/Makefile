@@ -19,7 +19,7 @@ ifeq ($(DEBUG), 1)
 else
 	LIB_CFLAGS += -O3
 endif
-CFLAGS = $(LIB_CFLAGS) -Lproof-user -L$(TARGET_DIR) $(BDWGC_FLAGS) -lproof_user -lproof_kernel -lm
+CFLAGS = $(LIB_CFLAGS) -Lproof-user -L$(TARGET_DIR) $(BDWGC_FLAGS) -lproof_conv -lproof_user -lproof_kernel -lm -std=c2x
 
 ############### default ###############
 
@@ -41,6 +41,13 @@ $(TARGET_DIR)/libproof_kernel.a: $(PROOF_KERNEL_SRC)
 proof-user/libproof_user.a: proof-user/*.c includes/*.h includes/proof-kernel.h
 	clang -c -o proof-user/proof_user.o proof-user/proof-user.c $(LIB_CFLAGS)
 	ar rcs proof-user/libproof_user.a proof-user/proof_user.o
+
+proof-conv/libproof_conv.a: proof-user/*.c includes/*.h proof-user/libproof_user.a includes/proof-kernel.h
+	clang -c -o proof-user/proof-conv.o proof-user/proof-conv.c $(LIB_CFLAGS)
+	ar rcs proof-user/libproof_conv.a proof-user/proof-conv.o 
+
+test: test.c proof-conv/libproof_conv.a proof-user/libproof_user.a includes/proof-kernel.h $(TARGET_DIR)/libproof_kernel.a
+	clang -o test test.c $(CFLAGS)
 
 ############### proof-kernel ###############
 

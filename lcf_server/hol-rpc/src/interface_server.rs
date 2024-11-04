@@ -146,6 +146,23 @@ impl Interface for Session {
         Ok(self.theorems_mut().insert(thm))
     }
 
+    /// Undischarges the antecedent of an implicative theorem.
+    /// 
+    /// ```text
+    /// A |- t1 ==> t2
+    /// --------------
+    ///   A, t1 |- t2
+    /// ```
+    async fn undisch(mut self, _ctx: Context, th: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(UNDISCH as undisch);
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(undisch, args!(th)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
     /// Generalize a free term in a theorem.
     ///
     /// ```text
@@ -302,7 +319,7 @@ impl Interface for Session {
     /// A |- t2 = t1
     /// ```
     async fn symm(mut self, _ctx: Context, th: TheoremKey) -> Result<TheoremKey> {
-        load_dyn_function!(SYM as symm);
+        load_dyn_function!(GSYM as symm);
         let thm = {
             let theorems = self.theorems();
             let th = theorems.get(th).ok_or("invalid theorem key")?;
@@ -408,7 +425,7 @@ impl Interface for Session {
         Ok(self.theorems_mut().insert(thm))
     }
 
-    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    /// Uses an instance of a given equation to rewrite a theorem.
     async fn rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
       load_dyn_function!(SREWRITE_RULE as rewrite_rule); // see helpers.ml
       let thm = {
@@ -416,6 +433,31 @@ impl Interface for Session {
         let th = theorems.get(th).ok_or("invalid theorem key")?;
         let t = theorems.get(t).ok_or("invalid theorem key")?;
         unsafe { self.dyn_call(rewrite_rule, args!(th, t)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Uses an instance of a given equation to rewrite a term only once.
+    async fn once_rewrite(mut self, _ctx: Context, th: TheoremKey, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(SONCE_REWRITE_CONV as once_rewrite); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let terms = self.terms();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(once_rewrite, args!(th, tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    async fn once_rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(SONCE_REWRITE_RULE as once_rewrite_rule); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let t = theorems.get(t).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(once_rewrite_rule, args!(th, t)) }?
       };
       Ok(self.theorems_mut().insert(thm))
     }
@@ -503,6 +545,29 @@ impl Interface for Session {
         Ok(unsafe { is_abs.get_bool()? })
     }
 
+    /// Check if a term is an application of the given binary operator. 
+    async fn is_binop(self, _ctx: Context, op: TermKey, tm: TermKey) -> Result<bool> {
+      load_dyn_function!(is_binop);
+      let is_binop = {
+        let terms = self.terms();
+        let op = terms.get(op).ok_or("invalid term key")?;
+        let tm = terms.get(tm).ok_or("invalie term key")?;
+        unsafe { self.dyn_call(is_binop, args!(op, tm)) }?
+      };
+      Ok(unsafe { is_binop.get_bool()? })
+    }
+
+    /// Check if a term is a binder construct with named constant.
+    async fn is_binder(self, _ctx: Context, s: String, tm: TermKey) -> Result<bool> {
+      load_dyn_function!(is_binder);
+      let is_binder = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalie term key")?;
+        unsafe { self.dyn_call(is_binder, args!(&s, tm)) }?
+      };
+      Ok(unsafe { is_binder.get_bool()? })
+    } 
+
     /// Destruct a variable.
     async fn dest_var(mut self, _ctx: Context, th: TermKey) -> Result<(String, TypeKey)> {
         load_dyn_function!(dest_var);
@@ -553,6 +618,33 @@ impl Interface for Session {
         Ok((terms.insert(tm), terms.insert(th)))
     }
 
+    /// Destruct an application of the given binary operator.
+    async fn dest_binop(mut self, _ctx: Context, op: TermKey, tm: TermKey) -> Result<(TermKey, TermKey)> {
+      load_dyn_function!(dest_binop);
+      let (tm1, tm2) = {
+        let terms = self.terms();
+        let op = terms.get(op).ok_or("invalid term key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        let token = unsafe { self.dyn_call(dest_binop, args!(op, tm))? };
+        unsafe { self.destruct::<2, _>(&token)? }
+      };
+      let mut terms = self.terms_mut();
+      Ok((terms.insert(tm1), terms.insert(tm2)))
+    }
+
+    /// Destruct a binder construct.
+    async fn dest_binder(mut self, _ctx: Context, s: String, tm: TermKey) -> Result<(TermKey, TermKey)> {
+      load_dyn_function!(dest_binder);
+      let (tm1, tm2) = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        let token = unsafe { self.dyn_call(dest_binder, args!(&s, tm))? };
+        unsafe { self.destruct::<2, _>(&token)? }
+      };
+      let mut terms = self.terms_mut();
+      Ok((terms.insert(tm1), terms.insert(tm2)))
+    }
+
     /// Construct a abstraction.
     async fn mk_abs(mut self, _ctx: Context, th1: TermKey, th2: TermKey) -> Result<TermKey> {
       load_dyn_function!(mk_abs_aux);
@@ -584,6 +676,18 @@ impl Interface for Session {
         let theorems = self.theorems();
         let th = theorems.get(th).ok_or("invalid theorem key")?;
         unsafe { self.dyn_call(concl, args!(th)) }?
+      };
+      let mut terms = self.terms_mut();
+      Ok(terms.insert(tm))
+    }
+
+    /// Return one hypothesis of a theorem. 
+    async fn hypth(mut self, _ctx: Context, th: TheoremKey) -> Result<TermKey> {
+      load_dyn_function!(hypth); // see helpers.ml
+      let tm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(hypth, args!(th)) }? 
       };
       let mut terms = self.terms_mut();
       Ok(terms.insert(tm))

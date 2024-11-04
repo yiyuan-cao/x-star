@@ -97,6 +97,18 @@ impl Client {
         Ok(Theorem::new(key, self.clone()))
     }
 
+    /// Undischarges the antecedent of an implicative theorem.
+    /// 
+    /// ```text
+    /// A |- t1 ==> t2
+    /// --------------
+    ///   A, t1 |- t2
+    /// ```
+    pub fn undisch(&self, th: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().undisch(context::current(), th.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
     /// Generalize a free term in a theorem.
     ///
     /// ```text
@@ -269,9 +281,21 @@ impl Client {
         Ok(Theorem::new(key, self.clone()))
     }
 
-    /// Rewrites a theorem including built-in tautologies in the list of rewrites. 
+    /// Uses an instance of a given equation to rewrite a theorem. 
     pub fn rewrite_rule(&self, th: &Theorem, t: &Theorem) -> Result<Theorem> {
       let key = self.execute(self.interface().rewrite_rule(context::current(), th.key, t.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Uses an instance of a given equation to rewrite a term only once.
+    pub fn once_rewrite(&self, th: &Theorem, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().once_rewrite(context::current(), th.key, tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    pub fn once_rewrite_rule(&self, th: &Theorem, t: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().once_rewrite_rule(context::current(), th.key, t.key))??;
       Ok(Theorem::new(key, self.clone()))
     }
 
@@ -312,6 +336,16 @@ impl Client {
         self.execute(self.interface().is_abs(context::current(), tm.key))?
     }
 
+    /// Check if a term is an application of the given binary operator. 
+    pub fn is_binop(&self, op: &Term, tm: &Term) -> Result<bool> {
+      self.execute(self.interface().is_binop(context::current(), op.key, tm.key))?
+    }
+
+    /// Check if a term is a binder construct with named constant.
+    pub fn is_binder(&self, s: String, tm: &Term) -> Result<bool> {
+      self.execute(self.interface().is_binder(context::current(), s, tm.key))?
+    }
+
     /// Destruct a variable.
     pub fn dest_var(&self, tm: &Term) -> Result<(String, Type)> {
         let (name, ty) = self.execute(self.interface().dest_var(context::current(), tm.key))??;
@@ -337,6 +371,18 @@ impl Client {
         Ok((Term::new(tm1, self.clone()), Term::new(tm2, self.clone())))
     }
 
+    /// Destruct an application of the given binary operator.
+    pub fn dest_binop(&self, op: &Term, tm: &Term) -> Result<(Term, Term)> {
+      let (tm1, tm2) = self.execute(self.interface().dest_binop(context::current(), op.key, tm.key))??;
+      Ok((Term::new(tm1, self.clone()), Term::new(tm2, self.clone())))
+    }
+
+    /// Destruct a binder construct.
+    pub fn dest_binder(&self, s: String, tm: &Term) -> Result<(Term, Term)> {
+      let (tm1, tm2) = self.execute(self.interface().dest_binder(context::current(), s, tm.key))??;
+      Ok((Term::new(tm1, self.clone()), Term::new(tm2, self.clone())))
+    }
+
     /// Construct a abstraction.
     pub fn mk_abs(&self, th1: &Term, th2: &Term) -> Result<Term> {
       let tm = self.execute(self.interface().mk_abs(context::current(), th1.key, th2.key))??;
@@ -352,6 +398,12 @@ impl Client {
     /// Conclusion of a theorem.
     pub fn concl(&self, th: &Theorem) -> Result<Term> {
       let tm = self.execute(self.interface().concl(context::current(), th.key))??;
+      Ok(Term::new(tm, self.clone()))
+    }
+
+    /// Return one hypothesis of a theorem. 
+    pub fn hypth(&self, th: &Theorem) -> Result<Term> {
+      let tm = self.execute(self.interface().hypth(context::current(), th.key))??;
       Ok(Term::new(tm, self.clone()))
     }
 
