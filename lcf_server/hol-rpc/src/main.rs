@@ -41,9 +41,17 @@ async fn main() {
     let config = Config::init_from_env().expect("Failed to load configuration");
 
     let hol_dir = std::env::var("HOLLIGHT_DIR").expect("HOLLIGHT_DIR not set");
+    
+    let mut helper_dir = PathBuf::from(hol_dir.clone()).parent().unwrap().to_path_buf();
+    helper_dir.push("hol-light-helper");
+    let helper_dir = helper_dir.display().to_string();
+
     caml_dyn_call::init(&[
         format!("#directory \"{hol_dir}\";;"),
         "#use \"hol.ml\";;".to_string(),
+        format!("#directory \"{helper_dir}\";;"),
+        "#use \"helpers.ml\";;".to_string(),
+        "#use \"cstarlib.ml\";;".to_string(),
     ])
     .expect("OCaml initialization failed");
 
