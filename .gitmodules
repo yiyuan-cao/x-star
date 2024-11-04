@@ -1,0 +1,3 @@
+[submodule "lcf_server/hol-light"]
+	path = lcf_server/hol-light
+	url = https://github.com/jrh13/hol-light.git
