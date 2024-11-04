@@ -23,8 +23,12 @@ let rec sizeof =
   function
   | Tvoid -> 1
   | T_Bool -> 1
+  | Tchar -> 1
+  | Tuchar -> 1
   | Tint -> 4
-  | Tunsigned -> 4 
+  | Tuint -> 4 
+  | Tlong -> if ptr64 then 8 else 4
+  | Tulong -> if ptr64 then 8 else 4
   | Tptr _ -> if ptr64 then 8 else 4
   | Tarray (t, e) -> 
     ( match e with 
@@ -45,8 +49,12 @@ let rec alignof =
   function
   | Tvoid -> 1
   | T_Bool -> 1
+  | Tchar -> 1
+  | Tuchar -> 1
   | Tint -> 4
-  | Tunsigned -> 4 
+  | Tuint -> 4
+  | Tlong -> if ptr64 then 8 else 4
+  | Tulong -> if ptr64 then 8 else 4
   | Tptr _ -> if ptr64 then 8 else 4
   | Tarray (t, _) -> alignof t
   | Tstruct id | Tunion id ->
