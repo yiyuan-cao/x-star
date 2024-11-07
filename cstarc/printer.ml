@@ -482,6 +482,8 @@ and declarator_to_doc t i =
   | T_Bool -> (ty "_Bool", i)
   | Tchar -> (ty "char", i)
   | Tuchar -> (ty "unsigned char", i)
+  | Tshort -> (ty "short", i)
+  | Tushort -> (ty "unsigned short", i)
   | Tint -> (ty "int", i)
   | Tuint -> (ty "unsigned int", i)
   | Tlong -> (ty "long", i)
