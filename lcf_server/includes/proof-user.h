@@ -80,68 +80,6 @@ thm gens(term[], int, thm);
 thm induction_with_goal(indtype, thm, thm, term);
 thm induction(indtype, thm, thm);
 
-/** Separation Logic Property as Axiom. */
-void sl_init();
-
-// Entailment defines an order on the set of heap predicates
-thm himpl_refl(term);
-thm himpl_trans(thm, thm);
-thm himpl_antisym(thm, thm);
-
-thm himpl_sym_l(thm);
-thm himpl_sym_r(thm);
-
-// Fundamental properties of the [sepconj]
-thm star_assoc(term, term, term);
-thm star_comm(term, term);
-thm star_monotone(thm, thm);
-thm star_neutral_l(term);
-thm star_neutral_r(term);
-thm star_exists(term, term);
-thm star_forall(term, term);
-thm frame_rule_l(thm, term);
-thm frame_rule_r(thm, term);
-
-// Properties of [pure]
-thm pure_l(thm);
-thm pure_r(thm, thm);
-thm pure_distri(term, term);
-
-// Properties of [hexists]
-thm exists_l(thm);
-thm exists_r(thm, term, term);
-thm exists_r_aux (thm, term, term, term);
-thm exists_monotone(thm);
-
-// Properties of [hforall]
-thm forall_l(thm, term, term);
-thm forall_r(thm);
-thm forall_monotone(thm);
-
-// Properties of the singleton heap predicate
-thm single_not_null(term, term);
-thm single_conflict(term, term, term);
-thm undefpointsto_def(term);
-
-// Properties of field heap predicate
-thm field_not_null(term, term, term);
-thm field_conflict(term, term, term, term);
-
-// Properties of [hfalse]
-thm hfalse_explosion(term);
-thm hfalse_elim_l(term);
-thm hfalse_elim_r(term);
-thm hfalse_def(void);
-
-/** Additional Pure Fact Currently as Axiom. */
-thm pure_contradiction(term);
-
-/** Additional User Interface for Separation Logic Entailment Proof.*/
-thm entails(rewrites_item[], int);
-thm hfalse_contradiction(thm, term);
-thm hfalse_antisym(thm th);
-thm fieldpointer_invalid(term, term);
-
 /*  Logic Properties  */
 thm conj_comm_prop();
 thm conj_comm(term, term);
@@ -161,5 +99,7 @@ thm conjunctn(thm, int);
 /*  Added temporarily  */
 thm disj_split(term);
 thm int_le(term, term);
+
+thm add_assum(term, thm);
 
 #endif

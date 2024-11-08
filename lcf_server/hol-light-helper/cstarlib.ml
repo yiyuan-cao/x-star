@@ -115,8 +115,8 @@ let word_size_def = define `word_size = &4`;;
 add_to_database "word_size_def" word_size_def;;
 
 (* Size of a C scalar type in bytes *)
-let size_of_def = define `
-    size_of ty = 
+let sizeof_def = define `
+    sizeof ty = 
         match ty with
         | Tchar    ->  &1
         | Tuchar   ->  &1
@@ -128,7 +128,7 @@ let size_of_def = define `
         | Tuint64  ->  &8
         | Tptr     ->  word_size`
 ;;
-add_to_database "size_of_def" size_of_def;;
+add_to_database "sizeof_def" sizeof_def;;
 
 (* Alignment requirement of a C scalar type *)
 let align_of_def = define `
@@ -150,10 +150,10 @@ add_to_database "align_of_def" align_of_def;;
 let min_of_def = define `
     min_of ty = 
         match ty with
-        | Tchar    ->  --(&2 pow (num_of_int (size_of Tchar)  - 1))
-        | Tshort   ->  --(&2 pow (num_of_int (size_of Tshort) - 1))
-        | Tint     ->  --(&2 pow (num_of_int (size_of Tint)   - 1))
-        | Tint64   ->  --(&2 pow (num_of_int (size_of Tint64) - 1))
+        | Tchar    ->  --(&2 pow (num_of_int (sizeof Tchar)  - 1))
+        | Tshort   ->  --(&2 pow (num_of_int (sizeof Tshort) - 1))
+        | Tint     ->  --(&2 pow (num_of_int (sizeof Tint)   - 1))
+        | Tint64   ->  --(&2 pow (num_of_int (sizeof Tint64) - 1))
         | Tuchar   ->  &0
         | Tushort  ->  &0
         | Tuint    ->  &0
@@ -165,27 +165,27 @@ add_to_database "min_of_def" min_of_def;;
 let max_of_def = define `
     max_of ty = 
         match ty with
-        | Tchar    ->  &2 pow (num_of_int (size_of Tchar)  - 1) - (&1)
-        | Tshort   ->  &2 pow (num_of_int (size_of Tshort) - 1) - (&1)
-        | Tint     ->  &2 pow (num_of_int (size_of Tint)   - 1) - (&1)
-        | Tint64   ->  &2 pow (num_of_int (size_of Tint64) - 1) - (&1)
-        | Tuchar   ->  &2 pow (num_of_int (size_of Tuchar))     - (&1)
-        | Tushort  ->  &2 pow (num_of_int (size_of Tushort))    - (&1)
-        | Tuint    ->  &2 pow (num_of_int (size_of Tuint))      - (&1)
-        | Tuint64  ->  &2 pow (num_of_int (size_of Tuint64))    - (&1)
-        | Tptr     ->  &2 pow (num_of_int (size_of Tptr))       - (&1)`
+        | Tchar    ->  &2 pow (num_of_int (sizeof Tchar)  - 1) - (&1)
+        | Tshort   ->  &2 pow (num_of_int (sizeof Tshort) - 1) - (&1)
+        | Tint     ->  &2 pow (num_of_int (sizeof Tint)   - 1) - (&1)
+        | Tint64   ->  &2 pow (num_of_int (sizeof Tint64) - 1) - (&1)
+        | Tuchar   ->  &2 pow (num_of_int (sizeof Tuchar))     - (&1)
+        | Tushort  ->  &2 pow (num_of_int (sizeof Tushort))    - (&1)
+        | Tuint    ->  &2 pow (num_of_int (sizeof Tuint))      - (&1)
+        | Tuint64  ->  &2 pow (num_of_int (sizeof Tuint64))    - (&1)
+        | Tptr     ->  &2 pow (num_of_int (sizeof Tptr))       - (&1)`
 ;;
 add_to_database "max_of_def" max_of_def;;
 
 (* Size of a type is positive *)
-let size_of_gt_0 = prove (
-    `!ty. size_of ty > &0`,
+let sizeof_gt_0 = prove (
+    `!ty. sizeof ty > &0`,
     MATCH_MP_TAC ctype_induct THEN
-    REWRITE_TAC [word_size_def; size_of_def] THEN
+    REWRITE_TAC [word_size_def; sizeof_def] THEN
     REPEAT STRIP_TAC THENL
     replicate INT_ARITH_TAC 9
 );;
-add_to_database "size_of_gt_0" size_of_gt_0;;
+add_to_database "sizeof_gt_0" sizeof_gt_0;;
 
 (* Alignment of a type is positive *)
 let align_of_gt_0 = prove (
@@ -201,7 +201,7 @@ add_to_database "align_of_gt_0" align_of_gt_0;;
 let valid_addr_def = define `
     valid_addr (p : addr, ty : ctype) = (
         let al = align_of ty in
-        let sz = size_of ty in
+        let sz = sizeof ty in
         ((p == &0) (mod al)) /\ (p + sz < max_of Tptr)
     )`;;
 add_to_database "valid_addr_def" valid_addr_def;;
@@ -435,6 +435,9 @@ add_to_database "hfact_intro" hfact_intro;;
 let hfact_elim = new_axiom `!p hp1 hp2. (p ==> (hp1 |-- hp2)) ==> (hfact p ** hp1 |-- hp2)`;;
 add_to_database "hfact_elim" hfact_elim;;
 
+let hfact_dup = new_axiom `!p. hfact p |-- hfact p ** hfact p`;;
+add_to_database "hfact_dup" hfact_dup;;
+
 (* hfact extraction rules *)
 let hsep_hfact_left = new_axiom `!p hp1 hp2. (hfact p ** hp1) ** hp2 -|- hfact p ** (hp1 ** hp2)`;;
 add_to_database "hsep_hfact_left" hsep_hfact_left;;
@@ -536,8 +539,8 @@ add_to_database "bytes_at_def" bytes_at_def;;
 (* definitions of data_at and undef_data_at *)
 let data_at_def = new_axiom `!x ty v. data_at (x, ty, v) =
                                 exists bs. (
-                                    fact (ilength bs = size_of ty) **
-                                    fact ((v == int_of_bytes bs) (mod (&256 pow (num_of_int (size_of ty))))) **
+                                    fact (ilength bs = sizeof ty) **
+                                    fact ((v == int_of_bytes bs) (mod (&256 pow (num_of_int (sizeof ty))))) **
                                     fact (valid_value (v, ty)) **
                                     fact (valid_addr (x, ty)) **
                                     bytes_at (x, bs)
@@ -546,7 +549,7 @@ add_to_database "data_at_def" data_at_def;;
 
 let undef_data_at_def = new_axiom `!x ty. undef_data_at (x, ty) =
                                 exists bs.
-                                    fact (ilength bs = size_of ty) **
+                                    fact (ilength bs = sizeof ty) **
                                     fact (valid_addr (x, ty)) **
                                     bytes_at (x, bs)`;;
 add_to_database "undef_data_at_def" undef_data_at_def;;
@@ -555,10 +558,10 @@ let data_at_to_undef_data_at = new_axiom `!x ty. data_at (x, ty, v) |-- undef_da
 add_to_database "data_at_to_undef_data_at" data_at_to_undef_data_at;;
 
 (* definition of cell_at and undef_cell_at *)
-let cell_at_def = new_axiom `!x ty i v. cell_at (x, ty, i, v) = data_at (x + i * (size_of ty), ty, v)`;;
+let cell_at_def = new_axiom `!x ty i v. cell_at (x, ty, i, v) = data_at (x + i * (sizeof ty), ty, v)`;;
 add_to_database "cell_at_def" cell_at_def;;
 
-let undef_cell_at_def = new_axiom `!x ty i. undef_cell_at (x, ty, i) = undef_data_at (x + i * (size_of ty), ty)`;;
+let undef_cell_at_def = new_axiom `!x ty i. undef_cell_at (x, ty, i) = undef_data_at (x + i * (sizeof ty), ty)`;;
 add_to_database "undef_cell_at_def" undef_cell_at_def;;
 
 (* definition of slice_at and array_at *)
@@ -582,7 +585,7 @@ let slice_split = new_axiom `!x ty i vs1 vs2.
 add_to_database "slice_split" slice_split;;
 
 let array_split = new_axiom `!x ty vs1 vs2.
-            array_at (x, ty, APPEND vs1 vs2) -|- array_at (x, ty, vs1) ** array_at (x + (size_of ty) * (ilength vs1), ty, vs2)`;;
+            array_at (x, ty, APPEND vs1 vs2) -|- array_at (x, ty, vs1) ** array_at (x + (sizeof ty) * (ilength vs1), ty, vs2)`;;
 add_to_database "array_split" array_split;;
 
 let undef_slice_split = new_axiom `!x ty i n1 n2.
@@ -590,7 +593,7 @@ let undef_slice_split = new_axiom `!x ty i n1 n2.
 add_to_database "undef_slice_split" undef_slice_split;;
 
 let undef_array_split = new_axiom `!x ty n1 n2.
-            undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (size_of ty) * n1, ty, n2)`;;
+            undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (sizeof ty) * n1, ty, n2)`;;
 add_to_database "undef_array_split" undef_array_split;;
 
 (* axioms of malloc_at *)
@@ -663,3 +666,41 @@ let hsep_comm_left_part =
           ACCEPT_TAC (SPECL [`hp1`;`hp`] hsep_comm) )
 ;;
 add_to_database "hsep_comm_left_part" hsep_comm_left_part;;
+
+let hentail_sym_left = 
+  prove(`!hp1 hp2. (hp1 -|- hp2) ==> (hp1 |-- hp2)`,
+        REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[] THEN 
+        ACCEPT_TAC (SPEC `hp2` hentail_refl))
+;;
+add_to_database "hentail_sym_left" hentail_sym_left;;
+
+let hfact_elim_dup = new_axiom (* manual: [p] * hp1 |-- [p] * [p] * hp1 |-- [p] * hp2 *)
+  `!p hp1 hp2. (p ==> (hp1 |-- hp2)) ==> (hfact p ** hp1 |-- hfact p ** hp2)`
+;;
+add_to_database "hfact_elim_dup" hfact_elim_dup;;  
+
+(* Some derived rules for examples. *)
+let array_at_replicate_zero_length = new_axiom 
+  `!x ty y. array_at(x, ty, replicate(&0, y)) -|- emp`
+;;
+add_to_database "array_at_replicate_zero_length" array_at_replicate_zero_length;;
+
+let array_at_replicate_rec_def = new_axiom 
+  `!x ty y n. n > &0 ==> (array_at(x, ty, replicate(n, y)) -|- data_at(x, ty, y) ** array_at(x + (sizeof ty), ty, replicate(n - &1, y)))`
+;;
+add_to_database "array_at_replicate_rec_def" array_at_replicate_rec_def;;
+
+let undef_array_at_zero_length = new_axiom
+  `!x ty. undef_array_at(x, ty, &0) -|- emp`
+;;
+add_to_database "undef_array_at_zero_length" undef_array_at_zero_length
+
+let undef_array_at_rec_def = new_axiom
+  `!x ty n. n > &0 ==> (undef_array_at(x, ty, n) -|- undef_data_at(x, ty) ** undef_array_at(x + (sizeof ty), ty, n - &1))`
+;;
+add_to_database "undef_array_at_rec_def" undef_array_at_rec_def;;
+
+let array_at_last_split = new_axiom
+  `!x ty y n. n >= &0 ==> (array_at(x, ty, replicate(n, y)) ** data_at(x + n * (sizeof ty), ty, y) |-- array_at(x, ty, replicate(n + &1, y)))`
+;;
+add_to_database "array_at_last_split" array_at_last_split;;

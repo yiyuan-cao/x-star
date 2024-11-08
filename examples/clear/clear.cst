@@ -1,0 +1,324 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+[[cstar::function(
+thm hfact_auto(term pres[], term posts[]) {
+  thm result = spec(`emp`, get_theorem("hentail_refl")); // emp |-- emp
+  term hyps[N];
+  int hyp_cnt = 0;
+
+  int i = 0;
+  while (1) {
+    if (pres[i] == NULL) break;
+    term pre = pres[i];
+    bool in_post = false; 
+    bool in_match = false;
+
+    int j = 0;
+    while (1) {
+      if (posts[j] == NULL) break;
+      term post = posts[j];
+
+      if (equals_term(pre, post)) {
+        in_post = true; 
+        posts[j] = `F:bool`; // (1) avoid intro twice
+        continue;
+      }
+      term t = `${pre:bool} ==> ${post:bool}`;
+      thm arith = arith_rule(t);
+      if (equals_term(conclusion(arith), t)) {
+        in_match = true;
+        result = mp(mp(get_theorem("hfact_intro"), mp(arith, assume(pre))), result);
+        posts[j] = `F:bool`; // (1)
+      }
+
+      j = j + 1;
+    }
+    if (in_post) {
+      hyps[hyp_cnt] = pre;
+      hyp_cnt = hyp_cnt + 1;
+    } else if (in_match) {      
+      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+    } else {
+      result = add_assum(pre, result);
+      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+    }
+
+    i = i + 1;
+  }
+  
+  i = 0;
+  while (i < hyp_cnt) {
+    result = add_assum(hyps[i], result);
+    i = i + 1;
+  }
+
+  return sep_normalize_rule(result);
+}
+)]];
+
+
+[[cstar::function(
+thm hfact_manual(term pre1, term pre2, term post) {
+  thm arith = undisch(undisch(arith_rule(`${pre1:bool} ==> ${pre2:bool} ==> ${post:bool}`)));
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), arith), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return sep_normalize_rule(result);
+}
+)]];
+
+void clear(void *to, int len)
+    [[cstar::parameter(`n:int`)]]
+    [[cstar::require(`fact(n >= &0) ** fact(len == n) ** undef_array_at(to, Tchar, n)`)]]
+    [[cstar::ensure(`array_at(to, Tchar, replicate(len, &0))`)]]
+{
+  [[cstar::proof(
+    term unmodified = `data_at(&"to", Tptr, to_pre) **
+                       data_at(&"len", Tint, n)`;
+  )]];
+
+  [[cstar::assert(`
+      fact(n >= &0) **
+      ${unmodified:hprop} **
+      undef_array_at(to_pre, Tchar, n) 
+  `)]];
+
+  int i = 0;
+
+  [[cstar::assert(`
+    fact(n >= &0) ** 
+    data_at(&"i", Tint, &0) **
+    ${unmodified:hprop} **
+    undef_array_at(to_pre, Tchar, n)
+  `)]];
+
+  [[cstar::proof(
+    { /* transform to a suitable invariant */
+      term pre_state = get_symbolic_state();
+      thm emp_equiv_thm = array_at_zero_length(`to_pre:int`, `Tchar`, `&0:int`);
+      /* |- emp -|- array_at(to@pre, Tchar, replicate(&0, &0)) */
+      thm final_thm = add_emp_equiv_right(emp_equiv_thm, pre_state);
+      /* |- {$pre_state} |-- {$pre_state} ** array_at(to@pre, Tchar, replicate(&0, &0)) */
+      set_symbolic_state(sep_normalize_rule(final_thm));
+    }
+  )]]; 
+
+  [[cstar::assert(`
+    fact(n >= &0) ** 
+    data_at(&"i", Tint, &0) **
+    ${unmodified:hprop} **
+    undef_array_at(to_pre, Tchar, n) **
+    array_at(to_pre, Tchar, replicate(&0, &0))
+  `)]];
+
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm hfact_thm = hfact_auto((term[]) {`n >= &0`, NULL},
+                                 (term[]) {`n >= &0`, `&0 <= &0`, `&0 <= n`, NULL});
+      /* |- n >= &0 ==> (emp |-- fact(&0 <= &0) ** fact(&0 <= n)) */
+      thm undef_array_simpl = 
+        mp(get_theorem("hentail_sym_left"), symm(
+          rewrite_list((thm[]){ arith_rule(`to_pre + &0 * sizeof(Tchar) = to_pre`),
+                                arith_rule(`n - &0 = n`),
+                                NULL },
+                      `undef_array_at(to_pre + &0 * sizeof(Tchar), Tchar, n - &0)`)));
+      thm hsep_mono = hsep_monotone(hfact_thm, undef_array_simpl);
+      thm final_thm = which_implies(pre_state, hsep_mono);
+      set_symbolic_state(final_thm);
+    }
+  )]]
+
+  [[cstar::assert(`
+    fact(&0 <= &0) ** fact(&0 <= n) **
+    fact(n >= &0) **
+    data_at(&"i", Tint, &0) **
+    ${unmodified:hprop} **
+    array_at(to_pre, Tchar, replicate(&0, &0)) **
+    undef_array_at(to_pre + &0 * sizeof(Tchar), Tchar, n - &0)
+  `)]];
+
+  while (i < len)
+    [[cstar::invariant(`
+        exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v <= n) **
+        data_at(&"i", Tint, i_v) **
+        ${unmodified:hprop} **
+        array_at(to_pre, Tchar, replicate(i_v, &0)) ** 
+        undef_array_at(to_pre + i_v * sizeof(Tchar), Tchar, n - i_v)
+    `)]]
+  {
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(i_v < n) ** 
+        fact(&0 <= i_v) ** fact(i_v <= n) ** 
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v) **
+        ${unmodified:hprop} **
+        array_at(to_pre, Tchar, replicate(i_v, &0)) **
+        undef_array_at(to_pre + i_v * sizeof(Tchar), Tchar, n - i_v)
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm dest_undef_array = undef_array_at_select_first(`(to_pre:addr) + i_v * sizeof(Tchar)`, `Tchar`, `(n:int) - i_v`);
+        thm arith1 = arith_rule(`(n - i_v > &0) <=> (i_v < n)`);
+        thm arith2 = arith_rule(`n - i_v - &1 == n - (i_v + &1)`);
+        thm arith3 = arith_rule(`(to_pre + i_v * sizeof(Tchar)) + sizeof(Tchar) == to_pre + (i_v + &1) * sizeof(Tchar)`); 
+        // `+` is right-associated in HOL-light !!!
+        dest_undef_array = rewrite_rule_list((thm[]){arith1, arith2, arith3, NULL}, dest_undef_array);
+        thm final_thm = which_implies(pre_state, dest_undef_array);
+        set_symbolic_state(final_thm);
+      }
+    )]]
+
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(i_v < n) ** 
+        fact(&0 <= i_v) ** fact(i_v <= n) ** 
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v, &0)) **
+        undef_data_at(to_pre + i_v * sizeof(Tchar), Tchar) **
+        undef_array_at(to_pre + (i_v + &1) * sizeof(Tchar), Tchar, n - (i_v + 1))
+    `)]];
+    
+    *((char *)to + i) = (char) 0;
+
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(i_v < n) ** 
+        fact(&0 <= i_v) ** fact(i_v <= n) ** 
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v, &0)) **
+        data_at(to_pre + i_v * sizeof(Tchar), Tchar, &0) **
+        undef_array_at(to_pre + (i_v + &1) * sizeof(Tchar), Tchar, n - (i_v + &1))
+    `)]];
+
+    i = i + 1;
+
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(i_v < n) ** 
+        fact(&0 <= i_v) ** fact(i_v <= n) ** 
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v + &1) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v, &0)) **
+        data_at(to_pre + i_v * sizeof(Tchar), Tchar, &0) **
+        undef_array_at(to_pre + (i_v + &1) * sizeof(Tchar), Tchar, n - (i_v + &1))
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm array_at_last = array_at_last_split(`to_pre:int`, `Tchar`, `&0`, `i_v:int`);
+        array_at_last = rewrite_rule(arith_rule(`(i_v >= &0) <=> (&0 <= i_v)`), array_at_last);
+        thm final_thm = which_implies(pre_state, array_at_last);
+        set_symbolic_state(final_thm);
+      }
+    )]];
+
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(i_v < n) ** 
+        fact(&0 <= i_v) ** fact(i_v <= n) ** 
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v + &1) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v + &1, &0)) **
+        undef_array_at(to_pre + (i_v + &1) * sizeof(Tchar), Tchar, n - (i_v + &1))
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm hfact_thm = hfact_auto((term[]){`n >= &0`, `i_v < n`, `&0 <= i_v`, `i_v <= n`, NULL},
+                                   (term[]){`n >= &0`, `i_v + &1 <= n`, `&0 <= i_v + &1`, NULL});
+        thm final_thm = which_implies(pre_state, hfact_thm);
+        set_symbolic_state(final_thm);
+      }
+    )]]
+
+    [[cstar::assert(`
+        exists (i_v:int).
+        fact(&0 <= i_v + &1) ** (i_v + &1 <= n) **
+        fact(n >= &0) **
+        data_at(&"i", Tint, i_v + &1) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v + &1, &0)) **
+        undef_array_at(to_pre + (i_v + &1) * sizeof(Tchar), Tchar, n - (i_v + 1))
+    `)]];
+  }
+
+  [[cstar::assert(`
+      exists (i_v:int).
+      fact(i_v >= (n:int)) ** 
+      fact(&0 <= i_v) ** fact(i_v <= n) ** 
+      fact(n >= &0) **
+      data_at(&"i", Tint, i_v) **
+      ${unmodified:hprop} ** 
+      array_at(to_pre, Tchar, replicate(i_v, &0)) **
+      undef_array_at(to_pre + i_v * sizeof(Tchar), Tchar, n - i_v)
+  `)]];
+
+  [[cstar::proof(
+    tmp_term = 
+      normalize
+      (`fact(n >= &0) ** fact (&0 <= i_v) **
+        data_at(&"i", Tint, i_v) **
+        ${unmodified:hprop} ** 
+        array_at(to_pre, Tchar, replicate(i_v, &0)) **
+        undef_array_at(to_pre + i_v * sizeof(Tchar), Tchar, n - i_v)`);
+    {
+      term pre_state = get_symbolic_state();
+      thm hfact1 = hfact_manual(`(i_v:int) >= n`, `(i_v:int) <= n`, `(i_v:int) == n`);
+      hfact1 = which_implies(normalize(binder_body("hexists", pre_state)), hfact1);
+
+      thm subst_i_v = mp(get_theorem("hentail_sym_left"), 
+        rewrite(assume(`(i_v:int) = n`), tmp_term));
+      subst_i_v = mp(get_theorem("hfact_elim"), disch(subst_i_v, hypth(subst_i_v)));
+
+      thm hfact2 = hfact_auto((term[]){`n >= &0`, `&0 <= n`, NULL},
+                              (term[]){`n >= &0`});
+      hfact2 = which_implies(consequent(conclusion(subst_i_v)), hfact2);
+
+      thm without_exists = hentail_trans_auto_list((thm[]){hfact1, subst_i_v, hfact2, NULL});
+      thm final_thm = mp(get_theorem("hexists_elim"), gen(`i_v:int`, without_exists));
+      set_symbolic_state(final_thm);
+    }
+  )]];
+
+  [[cstar::assert(`
+      fact(n >= &0) **
+      data_at(&"i", Tint, n) **
+      ${unmodified:hprop} ** 
+      array_at(to_pre, Tchar, replicate(n, &0)) **
+      undef_array_at(to_pre + n * sizeof(Tchar), Tchar, n - n)
+  `)]];
+
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm undef_array_elim = undef_array_at_zero_length(`to_pre + n * sizeof(Tchar)`, `Tchar`);
+      undef_array_elim = rewrite_rule(arith_rule(`&0 = (n:int) - n`), undef_array_elim);
+      thm final_thm = which_implies(pre_state, undef_array_elim);
+      set_symbolic_state(final_thm);
+    }
+  )]];
+
+  [[cstar::assert(`
+      fact(n >= &0) **
+      data_at(&"i", Tint, n) **
+      ${unmodified:hprop} ** 
+      array_at(to_pre, Tchar, replicate(n, &0))
+  `)]];
+
+}
+

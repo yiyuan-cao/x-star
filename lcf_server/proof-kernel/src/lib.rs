@@ -162,6 +162,47 @@ pub unsafe extern "C" fn string_of_thm(thm: *const Gc<Theorem>) -> *const c_char
     string.to_gc()
 }
 
+/// Equality test on terms. 
+/// 
+/// # Parameters 
+/// - `t1`: The first term.
+/// - `t2`: The second term.
+/// 
+/// # Returns
+/// `true` on it is equal, `false` on it is not (or failure).
+#[no_mangle]
+pub unsafe extern "C" fn equals_term(t1: *const Gc<Term>, t2: *const Gc<Term>) -> bool {
+  clear_last_error();
+  ensures!(!t1.is_null(), "`t1` is null", false);
+  ensures!(!t2.is_null(), "`t2` is null", false);
+
+  let client = ensures_ok!(get_client(), false);
+  let t1 = unsafe { &*t1 }.as_ref();
+  let t2 = unsafe { &*t2 }.as_ref();
+  ensures_ok!(client.equals_term(t1, t2), false)
+}
+
+/// Equality test on theorems. 
+/// 
+/// # Parameters 
+/// - `th1`: The first theorem.
+/// - `th2`: The second theorem.
+/// 
+/// # Returns
+/// `true` on it is equal, `false` on it is not (or failure).
+#[no_mangle]
+pub unsafe extern "C" fn equals_thm(th1: *const Gc<Theorem>, th2: *const Gc<Theorem>) -> bool {
+  clear_last_error();
+  ensures!(!th1.is_null(), "`t1` is null", false);
+  ensures!(!th2.is_null(), "`t2` is null", false);
+
+  let client = ensures_ok!(get_client(), false);
+  let th1 = unsafe { &*th1 }.as_ref();
+  let th2 = unsafe { &*th2 }.as_ref();
+  ensures_ok!(client.equals_thm(th1, th2), false)
+}
+
+
 /// Dump a Coq axiom.
 ///
 /// # Parameters
@@ -263,9 +304,9 @@ pub unsafe extern "C" fn refl(tm: *const Gc<Term>) -> *const Gc<Theorem> {
 /// Discharge an assumption.
 ///
 /// ```text
-/// A, u |- t
-/// ---------
-/// A |- u ==> t
+///      A |- t
+/// ------------------
+/// A - {u} |- u ==> t
 /// ```
 ///
 /// # Parameters
@@ -821,7 +862,7 @@ pub unsafe extern "C" fn induction_aux(
 /// - `tm`: term to be substituted
 ///
 /// # Returns
-///   a term `tm[tm1/tm2]`.
+///   a term replacing free instances of each term `tm2` inside `tm` with the corresponding `tm1`. 
 #[no_mangle]
 pub unsafe extern "C" fn subst(
     tm1: *const Gc<Term>,
@@ -925,6 +966,43 @@ pub unsafe extern "C" fn fst_comb(tm: *const Gc<Term>) -> *const Gc<Term> {
 /// A term on success, `NULL` on failure.
 #[no_mangle]
 pub unsafe extern "C" fn snd_comb(tm: *const Gc<Term>) -> *const Gc<Term> {
+    clear_last_error();
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let tm = unsafe { &*tm }.as_ref();
+    let term = ensures_ok!(client.dest_comb(tm), std::ptr::null()).1;
+    term.into_gc()
+}
+
+/// First element of the destruct of an equation.
+///
+/// # Parameters
+/// - `tm`: The term to destruct
+///
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn antecedent(tm: *const Gc<Term>) -> *const Gc<Term> {
+    clear_last_error();
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let tm = unsafe { &*tm }.as_ref();
+    let tm = ensures_ok!(client.dest_comb(tm), std::ptr::null()).0;
+    let term = ensures_ok!(client.dest_comb(&tm), std::ptr::null()).1;
+    term.into_gc()
+}
+
+/// Second element of the destruct of an equation.
+///
+/// # Parameters
+/// - `tm`: The term to destruct
+///
+/// # Returns
+/// A term on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn consequent(tm: *const Gc<Term>) -> *const Gc<Term> {
     clear_last_error();
     ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
 
@@ -1070,7 +1148,7 @@ pub unsafe extern "C" fn mk_comb(tm1: *const Gc<Term>, tm2: *const Gc<Term>) -> 
 /// # Returns
 /// A term on success, `NULL` on failure.
 #[no_mangle]
-pub unsafe extern "C" fn concl(th: *const Gc<Theorem>) -> *const Gc<Term> {
+pub unsafe extern "C" fn conclusion(th: *const Gc<Theorem>) -> *const Gc<Term> {
     clear_last_error();
     ensures!(!th.is_null(), "`th` is null", std::ptr::null());
 

@@ -68,6 +68,30 @@ impl Interface for Session {
         Ok(unsafe { string.get_str()? })
     }
 
+    /// Equality test on terms. 
+    async fn equals_term(self, _ctx: Context, t1: TermKey, t2: TermKey) -> Result<bool> {
+      load_dyn_function!(equals_term);
+      let result = {
+        let terms = self.terms();
+        let t1 = terms.get(t1).ok_or("invalid term key")?;
+        let t2 = terms.get(t2).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(equals_term, args!(t1, t2)) }?
+      };
+      Ok(unsafe { result.get_bool()? })
+    }
+
+    /// Equality test on theorems. 
+    async fn equals_thm(self, _ctx: Context, th1: TheoremKey, th2: TheoremKey) -> Result<bool> {
+      load_dyn_function!(equals_thm);
+      let result = {
+        let theorems = self.theorems();
+        let th1 = theorems.get(th1).ok_or("invalid theorem key")?;
+        let th2 = theorems.get(th2).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(equals_thm, args!(th1, th2)) }?
+      };
+      Ok(unsafe { result.get_bool()? })
+    }
+
     /// Dump a Coq axiom.
     async fn dump_coq_axiom(self, _ctx: Context, name: String, key: TheoremKey) -> Result<String> {
         load_dyn_function!(dump_coq_thm as dump_coq_axiom);
@@ -739,7 +763,7 @@ impl Interface for Session {
 
     /// Automatically proves natural number arithmetic theorems. 
     async fn arith_rule(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
-      load_dyn_function!(ARITH_RULE as arith_rule);
+      load_dyn_function!(ARITH_RULE_SAFETY as arith_rule);
       let thm = {
         let terms = self.terms();
         let tm = terms.get(tm).ok_or("invalid term key")?;

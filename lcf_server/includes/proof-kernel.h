@@ -110,6 +110,30 @@ const char *string_of_term(const struct Gc_Term *term);
 const char *string_of_thm(const struct Gc_Theorem *thm);
 
 /**
+ * Equality test on terms.
+ *
+ * # Parameters
+ * - `t1`: The first term.
+ * - `t2`: The second term.
+ *
+ * # Returns
+ * `true` on it is equal, `false` on it is not (or failure).
+ */
+bool equals_term(const struct Gc_Term *t1, const struct Gc_Term *t2);
+
+/**
+ * Equality test on theorems.
+ *
+ * # Parameters
+ * - `th1`: The first theorem.
+ * - `th2`: The second theorem.
+ *
+ * # Returns
+ * `true` on it is equal, `false` on it is not (or failure).
+ */
+bool equals_thm(const struct Gc_Theorem *th1, const struct Gc_Theorem *th2);
+
+/**
  * Dump a Coq axiom.
  *
  * # Parameters
@@ -170,9 +194,9 @@ const struct Gc_Theorem *refl(const struct Gc_Term *tm);
  * Discharge an assumption.
  *
  * ```text
- * A, u |- t
- * ---------
- * A |- u ==> t
+ *      A |- t
+ * ------------------
+ * A - {u} |- u ==> t
  * ```
  *
  * # Parameters
@@ -510,7 +534,7 @@ const struct Gc_Theorem *induction_aux(const struct Gc_Theorem *th,
  * - `tm`: term to be substituted
  *
  * # Returns
- *   a term `tm[tm1/tm2]`.
+ *   a term replacing free instances of each term `tm2` inside `tm` with the corresponding `tm1`.
  */
 const struct Gc_Term *subst(const struct Gc_Term *tm1,
                             const struct Gc_Term *tm2,
@@ -572,6 +596,28 @@ const struct Gc_Term *fst_comb(const struct Gc_Term *tm);
  * A term on success, `NULL` on failure.
  */
 const struct Gc_Term *snd_comb(const struct Gc_Term *tm);
+
+/**
+ * First element of the destruct of an equation.
+ *
+ * # Parameters
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *antecedent(const struct Gc_Term *tm);
+
+/**
+ * Second element of the destruct of an equation.
+ *
+ * # Parameters
+ * - `tm`: The term to destruct
+ *
+ * # Returns
+ * A term on success, `NULL` on failure.
+ */
+const struct Gc_Term *consequent(const struct Gc_Term *tm);
 
 /**
  * First element of the destruct of an application of the given binary operator.
@@ -654,7 +700,7 @@ const struct Gc_Term *mk_comb(const struct Gc_Term *tm1, const struct Gc_Term *t
  * # Returns
  * A term on success, `NULL` on failure.
  */
-const struct Gc_Term *concl(const struct Gc_Theorem *th);
+const struct Gc_Term *conclusion(const struct Gc_Theorem *th);
 
 /**
  * Return one hypothesis of a theorem.

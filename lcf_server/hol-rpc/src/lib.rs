@@ -41,6 +41,12 @@ pub trait Interface {
     /// Convert a theorem to a string.
     async fn string_of_thm(key: TheoremKey) -> Result<String>;
 
+    /// Equality test on terms. 
+    async fn equals_term(t1: TermKey, t2: TermKey) -> Result<bool>;
+
+    /// Equality test on theorems. 
+    async fn equals_thm(th1: TheoremKey, th2: TheoremKey) -> Result<bool>;
+
     /// Dump a Coq axiom.
     async fn dump_coq_axiom(name: String, key: TheoremKey) -> Result<String>;
 

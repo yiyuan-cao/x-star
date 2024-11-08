@@ -49,6 +49,16 @@ impl Client {
         )?
     }
 
+    /// Equality test on terms. 
+    pub fn equals_term(&self, t1: &Term, t2: &Term) -> Result<bool> {
+      self.execute(self.interface().equals_term(context::current(), t1.key, t2.key))?
+    }
+
+    /// Equality test on theorems. 
+    pub fn equals_thm(&self, th1: &Theorem, th2: &Theorem) -> Result<bool> {
+      self.execute(self.interface().equals_thm(context::current(), th1.key, th2.key))?
+    }
+
     /// Dump a Coq axiom.
     pub fn dump_coq_axiom(&self, name: String, th: &Theorem) -> Result<String> {
         self.execute(
