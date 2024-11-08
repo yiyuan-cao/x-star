@@ -89,6 +89,6 @@ let command =
         in
         let proof = Proof.make_proof ast in
         Printer.Render.render_to_string (Printer.program_to_doc proof)
-        |> Printer.Ansi.fprint stdout )
+        |> Printer.Ansi.fprint (Out_channel.create "../lcf_server/test.c") )
 
 let () = Command_unix.run command

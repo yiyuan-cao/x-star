@@ -1,2 +1,4 @@
 /target
 *.cm[i,o]
+test
+test.c
