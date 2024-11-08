@@ -288,8 +288,10 @@ and declaration_to_doc_inner = function
       |> nest |> group
   | Ddecltype (typ, _) -> typ_to_doc typ
   | Ddecltypedef (ident, typ, _) ->
-      kwd "typedef" ^^ break ^^ parameter_to_doc (typ, ident)
-      |> nest |> group
+    ( match ident with 
+      | "thm" | "term" | "indtype" -> empty
+      | _ -> kwd "typedef" ^^ break ^^ parameter_to_doc (typ, ident)
+          |> nest |> group )
   | Ddeclfun (func, _) -> funsym_to_doc func
   | Ddeffun (func, _, stmt) ->
       funsym_to_doc func ^^ space ^^ stmt_to_doc stmt
@@ -340,7 +342,7 @@ and stmt_to_doc = function
 
 and init_to_doc = function
   | Init_single e -> expr_to_doc e
-  | Init_array l -> braces (seperate_map comma_break ~f:init_to_doc l)
+  | Init_array l -> seperate_map comma_break ~f:init_to_doc l
   | Init_struct l ->
       braces
         (seperate_map comma_break

@@ -49,7 +49,7 @@ let make_proof_of_quoted quoted =
        ~f:(fun (name, typ) expr ->
          Ecall
            ( Evar "subst"
-           , [make_proof_of_term (sprintf "%s:%s" name typ); Evar name; expr]
+           , [Evar name; make_proof_of_term (sprintf "%s:%s" name typ); expr]
            ) )
 
 let rec make_proof_of_expr = function
