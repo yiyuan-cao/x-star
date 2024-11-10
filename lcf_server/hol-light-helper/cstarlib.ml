@@ -56,7 +56,7 @@ new_type_abbrev ("addr", `:int`);;
 new_type_abbrev ("ilist", `:int list`);;
 
 (* exported functions *)
-let ilength_def = define `ilength (l : A list) : int = &(LENGTH l)`;;
+let ilength_def = define `ilength NIL = &0 /\ ilength (CONS (h:A) t) = &1 + ilength t`;;
 add_to_database "ilength_def" ilength_def;;
 let ireplicate_def = define `ireplicate (n : int, x : int) : ilist = REPLICATE (num_of_int n) x`;;
 add_to_database "ireplicate_def" ireplicate_def;;
@@ -367,6 +367,12 @@ add_to_database "htrue_intro" htrue_intro;;
 
 let hfalse_elim = new_axiom `!hp. hfalse |-- hp`;;
 add_to_database "hfalse_elim" hfalse_elim;;
+
+let hfalse_absorb_left = new_axiom `!hp. (hfact F) ** hp -|- (hfact F)`;;
+add_to_database "hfalse_absorb_left" hfalse_absorb_left;;
+
+let hfalse_absorb_right = new_axiom `!hp. hp ** (hfact F) -|- (hfact F)`;;
+add_to_database "hfalse_absorb_right" hfalse_absorb_right;;
 
 let hand_intro = new_axiom `!hp1 hp2 hp3. (hp1 |-- hp2) ==> (hp1 |-- hp3) ==> (hp1 |-- hp2 && hp3)`;;
 add_to_database "hand_intro" hand_intro;;
@@ -680,6 +686,8 @@ let hfact_elim_dup = new_axiom (* manual: [p] * hp1 |-- [p] * [p] * hp1 |-- [p] 
 add_to_database "hfact_elim_dup" hfact_elim_dup;;  
 
 (* Some derived rules for examples. *)
+
+(* clear *)
 let array_at_replicate_zero_length = new_axiom 
   `!x ty y. array_at(x, ty, replicate(&0, y)) -|- emp`
 ;;
@@ -704,3 +712,12 @@ let array_at_last_split = new_axiom
   `!x ty y n. n >= &0 ==> (array_at(x, ty, replicate(n, y)) ** data_at(x + n * (sizeof ty), ty, y) |-- array_at(x, ty, replicate(n + &1, y)))`
 ;;
 add_to_database "array_at_last_split" array_at_last_split;;
+
+(* forall *)
+let ilength_map_id = 
+  prove(`!(f:int->A) l. ilength (MAP f l) == ilength l`,
+    GEN_TAC THEN LIST_INDUCT_TAC THENL
+      [ REWRITE_TAC[MAP; ilength_def];
+        ASM_REWRITE_TAC[MAP; ilength_def] ])
+;;
+add_to_database "ilength_map_id" ilength_map_id;;

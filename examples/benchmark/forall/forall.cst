@@ -1,0 +1,130 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+typedef const struct IndType *indtype;
+
+thm SKIPN, FIRSTN, SUBLIST;
+
+[[cstar::function(
+void def_init() {
+  SKIPN = 
+    define(`
+      SKIPN 0 l = l /\
+      SKIPN (SUC n) NIL = NIL /\
+      SKIPN (SUC n) (CONS (h:int) t) = SKIPN n t
+    `);
+  FIRSTN = 
+    define(`
+      FIRSTN 0 l = NIL /\
+      FIRSTN (SUC n) NIL = NIL /\
+      FIRSTN (SUC n) (CONS (h:int) t) = CONS h (FIRSTN n t)
+    `);
+  SUBLIST =
+    define(`
+      SUBLIST lo hi l = SKIPN (num_of_int lo) (FIRSTN (num_of_int hi) l)
+    `);
+}
+)]];
+
+[[cstar::function(
+thm array_split(term x, term ty, term vs1, term vs2) {
+  thm array_at_split = spec(vs2, spec(vs1, spec(ty, spec(x, get_theorem("array_split")))));
+  thm ilength_map_id = spec(`SUBLIST (&0) (&0) (l:int list)`,
+                       spec(`(+) (&1)`, get_theorem("ilength_map_id")));
+  thm sublist_zero_zero = 
+    rewrite_list((thm[]){SUBLIST, get_theorem("NUM_OF_INT_OF_NUM"), SKIPN, FIRSTN},
+      parse_term("SUBLIST (&0) (&0) (l:int list)"));
+  puts(string_of_thm(sublist_zero_zero));
+  return array_at_split;
+}
+)]];
+
+void increment_all(int* a, int N)
+  [[cstar::parameter(`l:int list`)]]
+  [[cstar::require(`fact(N >= &0)  ** array_at(a, Tint, l)`)]]
+  [[cstar::ensure(`array_at(a_pre, Tint, MAP ((+) &1) l)`)]]
+{
+  [[cstar::proof(
+    thm SKIPN = 
+      define(`
+        SKIPN 0 l = l /\
+        SKIPN (SUC n) NIL = NIL /\
+        SKIPN (SUC n) (CONS (h:int) t) = SKIPN n t
+      `);
+    thm FIRSTN = 
+      define(`
+        FIRSTN 0 l = NIL /\
+        FIRSTN (SUC n) NIL = NIL /\
+        FIRSTN (SUC n) (CONS (h:int) t) = CONS h (FIRSTN n t)
+      `);
+    thm SUBLIST =
+      define(`
+        SUBLIST lo hi l = SKIPN (num_of_int lo) (FIRSTN (num_of_int hi) l)
+      `);
+  )]];
+
+  [[cstar::assert(`
+    fact(N_pre >= &0) ** 
+    array_at(a_pre, Tint, l) **
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"N", Tint, N_pre)
+  `)]];
+
+  int k = 0;
+
+  [[cstar::assert(`
+    fact(N_pre >= &0) ** 
+    array_at(a_pre, Tint, l) **
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"N", Tint, N_pre) ** 
+    data_at(&"k", Tint, (&0))
+  `)]];
+
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm array_at_split = array_split(`a_pre:int`, `Tint`, `MAP ((+) (&1)) (SUBLIST (&0) (&0) l)`, `MAP ((+) (&1)) (SUBLIST (&0) N_pre l)`);
+
+    }
+  )]]
+
+  [[cstar::assert(`
+    fact(N_pre >= &0) ** 
+    array_at(a_pre, Tint, MAP ((+) (&1)) (SUBLIST (&0) (&0) l)) ** 
+    array_at(a_pre + &0 * sizeof(Tint), Tint, MAP ((+) (&1)) (SUBLIST (&0) N_pre l)) ** 
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"N", Tint, N_pre) ** 
+    data_at(&"k", Tint, (&0))
+  `)]];
+
+  [[cstar::proof(
+    {
+      //thm hfact_thm = hfact_auto((term[]){`N_pre >= &0`, NULL}, (term[]){`&0 <= &0`, `&0 <= N_pre`, NULL});
+
+    }
+  )]]
+
+  [[cstar::assert(`
+    fact(&0 <= &0) ** fact(&0 <= N_pre) ** 
+    array_at(a_pre, Tint, MAP ((+) (&1)) (SUBLIST (&0) (&0) l)) ** 
+    array_at(a_pre + &0 * sizeof(Tint), Tint, MAP ((+) (&1)) (SUBLIST (&0) N_pre l)) ** 
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"N", Tint, N_pre) ** 
+    data_at(&"k", Tint, &0)
+  `)]];
+
+  while (k < N) 
+    [[cstar::invariant(`
+      exists (k_v:int).
+        fact(&0 <= k_v) ** fact(k_v <= N_pre) ** 
+        array_at(a_pre, Tint, MAP ((+) (&1)) (SUBLIST (&0) k_v l)) ** 
+        array_at(a_pre + k_v * sizeof(Tint), Tint, MAP ((+) (&1)) (SUBLIST k_v N_pre l)) ** 
+        data_at(&"a", Tptr, a_pre) **
+        data_at(&"N", Tint, N_pre) ** 
+        data_at(&"k", Tint, k_v)
+    `)]] 
+  {
+    
+
+  }
+
+}

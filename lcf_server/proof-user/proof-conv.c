@@ -48,6 +48,27 @@ thm hentail_trans_list(thm thl[]) {
   return result;
 }
 
+thm hentail_trans_auto(thm th1, thm th2) {
+  th1 = sep_normalize_rule(th1);
+  th2 = sep_normalize_rule(th2);
+  term th1_post = snd_binop(parse_term("hentail"), conclusion(th1));
+  term th2_pre = fst_binop(parse_term("hentail"), conclusion(th2));
+  thm eq = sep_cancel(th2_pre, th1_post);
+
+  if (!equals_term(th1_post, fst_binop(parse_term("(=):hprop->hprop->bool"), conclusion(eq)))) puts("1!!!");
+  if (!equals_term(th2_pre, snd_binop(parse_term("(=):hprop->hprop->bool"), conclusion(eq)))) puts("2!!!");
+  return hentail_trans_list((thm[]){th1, mp(get_theorem("hentail_sym_left"), eq), th2, NULL});
+}
+
+thm hentail_trans_auto_list(thm thl[]) {
+  thm result = hentail_trans_auto(thl[0], thl[1]);
+
+  for (int i = 2; ; ++i) {
+    if (thl[i] == NULL) break;
+    result = hentail_trans_auto(result, thl[i]);
+  }
+  return result;
+}
 
 bool has_typ(thm th) {
   return !equals_thm(new_axiom(conclusion(th)), th);
@@ -197,10 +218,16 @@ thm which_implies(term state, thm th) {
   
   thm entail = spec(snd_binop(parse_term("hsep"), state), mp(get_theorem("hsep_cancel_right"), th));
   entail = sep_normalize_rule(entail);
-
   
   thm th_pre_norm = sep_cancel(old_state, fst_binop(parse_term("hentail"), conclusion(entail)));
   entail = once_rewrite_rule(th_pre_norm, entail);
+
+  entail = once_rewrite_rule(
+    rewrite_list(
+      (thm[]){get_theorem("hfalse_absorb_left"),
+              get_theorem("hfalse_absorb_right"), NULL},
+      snd_binop(parse_term("hentail"), conclusion(entail))), 
+    entail);
 
   // Construct `hexists` with binders (in order) in `exists_list`.
   for (int i = exists_count; i > 0; --i) {

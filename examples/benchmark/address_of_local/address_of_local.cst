@@ -1,0 +1,186 @@
+void abort();
+  [[cstar::parameter(`P:hprop`)]]
+  [[cstar::require(`false && emp`)]]
+  [[cstar::ensure(`P:hprop`)]]
+
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+void inc(int* i) 
+  [[cstar::parameter(`v:int`)]]
+  [[cstar::require(`data_at(i, Tint, v)`)]]
+  [[cstar::ensure(`data_at(i_pre, Tint, v + &1)`)]]
+{
+  [[cstar::assert(`
+    data_at(&"i", Tptr, i_pre) **
+    data_at(i, Tint, v)
+  `)]];
+
+  (*i) = (*i) + 1;
+
+  [[cstar::assert(`
+    data_at(&"i", Tptr, i_pre) **
+    data_at(i, Tint, v + &1)
+  `)]];
+}
+
+void address_of_param(int x)
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`emp`)]]
+{
+    [[cstar::assert(`
+      data_at(&"x", Tint, x_pre)
+    `)]];
+
+    x = 5;
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &5)
+    `)]];
+
+    int* ptr = &x;
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &5) **
+      data_at(&"ptr", Tptr, &"x")
+    `)]];
+
+    inc(ptr); 
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &5 + &1) **
+      data_at(&"ptr", Tptr, &"x")
+    `)]];
+
+    [[cstar::proof(
+      {
+        thm arith = arith_rule(`&5 + &1 == &6`);
+        thm final_thm = mp(get_theorem("hentail_sym_left"), rewrite(arith, get_symbolic_state()));
+        set_symbolic_state(final_thm);
+      }
+    )]];
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &6) **
+      data_at(&"ptr", Tptr, &"x")
+    `)]];
+
+    int z = x;
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &6) **
+      data_at(&"ptr", Tptr, &"x") **
+      data_at(&"z", Tptr, &6)
+    `)]];
+
+    if (z == 6) {
+    } else {
+      [[cstar::assert(`
+        fact(~(&6 == &6)) ** 
+        data_at(&"x", Tint, &6) **
+        data_at(&"ptr", Tptr, &"x") **
+        data_at(&"z", Tptr, &6)
+      `)]];
+
+      [[cstar::proof(
+        thm hfact_false = mp(get_theorem("hentail_sym_left"), 
+          (rewrite(arith_rule(`~(&6 == &6) <=> F`), `fact(~(&6 == &6))`)));
+        thm final_thm = which_implies(get_symbolic_state(), hfact_false);
+        set_symbolic_state(final_thm);
+      )]];
+
+      [[cstar::assert(`fact(false)`)]];
+
+      abort();
+    }
+}
+
+void address_of_local()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`emp`)]]
+{
+  [[cstar::assert(`emp`)]];
+
+  int x = 0;
+
+  [[cstar::assert(`data_at(&"x", Tint, &0)`)]];
+
+  {
+    [[cstar::assert(`data_at(&"x", Tint, &0)`)]];
+
+    int* ptr = &x;
+
+    [[cstar::assert(`
+      data_at(&"x", Tint, &0) **
+      data_at(&"ptr", Tptr, &"x")
+    `)]];
+
+    {
+      [[cstar::assert(`
+        data_at(&"x", Tint, &0) **
+        data_at(&"ptr", Tptr, &"x")
+      `)]];
+
+      int** ptrptr = &ptr;
+
+      [[cstar::assert(`
+        data_at(&"x", Tint, &0) **
+        data_at(&"ptr", Tptr, &"x") **
+        data_at(&"ptrptr", Tptr, &"ptr")
+      `)]];
+
+      inc(*ptrptr) /*& where v = 0 */;
+
+      [[cstar::assert(`
+        data_at(&"x", Tint, &0 + &1) **
+        data_at(&"ptr", Tptr, &"x") **
+        data_at(&"ptrptr", Tptr, &"ptr")
+      `)]];
+
+      [[cstar::proof(
+        {
+          thm arith = arith_rule(`&0 + &1 == &1`);
+          thm final_thm = mp(get_theorem("hentail_sym_left"), rewrite(arith, get_symbolic_state()));
+          set_symbolic_state(final_thm);
+        }
+      )]];
+
+      [[cstar::assert(`
+        data_at(&"x", Tint, &1) **
+        data_at(&"ptr", Tptr, &"x") **
+        data_at(&"ptrptr", Tptr, &"ptr")
+      `)]];
+
+      int z = x;
+
+      [[cstar::assert(`
+        data_at(&"x", Tint, &1) **
+        data_at(&"ptr", Tptr, &"x") **
+        data_at(&"ptrptr", Tptr, &"ptr") **
+        data_at(&"z", Tint, &1)
+      `)]];
+
+      if (z == 1) {
+      } else {
+        [[cstar::assert(`
+          fact(~(&1 == &1)) ** 
+          data_at(&"x", Tint, &1) **
+          data_at(&"ptr", Tptr, &"x") **
+          data_at(&"ptrptr", Tptr, &"ptr") **
+          data_at(&"z", Tint, &1)
+        `)]];
+
+        [[cstar::proof(
+          thm hfact_false = mp(get_theorem("hentail_sym_left"), 
+            (rewrite(arith_rule(`~(&1 == &1) <=> F`), `fact(~(&1 == &1))`)));
+          thm final_thm = which_implies(get_symbolic_state(), hfact_false);
+          set_symbolic_state(final_thm);
+        )]];
+
+        [[cstar::assert(`fact(false)`)]];
+
+        abort();
+      }
+    }
+  }
+}
