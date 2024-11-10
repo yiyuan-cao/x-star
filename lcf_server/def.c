@@ -1,0 +1,282 @@
+#include "proof-user.h"
+#include "def.h"
+
+thm num_CASES;
+thm num_INDUCTION;
+thm list_INDUCT;
+
+thm hentail_refl;
+thm hentail_trans;
+thm hentail_antisym;
+thm hsep_assoc;
+thm hsep_comm;
+thm hsep_hemp_left;
+thm hsep_hemp_right;
+thm hwand_hsep_adjoint;
+thm hsep_cancel_left;
+thm hsep_cancel_right;
+thm hsep_monotone;
+thm htrue_def;
+thm hfalse_def;
+thm htrue_intro;
+thm hfalse_elim;
+thm himpl_hand_adjoint;
+thm hexists_intro;
+thm hpure_intro;
+thm hpure_elim;
+thm hand_assoc;
+thm hand_comm;
+thm hsep_hpure_left;
+thm hsep_hpure_right;
+thm hfact_def;
+thm hfact_hpure;
+thm hfact_intro;
+thm hfact_elim;
+thm hsep_hfact_left;
+thm hsep_hfact_right;
+thm hexists_monotone;
+
+thm PTR_SIZE_DEF;
+thm LIST_HEAD_SIZE_DEF;
+thm PAGE_SIZE_DEF;
+thm MAX_ORDER_DEF;
+thm NO_ORDER_DEF;
+thm RANGE_LIM_DEF;
+thm REF_LIM_DEF;
+thm PTR_LIM_DEF;
+thm START_DEF;
+thm END_DEF;
+thm LEN_DEF;
+thm MAX_ORDER__DEF;
+thm OFF_SET_DEF;
+
+thm PH2VI_DEF;
+thm VI2PH_DEF;
+thm PH2ID_DEF;
+thm VI2ID_DEF;
+thm ID2PH_DEF;
+thm ID2VI_DEF;
+thm ID2I_DEF;
+thm VI2I_DEF;
+thm I2ID_DEF;
+thm I2VI_DEF;
+thm REF_DEF;
+thm ORD_DEF;
+thm NXT_DEF;
+thm PRV_DEF;
+thm STORE_UNDEF_ARRAY_DEF;
+thm STORE_ZERO_ARRAY_DEF;
+thm STORE_PAGEINFO_ARRAY_DEF;
+thm PURE_CONST_DEF;
+thm POOL_CONST_DEF;
+thm DLIST_HEAD_REPR_DEF;
+thm NTH_DEF;
+thm MODIFIED_DEF;
+thm TAKE_DEF;
+thm REST_DEF;
+thm FREE_HEAD_DEF;
+thm IFILTER_DEF;
+thm FREE_AREA_REPR_DEF;
+thm FREE_AREA_HEAD_REPR_DEF;
+thm DLIST_NODE_ONE_DEF;
+thm DLIST_NODE_DEF;
+thm DLIST_HEAD_HALF_DEF;
+thm DLIST_HEAD_ONE_DEF;
+thm DLIST_HEAD_DEF;
+thm TOTAL_REPR_DEF;
+
+void definitions()
+{
+    num_CASES = get_theorem("num_CASES");
+    num_INDUCTION = get_theorem("num_INDUCTION");
+    list_INDUCT = get_theorem("list_INDUCT");
+
+    hentail_refl = get_theorem("hentail_refl");
+    hentail_trans = get_theorem("hentail_trans");
+    hentail_antisym = get_theorem("hentail_antisym");
+    hsep_assoc = get_theorem("hsep_assoc");
+    hsep_comm = get_theorem("hsep_comm");
+    hsep_hemp_left = get_theorem("hsep_hemp_left");
+    hsep_hemp_right = get_theorem("hsep_hemp_right");
+    hwand_hsep_adjoint = get_theorem("hwand_hsep_adjoint");
+    hsep_cancel_left = get_theorem("hsep_cancel_left");
+    hsep_cancel_right = get_theorem("hsep_cancel_right");
+    hsep_monotone = get_theorem("hsep_monotone");
+    htrue_def = get_theorem("htrue_def");
+    hfalse_def = get_theorem("hfalse_def");
+    htrue_intro = get_theorem("htrue_intro");
+    hfalse_elim = get_theorem("hfalse_elim");
+    himpl_hand_adjoint = get_theorem("himpl_hand_adjoint");
+    hexists_intro = get_theorem("hexists_intro");
+    hpure_intro = get_theorem("hpure_intro");
+    hpure_elim = get_theorem("hpure_elim");
+    hand_assoc = get_theorem("hand_assoc");
+    hand_comm = get_theorem("hand_comm");
+    hsep_hpure_left = get_theorem("hsep_hpure_left");
+    hsep_hpure_right = get_theorem("hsep_hpure_right");
+    hfact_def = get_theorem("hfact_def");
+    hfact_hpure = get_theorem("hfact_hpure");
+    hfact_intro = get_theorem("hfact_intro");
+    hfact_elim = get_theorem("hfact_elim");
+    hsep_hfact_left = get_theorem("hsep_hfact_left");
+    hsep_hfact_right = get_theorem("hsep_hfact_right");
+    hexists_monotone = get_theorem("hexists_monotone");
+
+    PTR_SIZE_DEF = define(parse_term("PTR_SIZE : num = 8"));
+    LIST_HEAD_SIZE_DEF = define(parse_term("LIST_HEAD_SIZE : num = PTR_SIZE * 2"));
+    PAGE_SIZE_DEF = define(parse_term("PAGE_SIZE : num = 4096"));
+    MAX_ORDER_DEF = define(parse_term("MAX_ORDER : num = 11"));
+    NO_ORDER_DEF = define(parse_term("NO_ORDER : num = 255"));
+    RANGE_LIM_DEF = define(parse_term("RANGE_LIM : num = 4503599627370496"));
+    REF_LIM_DEF = define(parse_term("REF_LIM : num = 65536"));
+    PTR_LIM_DEF = define(parse_term("PTR_LIM : num = 18446744073709551616"));
+    
+    START_DEF = define(parse_term("start = @x : num. T"));;
+    END_DEF = define(parse_term("end = @x : num. T"));;
+    LEN_DEF = define(parse_term("len : num = end - start"));;
+    MAX_ORDER__DEF = define(parse_term("max_order = @x : num. T"));;
+    OFF_SET_DEF = define(parse_term("offset = @x : num. T"));;
+    
+    PH2VI_DEF = define(parse_term("ph2vi (ph : addr) = ph - &offset"));
+    VI2PH_DEF = define(parse_term("vi2ph (vi : addr) = vi + &offset"));
+    PH2ID_DEF = define(parse_term("ph2id (ph : addr) = num_of_int (ph div &PAGE_SIZE)"));
+    VI2ID_DEF = define(parse_term("vi2id (vi : addr) = ph2id (vi2ph vi)"));
+    ID2PH_DEF = define(parse_term("id2ph (id : num) = &(id * PAGE_SIZE)"));
+    ID2VI_DEF = define(parse_term("id2vi (id : num) = ph2vi (id2ph id)"));
+    ID2I_DEF = define(parse_term("id2i (id : num) = id - start"));
+    VI2I_DEF = define(parse_term("vi2i (vi : addr) = id2i (vi2id vi)"));
+    I2ID_DEF = define(parse_term("i2id (i : num) = start + i"));
+    I2VI_DEF = define(parse_term("i2vi (i : num) = id2vi (i2id i)"));
+    REF_DEF = define(parse_term("REF (i : (num#num)) = FST i"));
+    ORD_DEF = define(parse_term("ORD (i : (num#num)) = SND i"));
+    NXT_DEF = define(parse_term("NXT (i : (addr#addr)) = FST i"));
+    PRV_DEF = define(parse_term("PRV (i : (addr#addr)) = SND i"));
+    STORE_UNDEF_ARRAY_DEF = define(parse_term(" \
+    (! (addr : addr) (lo : num) (hi : num). \
+    store_undef_array addr lo hi (0 : num) = (hfact (lo = hi))) /\\ \
+    (! (addr : addr) (lo : num) (hi : num) (n : num). \
+    store_undef_array addr lo hi (SUC n) = ( \
+        undef_data_at (addr + &lo, Tuchar) **  \
+        store_undef_array addr (SUC lo) hi n))"));
+    STORE_ZERO_ARRAY_DEF = define(parse_term(" \
+    (! (addr : addr) (lo : num) (hi : num). \
+    store_zero_array addr lo hi (0 : num) = (hfact (lo = hi))) /\\ \
+    (! (addr : addr) (lo : num) (hi : num) (n : num). \
+    store_zero_array addr lo hi (SUC n) = ( \
+        data_at (addr + &lo, Tuchar, &0) **  \
+        store_zero_array addr (SUC lo) hi n))"));
+    STORE_PAGEINFO_ARRAY_DEF = define(parse_term(" \
+    (! (addr : addr) (lo : num) (hi : num). \
+    store_pageinfo_array addr lo hi (NIL : (num#num)list) = (hfact (lo = hi))) /\\ \
+    (! (addr : addr) (lo : num) (hi : num) (h : (num#num)) (t : (num#num)list). \
+    store_pageinfo_array addr lo hi (CONS h t) = (( \
+            hfact (~((ORD h) = NO_ORDER) ==> (ORD h < max_order) /\\ ((2 EXP (ORD h)) divides lo)) ** \
+            hfact (REF h < REF_LIM) ** \
+            data_at (addr + &((id2i lo) * 4), Tushort, &(REF h)) ** \
+            data_at (addr + &((id2i lo) * 4 + 2), Tuchar, &(ORD h)) ** \
+            undef_data_at (addr + &((id2i lo) * 4 + 3), Tuchar) \
+        ) ** store_pageinfo_array addr (SUC lo) hi t))"));
+    PURE_CONST_DEF = define(parse_term(" \
+        pure_const = \
+        ((start < end) /\\ (max_order <= MAX_ORDER) /\\ (PAGE_SIZE divides offset) /\\ \
+        (offset <= start * PAGE_SIZE) /\\ (end * PAGE_SIZE < RANGE_LIM))"));
+    POOL_CONST_DEF = define(parse_term(" \
+    pool_const (pool_ptr : addr) = ( \
+        data_at (pool_ptr + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) ** \
+        data_at (pool_ptr + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) ** \
+        data_at (pool_ptr + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order))"));
+    DLIST_HEAD_REPR_DEF = define(parse_term(" \
+    (! (addr : addr) (order : num) (maxorder : num). \
+    dlist_head_repr addr order maxorder (NIL : (addr#addr)list) = (hfact (order = maxorder))) /\\ \
+    (! (addr : addr) (order : num) (maxorder : num) (h : addr#addr) (t : (addr#addr)list). \
+    dlist_head_repr addr order maxorder (CONS h t) = (( \
+        data_at (addr + &(LIST_HEAD_SIZE * order), Tptr, NXT h) ** \
+        data_at (addr + &(LIST_HEAD_SIZE * order + PTR_SIZE), Tptr, PRV h) \
+    ) ** dlist_head_repr addr (SUC order) maxorder t))"));
+    NTH_DEF = define(parse_term(" \
+    (! (h : A) (t : (A)list). nth (CONS h t) (0 : num) = h) /\\ \
+    (! (h : A) (t : (A)list) (n : num). nth (CONS h t) (SUC n) = nth t n)"));
+    MODIFIED_DEF = define(parse_term(" \
+    (! (n : num) (v : A). modified (NIL : (A)list) n v = NIL) /\\ \
+    (! (h : A) (t : (A)list) (v : A). modified (CONS h t) (0 : num) v = CONS v t) /\\ \
+    (! (h : A) (t : (A)list) (n : num) (v : A). modified (CONS h t) (SUC n) v =  \
+        CONS h (modified t n v))"));
+    TAKE_DEF = define(parse_term(" \
+    (! (l : (A)list). take l (0 : num) = NIL) /\\ \
+    (! (h : A) (t : (A)list) (n : num). take (CONS h t) (SUC n) = CONS h (take t n))"));
+    REST_DEF = define(parse_term(" \
+    (! (l : (A)list). rest (l) (0 : num) = l) /\\ \
+    (! (h : A) (t : (A)list) (n : num). rest (CONS h t) (SUC n) = rest t n)"));
+    FREE_HEAD_DEF = define(parse_term("free_head (v : num#num) = ((REF v = 0) /\\ ~(ORD v = NO_ORDER))"));
+    IFILTER_DEF = define(parse_term("ifilter (l : (num#num)list) (id : num) = free_head (nth l (id2i id))"));
+    FREE_AREA_REPR_DEF = define(parse_term(" \
+    (! (f : num -> bool) (lo : num) (hi : num). \
+    free_area_repr f lo hi (NIL : (num#num)list) = (hfact (lo = hi))) /\\ \
+    (! (f : num -> bool) (lo : num) (hi : num) (h : num#num) (t : (num#num)list). \
+    free_area_repr f lo hi (CONS h t) = \
+        ((if f lo then \
+            (store_zero_array (id2vi lo) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD h))) (PAGE_SIZE * (2 EXP (ORD h)) - PTR_SIZE * 2)) \
+        else emp) ** \
+        free_area_repr f (SUC lo) hi t))"));
+    FREE_AREA_HEAD_REPR_DEF = define(parse_term(" \
+    (! (f : num -> bool) (lo : num) (hi : num). \
+    free_area_head_repr f lo hi (NIL : (addr#addr)list) = (hfact (lo = hi))) /\\ \
+    (! (f : num -> bool) (lo : num) (hi : num) (h : (addr#addr)) (t : (addr#addr)list). \
+    free_area_head_repr f lo hi (CONS h t) =  \
+        ((if f lo then \
+            data_at (id2vi lo, Tptr, NXT h) ** \
+            data_at (id2vi lo + &PTR_SIZE, Tptr, PRV h) \
+        else emp) ** \
+        free_area_head_repr f (SUC lo) hi t))"));
+    DLIST_NODE_ONE_DEF = define(parse_term(" \
+    dlist_node_one (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) (lo : num) (h : addr#addr) (F1 : (addr#addr) -> addr) (F2 : (addr#addr) -> addr) =  \
+        (((F1 h = addr + &(LIST_HEAD_SIZE * (ORD (nth l (id2i lo))))) /\\ \
+        (F2 (nth hl (ORD (nth l (id2i lo)))) = id2vi lo)) \
+        \\/ \
+        ((vi2i (F1 h) < len) /\\ ~(vi2id (F1 h) = lo) /\\ \
+        (F2 (nth dl (vi2i (F1 h))) = id2vi lo) /\\ \
+        free_head (nth l (vi2i (F1 h))) /\\ \
+        (ORD (nth l (vi2i (F1 h))) = (ORD (nth l (id2i lo))))))"));
+    DLIST_NODE_DEF = define(parse_term(" \
+    (! (addr : addr) (f : num -> bool) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) (lo : num) (hi : num). \
+    dlist_node addr f l dl hl lo hi (NIL : (addr#addr)list) = (lo = hi)) /\\ \
+    (! (addr : addr) (f : num -> bool) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) (lo : num) (hi : num) (h : addr#addr) (t : (addr#addr)list). \
+    dlist_node addr f l dl hl lo hi (CONS h t) = (( \
+        if f lo then \
+            (dlist_node_one addr l dl hl lo h NXT PRV) /\\ \
+            (dlist_node_one addr l dl hl lo h PRV NXT) \
+        else T \
+    ) /\\ dlist_node addr f l dl hl (SUC lo) hi t))"));
+    DLIST_HEAD_HALF_DEF = define(parse_term(" \
+    dlist_head_half (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (h : addr#addr) (F1 : (addr#addr) -> addr) (F2 : (addr#addr) -> addr) = ( \
+        (vi2i (F1 h) < len) /\\ \
+        (F2 (nth dl (vi2i (F1 h))) = addr + &(LIST_HEAD_SIZE * order)) /\\ \
+        free_head (nth l (vi2i (F1 h))) /\\ \
+        (ORD (nth l (vi2i (F1 h))) = order))"));
+    DLIST_HEAD_ONE_DEF = define(parse_term(" \
+    dlist_head_one (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (h : addr#addr) = \
+        (((NXT h = addr + &(LIST_HEAD_SIZE * order)) /\\ \
+        (PRV h = addr + &(LIST_HEAD_SIZE * order))) \
+        \\/ \
+        ((dlist_head_half addr l dl order h NXT PRV) /\\ \
+        (dlist_head_half addr l dl order h PRV NXT)))"));
+    DLIST_HEAD_DEF = define(parse_term(" \
+    (! (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (maxorder : num). \
+    dlist_head addr l dl order maxorder (NIL : (addr#addr)list) = (order = maxorder)) /\\ \
+    (! (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (maxorder : num) (h : addr#addr) (t : (addr#addr)list). \
+    dlist_head addr l dl order maxorder (CONS h t) = ( \
+        dlist_head_one addr l dl order h /\\ \
+        dlist_head addr l dl (SUC order) maxorder t))"));
+    TOTAL_REPR_DEF = define(parse_term(" \
+    total_repr (pool_ptr : addr) (vmemmap_ptr : addr) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) = ( \
+        pool_const pool_ptr ** \
+        dlist_head_repr pool_ptr 0 max_order hl ** \
+        free_area_repr (ifilter l) start end l ** \
+        free_area_head_repr (ifilter l) start end dl ** \
+        store_pageinfo_array vmemmap_ptr start end l ** \
+        hfact (dlist_node pool_ptr (ifilter l) l dl hl start end dl) ** \
+        hfact (dlist_head pool_ptr l dl 0 max_order hl) ** \
+        hfact (LENGTH l = len) ** \
+        hfact (LENGTH dl = len) ** \
+        hfact (LENGTH hl = max_order))"));
+}
