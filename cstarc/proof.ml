@@ -219,6 +219,7 @@ let make_proof_of_global_decl = function
       [Ddeffun (funsym, [], stmt)]
   | Ddecltype (t, r) -> [Ddecltype (t, r)]
   | Ddecltypedef (i, t, r) -> [Ddecltypedef (i, t, r)]
+  | Ddeclvar (t, id, i, r) -> [Ddeclvar (t, id, i, r)]
   | _ -> []
 
 let make_proof program =

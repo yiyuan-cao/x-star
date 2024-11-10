@@ -273,12 +273,13 @@ open Ast
 open Pretty
 
 let default_header = str "#include <cstar.h>" ^^ hardline
+let default_main func = str "int main() { cst_init(); " ^^ func ^^ " return 0; }"
 
 let rec program_to_doc program =
   default_header ^^
   (program |> List.map ~f:declaration_to_doc |> seperate (hardlines 2))
   ^^ hardline ^^
-  str "int main() { cst_init(); clear(); return 0; }"
+  default_main "increment_all(); " (* modify proof function name here. *)
 
 and declaration_to_doc = function
   | Ddeffun _ as d -> declaration_to_doc_inner d
