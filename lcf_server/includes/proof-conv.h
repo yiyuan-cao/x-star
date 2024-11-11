@@ -11,6 +11,6 @@ term normalize(term septerm);
 thm sep_normalize(term septerm);
 thm sep_normalize_rule(thm entail);
 thm sep_lift(term lft, term septerm);
-thm sep_cancel(term lft, term septerm);
+thm sep_reorder(term lft, term septerm);
 thm which_implies(term state, thm trans);
 thm hfact_auto(term pres[], term posts[], thm helpers[]);

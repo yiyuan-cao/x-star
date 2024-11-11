@@ -595,11 +595,11 @@ let array_split = new_axiom `!x ty vs1 vs2.
 add_to_database "array_split" array_split;;
 
 let undef_slice_split = new_axiom `!x ty i n1 n2.
-            undef_slice_at (x, ty, i, n1 + n2) -|- undef_slice_at (x, ty, i, n1) ** undef_slice_at (x, ty, i + n1, n2)`;;
+      n1 >= &0 ==> n2 >= &0 ==> (undef_slice_at (x, ty, i, n1 + n2) -|- undef_slice_at (x, ty, i, n1) ** undef_slice_at (x, ty, i + n1, n2))`;;
 add_to_database "undef_slice_split" undef_slice_split;;
 
 let undef_array_split = new_axiom `!x ty n1 n2.
-            undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (sizeof ty) * n1, ty, n2)`;;
+      n1 >= &0 ==> n2 >= &0 ==> (undef_array_at (x, ty, n1 + n2) -|- undef_array_at (x, ty, n1) ** undef_array_at (x + (sizeof ty) * n1, ty, n2))`;;
 add_to_database "undef_array_split" undef_array_split;;
 
 (* axioms of malloc_at *)

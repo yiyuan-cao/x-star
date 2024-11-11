@@ -8,9 +8,8 @@
 thm rewrite_list(thm thl[], term tm) {
   if (thl[0] == NULL) return refl(tm);
   thm result = rewrite(thl[0], tm);
-  for (int i = 1; ; ++i) {
-    if (thl[i] == NULL) break;
-    result = trans(result, rewrite(thl[i], snd_comb(conclusion(result))));
+  for (int i = 1; thl[i] != NULL; ++i) {
+    result = trans(result, rewrite(thl[i], consequent(conclusion(result))));
   }
   return result;
 }
@@ -53,7 +52,7 @@ thm hentail_trans_auto(thm th1, thm th2) {
   th2 = sep_normalize_rule(th2);
   term th1_post = snd_binop(parse_term("hentail"), conclusion(th1));
   term th2_pre = fst_binop(parse_term("hentail"), conclusion(th2));
-  thm eq = sep_cancel(th2_pre, th1_post);
+  thm eq = sep_reorder(th2_pre, th1_post);
   return hentail_trans_list((thm[]){th1, mp(get_theorem("hentail_sym_left"), eq), th2, NULL});
 }
 
@@ -156,13 +155,13 @@ thm sep_lift(term lft, term septerm) {
   }
 }
 
-thm sep_cancel(term lft, term septerm) {
+thm sep_reorder(term lft, term septerm) {
   if (is_binop(parse_term("hsep"), lft)) {
     term l = fst_binop(parse_term("hsep"), lft);
     term r = snd_binop(parse_term("hsep"), lft);
     thm th1 = once_rewrite(sep_lift_(l, septerm), septerm);
     septerm = consequent(conclusion(th1));
-    thm th2 = once_rewrite(sep_cancel(r, snd_comb(septerm)), septerm);
+    thm th2 = once_rewrite(sep_reorder(r, snd_comb(septerm)), septerm);
     return trans(th1, th2);
   } else {
     return refl(lft);
@@ -216,7 +215,7 @@ thm which_implies(term state, thm th) {
   thm entail = spec(snd_binop(parse_term("hsep"), state), mp(get_theorem("hsep_cancel_right"), th));
   entail = sep_normalize_rule(entail);
   
-  thm th_pre_norm = sep_cancel(old_state, fst_binop(parse_term("hentail"), conclusion(entail)));
+  thm th_pre_norm = sep_reorder(old_state, fst_binop(parse_term("hentail"), conclusion(entail)));
   entail = once_rewrite_rule(th_pre_norm, entail);
 
   entail = once_rewrite_rule(
