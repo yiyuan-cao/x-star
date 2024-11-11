@@ -1,5 +1,3 @@
-// #include "cstar.h"
-
 typedef void* term;
 typedef void* thm;
 
@@ -180,11 +178,12 @@ phys_addr_t hyp_virt_to_phys(void *addr) { return __hyp_pa(addr); }
 
 // assmue auto exists elimination
 // assmue auto facts elimination
+// 重写宏
 
 static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::parameter(`l : ((num#num))list`)]]
-	[[cstar::parameter(`dl : ((addr#addr)list)list`)]]
-	[[cstar::parameter(`hl : ((addr#addr)list)list`)]]
+	[[cstar::parameter(`dl : ((addr#addr)list)`)]]
+	[[cstar::parameter(`hl : ((addr#addr)list)`)]]
 	[[cstar::parameter(`pi : num`)]]
 	[[cstar::parameter(`pref : num`)]]
 	[[cstar::parameter(`porder : num`)]]
@@ -211,8 +210,8 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) **
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (vmemmap + &(pi * 4 + 2), Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at ((vmemmap + &(pi * 4)) + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
 	`)]]
@@ -245,8 +244,8 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (vmemmap + &(pi * 4 + 2), Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at ((vmemmap + &(pi * 4)) + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -276,15 +275,23 @@ struct hyp_page *buddy = NULL;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (vmemmap + &(pi * 4 + 2), Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at ((vmemmap + &(pi * 4)) + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::proof(
-		// open pool_const
-		// modify data_at to &""
-		thm proof1;
+		// proof1
+		__state = get_symbolic_state();
+		{
+			term fact = `pg_pre = vmemmap + &((pi : num) * 4)`;
+			thm data_at_pg_pre2order = use_fact_symm_rewrite(
+				fact, `data_at ((vmemmap + &(pi * 4)) + &2, Tuchar, &(porder : num))`);
+			thm pool_const_unfold = unfold(`pool_const pool_pre`, POOL_CONST_DEF);
+			thm trans = create_trans_auto((term[]){NULL}, (term[]){fact, NULL}, (thm[]){NULL}, (thm[]){pool_const_unfold, data_at_pg_pre2order, NULL});
+			__transform = which_implies(__state, trans);
+		}
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::assert(`
 		data_at(&"buddy", Tptr, &0) **
@@ -305,7 +312,7 @@ struct hyp_page *buddy = NULL;
 		hfact (porder = ORD (nth l pi)) **
 		data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) **
         data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) **
-        data_at (&"pool_pre -> max_order", Tuchar, &max_order) **
+        data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order) **
 		(dlist_head_repr pool_pre 0 max_order hl) **
 		(free_area_repr (ifilter l) start end l) **
 		(free_area_head_repr (ifilter l) start end dl) **
@@ -313,8 +320,8 @@ struct hyp_page *buddy = NULL;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (&"pg_pre -> order", Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at (pg_pre + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -339,7 +346,7 @@ u8 order = pg -> order;
 		hfact (porder = ORD (nth l pi)) **
 		data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) **
         data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) **
-        data_at (&"pool_pre -> max_order", Tuchar, &max_order) **
+        data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order) **
 		(dlist_head_repr pool_pre 0 max_order hl) **
 		(free_area_repr (ifilter l) start end l) **
 		(free_area_head_repr (ifilter l) start end dl) **
@@ -347,8 +354,8 @@ u8 order = pg -> order;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (&"pg_pre -> order", Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at (pg_pre + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -373,7 +380,7 @@ memset(hyp_page_to_virt(pg), 0, HYP_PAGE_SIZE << order);
 		hfact (porder = ORD (nth l pi)) **
 		data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) **
         data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) **
-        data_at (&"pool_pre -> max_order", Tuchar, &max_order) **
+        data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order) **
 		(dlist_head_repr pool_pre 0 max_order hl) **
 		(free_area_repr (ifilter l) start end l) **
 		(free_area_head_repr (ifilter l) start end dl) **
@@ -381,8 +388,8 @@ memset(hyp_page_to_virt(pg), 0, HYP_PAGE_SIZE << order);
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (&"pg_pre -> order", Tuchar, &porder)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at (pg_pre + &2, Tuchar, &porder)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -407,7 +414,7 @@ pg -> order = HYP_NO_ORDER;
 		hfact (porder = ORD (nth l pi)) **
 		data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) **
         data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) **
-        data_at (&"pool_pre -> max_order", Tuchar, &max_order) **
+        data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order) **
 		(dlist_head_repr pool_pre 0 max_order hl) **
 		(free_area_repr (ifilter l) start end l) **
 		(free_area_head_repr (ifilter l) start end dl) **
@@ -415,8 +422,8 @@ pg -> order = HYP_NO_ORDER;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (&"pg_pre -> order", Tuchar, &HYP_NO_ORDER)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at (pg_pre + &2, Tuchar, &HYP_NO_ORDER)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -442,7 +449,7 @@ u8 max_order = pool -> max_order;
 		hfact (porder = ORD (nth l pi)) **
 		data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER), Tuint64, id2ph start) **
         data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 8), Tuint64, id2ph end) **
-        data_at (&"pool_pre -> max_order", Tuchar, &max_order) **
+        data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &max_order) **
 		(dlist_head_repr pool_pre 0 max_order hl) **
 		(free_area_repr (ifilter l) start end l) **
 		(free_area_head_repr (ifilter l) start end dl) **
@@ -450,15 +457,24 @@ u8 max_order = pool -> max_order;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (&"pg_pre -> order", Tuchar, &HYP_NO_ORDER)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at (pg_pre + &2, Tuchar, &HYP_NO_ORDER)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::proof(
-		// close pool_const
-		// modify data_at to addr
-		thm proof2;
+		// proof2
+		__state = get_symbolic_state();
+		{
+			term fact = `pg_pre = vmemmap + &(pi * 4)`;
+			thm data_at_pg_pre2order = use_fact_rewrite(
+				fact, `data_at (pg_pre + &2, Tuchar, &HYP_NO_ORDER)`);
+			data_at_pg_pre2order = rewrite_after_ent(symm(NO_ORDER_DEF), data_at_pg_pre2order);
+			thm pool_const_fold = fold(`pool_const pool_pre`, POOL_CONST_DEF);
+			thm trans = create_trans_auto((term[]){NULL}, (term[]){fact, NULL}, (thm[]){NULL}, (thm[]){pool_const_fold, data_at_pg_pre2order, NULL});
+			__transform = which_implies(__state, trans);
+		}
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
@@ -487,8 +503,8 @@ u8 max_order = pool -> max_order;
 			hfact (~(porder = NO_ORDER) ==> (porder < max_order) && ((2 EXP porder) divides (i2id pi))) ** 
 			hfact (pref < REF_LIM) **
 			(data_at (vmemmap + &(pi * 4), Tushort, &0)) **
-			(data_at (vmemmap + &(pi * 4 + 2), Tuchar, &HYP_NO_ORDER)) **
-			(undef_data_at (vmemmap + &(pi * 4 + 3), Tuchar)) **
+			(data_at ((vmemmap + &(pi * 4)) + &2, Tuchar, &NO_ORDER)) **
+			(undef_data_at ((vmemmap + &(pi * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
@@ -496,7 +512,7 @@ u8 max_order = pool -> max_order;
 		// l -> new_l:
 		// 	dlist_node / dlist_head / LENGTH / ORD / REF
 		// merge store_pageinfo_array
-		thm proof3;
+		proof3();
 	)]];
 	[[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
@@ -563,16 +579,23 @@ buddy = __find_buddy_avail(pool, pg, order);
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::proof(
-		// pi -> i
-		// modified l -> inv_l
-		// dl -> inv_dl
-		// hl -> inv_hl
-		// porder -> ord
-		// pg -> pg_v
-		thm proof4;
+		// proof4
+		__state = get_symbolic_state();
+		{
+			thm tmpth;
+			tmpth = spec(__state, hentail_refl);
+			tmpth = hexists_intro_auto(tmpth, `modified l pi (0,NO_ORDER) = inv_l`);
+			tmpth = hexists_intro_auto(tmpth, `dl = inv_dl : (addr#addr)list`);
+			tmpth = hexists_intro_auto(tmpth, `hl = inv_hl : (addr#addr)list`);
+			tmpth = hexists_intro_auto(tmpth, `pi = i : num`);
+			tmpth = hexists_intro_auto(tmpth, `porder = ord : num`);
+			tmpth = hexists_intro_auto(tmpth, `pg_pre = pg_v : addr`);
+			__transform = tmpth;
+		}
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::invariant(`
-	exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
+	exists buddy_v bi inv_l inv_dl inv_hl i ord pg_v.
 		hfact ((buddy_v = &0) ||
 			~(bi = i) &&
 			(buddy_v = vmemmap + &(bi * 4)) &&
@@ -610,7 +633,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 	while ((order + 1) < max_order && buddy != 0)
 	{
 		[[cstar::assert(`
-		exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
+		exists buddy_v bi inv_l inv_dl inv_hl i ord pg_v.
 			hfact (&ord + &1 < &max_order && ~(buddy_v = &0)) **
 			hfact ((buddy_v = &0) ||
 				~(bi = i) &&
@@ -648,7 +671,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 		`)]];
 		page_remove_from_list_pool(pool, buddy);
 		[[cstar::assert(`
-		exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
 			hfact (LENGTH new_dl = len) **
@@ -691,13 +714,49 @@ buddy = __find_buddy_avail(pool, pg, order);
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
 		[[cstar::proof(
-			// break store_pageinfo_array
-			// modify data_at to &""
-			// rewrite bi info
-			thm proof5;
+			// proof5
+			__state = get_symbolic_state();
+			{
+				term fact_inv = `&(ord : num) + &1 < &max_order && ~(buddy_v = &0)`;
+				term fact_buddy = ` \
+					(buddy_v = &0) || \
+					~(bi = i) && \
+					(buddy_v = vmemmap + &(bi * 4)) && \
+					(bi < len) && \
+					(REF (nth inv_l bi) = 0) && \
+					(ORD (nth inv_l bi) = ord) && \
+					((2 EXP (SUC ord)) divides (i2id (MIN i bi))) && \
+					(abs(&i - &bi) = &(2 EXP ord))`;
+				thm bfact[9];
+				bfact[0] = conjunct1(assume(fact_inv));
+				thm bfacts = rewrite_rule(conjunct2(assume(fact_inv)), assume(fact_buddy));
+				int i = 1;
+				while(i <= 7)
+				{
+					bfact[i] = conjunctn(bfacts, i);
+					i = i + 1;
+				}
+				bfact[8] = NULL;
+
+				term fact_len = `LENGTH (inv_l : (num#num)list) = len`;
+				term fact_pc = `pure_const`;
+				thm start_end = conjunct1(rewrite_rule(PURE_CONST_DEF, assume(fact_pc)));
+				term spa_obj = `store_pageinfo_array vmemmap start end inv_l`;
+				thm split_eq = break_spa_at_i(spa_obj, bfact[3], symm(assume(fact_len)), start_end);
+				thm data_at_buddy_v2order = rewrite(
+					symm(bfact[2]), `data_at ((vmemmap + &(bi * 4)) + &2, Tuchar, &(porder : num))`);
+				thm spa = eq2ent(rewrite_after_list((thm[]){data_at_buddy_v2order, bfact[4], bfact[5], NULL}, split_eq));
+
+				thm trans = create_trans_auto(
+					(term[]){fact_inv, fact_buddy, NULL}, 
+					(term[]){fact_len, fact_pc, NULL},
+					bfact, (thm[]){spa, NULL});
+				__transform = which_implies(__state, trans);
+			}
+			set_symbolic_state(__transform);
 		)]];
 		[[cstar::assert(`
-		exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
 			hfact (LENGTH new_dl = len) **
@@ -739,14 +798,14 @@ buddy = __find_buddy_avail(pool, pg, order);
 				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
 				hfact (0 < REF_LIM) **
 				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
-				(data_at (&"buddy_v -> order", Tuchar, &ord)) **
-				(undef_data_at (vmemmap + &(bi * 4 + 3), Tuchar)) **
+				(data_at (buddy_v + &2, Tuchar, &ord)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
 			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
 		buddy -> order = HYP_NO_ORDER;
 		[[cstar::assert(`
-		exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
 			hfact (LENGTH new_dl = len) **
@@ -788,14 +847,14 @@ buddy = __find_buddy_avail(pool, pg, order);
 				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
 				hfact (0 < REF_LIM) **
 				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
-				(data_at (&"buddy_v -> order", Tuchar, &HYP_NO_ORDER)) **
-				(undef_data_at (vmemmap + &(bi * 4 + 3), Tuchar)) **
+				(data_at (buddy_v + &2, Tuchar, &HYP_NO_ORDER)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
 			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
 		pg = min(pg, buddy);
 		[[cstar::assert(`
-		exists new_pg new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		exists new_pg new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_pg = min pg_v buddy_v) **
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
@@ -838,14 +897,14 @@ buddy = __find_buddy_avail(pool, pg, order);
 				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
 				hfact (0 < REF_LIM) **
 				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
-				(data_at (&"buddy_v -> order", Tuchar, &HYP_NO_ORDER)) **
-				(undef_data_at (vmemmap + &(bi * 4 + 3), Tuchar)) **
+				(data_at (buddy_v + &2, Tuchar, &HYP_NO_ORDER)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
 			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];		
         order = order + 1;
 		[[cstar::assert(`
-		exists new_pg new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		exists new_pg new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_pg = min pg_v buddy_v) **
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
@@ -888,8 +947,8 @@ buddy = __find_buddy_avail(pool, pg, order);
 				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
 				hfact (0 < REF_LIM) **
 				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
-				(data_at (&"buddy_v -> order", Tuchar, &HYP_NO_ORDER)) **
-				(undef_data_at (vmemmap + &(bi * 4 + 3), Tuchar)) **
+				(data_at (buddy_v + &2, Tuchar, &HYP_NO_ORDER)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
 			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
@@ -904,10 +963,10 @@ buddy = __find_buddy_avail(pool, pg, order);
 			// data_at
 			// detele fact
 			// far sza
-			thm proof6;
+			proof6();
 		)]];
 		[[cstar::assert(`
-		exists new_ord new_i new_pg new_l new_dl new_hl buddy_v.
+		exists new_pg new_l new_dl new_hl (buddy_v : addr) (bi : num) (inv_l : (num#num)list) (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) (i : num) (ord : num) (pg_v : addr) new_i new_ord.
 			data_at(&"max_order", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &new_ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
@@ -923,7 +982,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 			hfact (new_pg = vmemmap + &(new_i * 4)) **
 			hfact (new_i < len) **
 			hfact (~(new_ord = NO_ORDER)) **
-			hfact (&new_ord < &max_order) **
+			hfact (new_ord < max_order) **
 			hfact ((2 EXP new_ord) divides (i2id new_i)) **
 			hfact (ORD (nth new_l new_i) = NO_ORDER) **
 			hfact (REF (nth new_l new_i) = 0) **
@@ -936,7 +995,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 		`)]];
 		buddy = __find_buddy_avail(pool, pg, order);
 		[[cstar::assert(`
-		exists new_pg new_ord new_i new_l new_dl new_hl new_buddy new_bi.
+		exists new_buddy new_bi new_pg new_l new_dl new_hl (buddy_v : addr) (bi : num) (inv_l : (num#num)list) (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) (i : num) (ord : num) (pg_v : addr) new_i new_ord.
 			hfact ((new_buddy = &0) ||
 				~(new_bi = new_i) &&
 				(new_buddy = vmemmap + &(new_bi * 4)) &&
@@ -960,7 +1019,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 			hfact (new_pg = vmemmap + &(new_i * 4)) **
 			hfact (new_i < len) **
 			hfact (~(new_ord = NO_ORDER)) **
-			hfact (&new_ord < &max_order) **
+			hfact (new_ord < max_order) **
 			hfact ((2 EXP new_ord) divides (i2id new_i)) **
 			hfact (ORD (nth new_l new_i) = NO_ORDER) **
 			hfact (REF (nth new_l new_i) = 0) **
@@ -1010,8 +1069,33 @@ buddy = __find_buddy_avail(pool, pg, order);
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
     `)]];
 	[[cstar::proof(
-		// break spa
-		thm proof7;
+		// proof7
+		__state = get_symbolic_state();
+		{
+			term fact_ilen = `i < len`;
+			term fact_ord = `ORD (nth (inv_l : (num#num)list) i) = NO_ORDER`;
+			term fact_ref = `REF (nth (inv_l : (num#num)list) i) = 0`;
+			term fact_len = `LENGTH (inv_l : (num#num)list) = len`;
+			term fact_pgv = `(pg_v : addr) = vmemmap + &(i * 4)`;
+			term fact_pc = `pure_const`;
+			thm start_end = conjunct1(rewrite_rule(PURE_CONST_DEF, assume(fact_pc)));
+
+			term spa_obj = `store_pageinfo_array vmemmap start end inv_l`;
+			thm split = break_spa_at_i(spa_obj, assume(fact_ilen), symm(assume(fact_len)), start_end);
+
+			thm data_at_pg_v_order = rewrite(
+				symm(assume(fact_pgv)), `data_at ((vmemmap + &(i * 4)) + &2, Tuchar, &NO_ORDER)`);
+			
+			thm ar = arith_rule(`0 < 65536`);
+
+			thm thl[] = {assume(fact_ord), assume(fact_ref), data_at_pg_v_order, REF_LIM_DEF, ar, hfact_true, hsep_assoc, NULL};
+			thm spa = eq2ent(rewrite_after_list(thl, split));
+
+			term kfactl[] = {fact_ilen, fact_ord, fact_ref, fact_len, fact_pgv, fact_pc, NULL};
+			thm trans = create_trans_auto((term[]){NULL}, kfactl, (thm[]){NULL}, (thm[]){spa, NULL});
+			__transform = which_implies(__state, trans);
+		}
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
 	exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
@@ -1049,8 +1133,8 @@ buddy = __find_buddy_avail(pool, pg, order);
 		(free_area_head_repr (ifilter inv_l) start end inv_dl) **
 		(store_pageinfo_array vmemmap start (i2id i) (take inv_l i)) **
 			(data_at (vmemmap + &(i * 4), Tushort, &0)) **
-			(data_at (&"pg_v -> order", Tuchar, &NO_ORDER)) **
-			(undef_data_at (vmemmap + &(i * 4 + 3), Tuchar)) **
+			(data_at (pg_v + &2, Tuchar, &NO_ORDER)) **
+			(undef_data_at ((vmemmap + &(i * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id i)) end (rest inv_l (SUC i))) **
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
     `)]];
@@ -1091,8 +1175,8 @@ buddy = __find_buddy_avail(pool, pg, order);
 		(free_area_head_repr (ifilter inv_l) start end inv_dl) **
 		(store_pageinfo_array vmemmap start (i2id i) (take inv_l i)) **
 			(data_at (vmemmap + &(i * 4), Tushort, &0)) **
-			(data_at (&"pg_v -> order", Tuchar, &ord)) **
-			(undef_data_at (vmemmap + &(i * 4 + 3), Tuchar)) **
+			(data_at (pg_v + &2, Tuchar, &ord)) **
+			(undef_data_at ((vmemmap + &(i * 4)) + &3, Tuchar)) **
 		(store_pageinfo_array vmemmap (SUC (i2id i)) end (rest inv_l (SUC i))) **
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
     `)]];
@@ -1100,7 +1184,7 @@ buddy = __find_buddy_avail(pool, pg, order);
 		// merge spa
 		// break sza
 		// merge far
-		thm proof8;
+		proof8();
 	)]];
 	[[cstar::assert(`
 	exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
@@ -1182,12 +1266,59 @@ buddy = __find_buddy_avail(pool, pg, order);
 		(store_pageinfo_array vmemmap start end (modified inv_l i (0, ord)))
     `)]];
 	[[cstar::proof(
-		// rewrite new_l
-		// delete
-		thm proof9;
+		// proof9
+		__state = get_symbolic_state();
+		{
+			term fact = `new_l = modified inv_l i (0, (ord : num))`;
+			term far = `free_area_repr (ifilter new_l) start end new_l`;
+			term spa = `store_pageinfo_array vmemmap start end new_l`;
+
+			thm far_ent = eq2ent(symm(rewrite(assume(fact), far)));
+			thm spa_ent = eq2ent(symm(rewrite(assume(fact), spa)));
+
+			thm trans = create_trans_auto((term[]){NULL}, (term[]){fact, NULL}, (thm[]){NULL}, (thm[]){far_ent, spa_ent, NULL});
+			__transform = which_implies(__state, trans);
+		}
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
-		exists new_l new_dl new_hl.
-			total_repr pool vmemmap new_l new_dl new_hl
+	exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
+		hfact (new_l = modified inv_l i (0, ord)) **
+		hfact (LENGTH new_l = len) **
+		hfact (LENGTH new_dl = len) **
+		hfact (LENGTH new_hl = max_order) **
+		hfact (~(&ord + &1 < &max_order && ~(buddy_v = &0))) **
+		hfact ((buddy_v = &0) ||
+			~(bi = i) &&
+			(buddy_v = vmemmap + &(bi * 4)) &&
+			(bi < len) &&
+			(REF (nth inv_l bi) = 0) &&
+			(ORD (nth inv_l bi) = ord) &&
+			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
+			(abs (&i - &bi) = &(2 EXP ord))) **
+		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"order", Tuchar, &ord) **
+		data_at(&"buddy", Tptr, buddy_v) **
+		data_at(&"pool", Tptr, pool_pre) **
+		data_at(&"pg", Tptr, pg_v) **
+		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
+		hfact (pure_const) **
+		hfact (dlist_node pool_pre (ifilter new_l) new_l new_dl new_hl start end new_dl) **
+		hfact (dlist_head pool_pre new_l new_dl 0 max_order new_hl) **
+		hfact (LENGTH inv_l = len) **
+		hfact (LENGTH inv_dl = len) **
+		hfact (LENGTH inv_hl = max_order) **
+		hfact (pg_v = vmemmap + &(i * 4)) **
+		hfact (i < len) **
+		hfact (~(ord = NO_ORDER)) **
+		hfact (ord < max_order) **
+		hfact ((2 EXP ord) divides (i2id i)) **
+		hfact (ORD (nth inv_l i) = NO_ORDER) **
+		hfact (REF (nth inv_l i) = 0) **
+		(pool_const pool_pre) **
+		(dlist_head_repr pool_pre 0 max_order new_hl) **
+		(free_area_repr (ifilter new_l) start end new_l) **
+		(free_area_head_repr (ifilter new_l) start end new_dl) **
+		(store_pageinfo_array vmemmap start end new_l)
 	`)]];
 }

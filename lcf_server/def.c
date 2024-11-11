@@ -173,8 +173,8 @@ void definitions()
             hfact (~((ORD h) = NO_ORDER) ==> (ORD h < max_order) /\\ ((2 EXP (ORD h)) divides lo)) ** \
             hfact (REF h < REF_LIM) ** \
             data_at (addr + &((id2i lo) * 4), Tushort, &(REF h)) ** \
-            data_at (addr + &((id2i lo) * 4 + 2), Tuchar, &(ORD h)) ** \
-            undef_data_at (addr + &((id2i lo) * 4 + 3), Tuchar) \
+            data_at ((addr + &((id2i lo) * 4)) + &2, Tuchar, &(ORD h)) ** \
+            undef_data_at ((addr + &((id2i lo) * 4)) + &3, Tuchar) \
         ) ** store_pageinfo_array addr (SUC lo) hi t))"));
     PURE_CONST_DEF = define(parse_term(" \
         pure_const = \
@@ -191,7 +191,7 @@ void definitions()
     (! (addr : addr) (order : num) (maxorder : num) (h : addr#addr) (t : (addr#addr)list). \
     dlist_head_repr addr order maxorder (CONS h t) = (( \
         data_at (addr + &(LIST_HEAD_SIZE * order), Tptr, NXT h) ** \
-        data_at (addr + &(LIST_HEAD_SIZE * order + PTR_SIZE), Tptr, PRV h) \
+        data_at ((addr + &(LIST_HEAD_SIZE * order)) + &PTR_SIZE, Tptr, PRV h) \
     ) ** dlist_head_repr addr (SUC order) maxorder t))"));
     NTH_DEF = define(parse_term(" \
     (! (h : A) (t : (A)list). nth (CONS h t) (0 : num) = h) /\\ \
@@ -278,5 +278,6 @@ void definitions()
         hfact (dlist_head pool_ptr l dl 0 max_order hl) ** \
         hfact (LENGTH l = len) ** \
         hfact (LENGTH dl = len) ** \
-        hfact (LENGTH hl = max_order))"));
+        hfact (LENGTH hl = max_order) ** \
+        hfact (pure_const))"));
 }

@@ -1,167 +1,8 @@
 #include "proof-user.h"
 #include "def.h"
+#include "drule.h"
 #include "lemma.h"
 #include <stdio.h>
-
-thm disconj1;
-thm impl_conj_mono_thm;
-thm impl_disj_mono_thm;
-thm impl_if_mono_thm;
-thm hfact_true;
-thm sepand_t;
-thm sepand_f;
-thm sepconj_f;
-
-thm data_at_pg_pre_order_axiom;
-thm data_at_buddy_v_order_axiom;
-thm data_at_pg_v_order_axiom;
-thm data_at_pool_pre_max_order_axiom;
-thm merge_head_body_axiom;
-
-void load_axioms()
-{
-    disconj1 = new_axiom(parse_term("! A B. A ==> A \\/ B"));
-    impl_conj_mono_thm = new_axiom(parse_term("! p1 p2 p3 p4. (p1 ==> p3) /\\ (p2 ==> p4) ==> ((p1 /\\ p2) ==> (p3 /\\ p4))"));
-    impl_disj_mono_thm = new_axiom(parse_term("! p1 p2 p3 p4. (p1 ==> p3) /\\ (p2 ==> p4) ==> ((p1 \\/ p2) ==> (p3 \\/ p4))"));
-    impl_if_mono_thm = new_axiom(parse_term("! P A B C D. (A ==> C) /\\ (B ==> D) ==> (if P then A else B) ==> (if P then C else D)"));
-    hfact_true = new_axiom(parse_term("! hp. hfact T ** hp -|- hp"));
-    sepand_t = new_axiom(parse_term("! hp. hpure T && hp -|- hp"));
-    sepand_f = new_axiom(parse_term("! hp. hpure F && hp -|- hpure F"));
-    sepconj_f = new_axiom(parse_term("! hp. hpure F ** hp -|- hpure F"));
-
-
-    data_at_pg_pre_order_axiom = new_axiom(parse_term("pg_pre + &2 = &\"pg_pre -> order\""));
-    data_at_buddy_v_order_axiom = new_axiom(parse_term("buddy_v + &2 = &\"buddy_v -> order\""));
-    data_at_pg_v_order_axiom = new_axiom(parse_term("pg_v + &2 = &\"pg_v -> order\""));
-    data_at_pool_pre_max_order_axiom = new_axiom(parse_term("pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16) = &\"pool_pre -> max_order\""));
-    merge_head_body_axiom = new_axiom(parse_term(" \
-    ! (i : num) (sz : num) (order : num). \
-        store_zero_array (i2vi i) (PTR_SIZE * 2) (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order - PTR_SIZE * 2) ** \
-        data_at(i2vi i, Tptr, &0) ** \
-        data_at(i2vi i + &PTR_SIZE, Tptr, &0) \
-    -|- store_zero_array (i2vi i) 0 (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order) \
-    "));
-}
-
-// pure logic
-
-thm impl_conj_mono(thm th1, thm th2)
-{
-    return mp(impl_conj_mono_thm, conjunct(th1, th2));
-}
-thm impl_disj_mono(thm th1, thm th2)
-{
-    return mp(impl_disj_mono_thm, conjunct(th1, th2));
-}
-thm impl_if_mono(term cond, thm thenth, thm elseth)
-{
-    return mp(spec(cond, impl_if_mono_thm), conjunct(thenth, elseth));
-}
-thm merge_disj_cases(term casep, thm pos, thm neg)
-{
-    return disj_cases(spec(casep, get_theorem("EXCLUDED_MIDDLE")), pos, neg);
-}
-
-// separation logic
-
-// hp1 -|- hp2 ==> hp1 |-- hp2
-thm sepeq2sepent()
-{
-    term asmp = parse_term("hp1 -|- hp2");
-    thm th1 = rewrite(assume(asmp), parse_term("hp1 |-- hp2"));
-    thm th2 = rewrite_rule(hentail_refl, th1);
-    thm th3 = gen(parse_term("hp1 : hprop"), gen(parse_term("hp2 : hprop"), disch(th2, asmp)));
-    return th3;
-}
-thm htrans(thm th1, thm th2)
-{
-    return mp(mp(hentail_trans, th1), th2);
-}
-thm htrans_list(int len, thm thl[])
-{
-    thm th = thl[0];
-    for(int i = 1; i < len; i++)
-        th = htrans(th, thl[i]);
-    return th;
-}
-
-// some tactics
-
-thm simp(thm th)
-{
-    return rewrite_rule(refl(parse_term("T")), th);
-}
-term rewrite_term(term th, term tm)
-{
-    return dest_bin_snd_comb(concl(rewrite(assume(th), tm)));
-}
-thm rewrite_after(thm th1, thm th2)
-{
-    return trans(th2, rewrite(th1, dest_bin_snd_comb(concl(th2))));
-}
-thm rewrite_after_list(int len, thm thl[], thm th)
-{
-    for(int i = 0; i < len; i++)
-        th = rewrite_after(thl[i], th);
-    return th;
-}
-thm rewrite_after_term_list(int len, thm thl[], term tm)
-{
-    thm th = rewrite(thl[0], tm);
-    for(int i = 1; i < len; i++)
-        th = rewrite_after(thl[i], th);
-    return th;
-}
-
-void show_induct_goal(term itype, term goal, thm ithm)
-{
-    term P = mk_abs(itype, goal);
-    thm th = spec(P, ithm);                         
-    thm sth = rewrite_rule(get_theorem("ABS_SIMP"), th);
-    term cl = concl(sth);
-    term igoal = dest_bin_fst_comb(cl);
-    term igoal_basis = dest_bin_fst_comb(igoal);
-    term igoal_step = dest_bin_snd_comb(igoal);
-    printf("basis : %s\n", string_of_term(igoal_basis));
-    printf("step : %s\n", string_of_term(igoal_step));
-}
-
-// eq : a = b
-// tm : f a
-// res : f a = (\b. f b) a 
-thm abs_term(term tm, term eq)
-{
-    term a = dest_bin_fst_comb(eq);
-    term b = dest_bin_snd_comb(eq);
-    term tm1 = rewrite_term(eq, tm);
-    term tm2 = mk_comb(mk_abs(b, tm1), a);
-    thm th = symm(rewrite(refl(parse_term("T")), tm2));
-    return th;
-}
-
-// facts to consume/keep
-// pure theorem : asmps |- concl
-// heap theorem : asmps |- hp1 |-- hp2
-thm hprop_sepconj(int cflen, term cfactl[], int kflen, term kfactl[], int ptlen, thm pthl[], int htlen, thm hthl[])
-{
-    thm th = spec(parse_term("emp"), hentail_refl);
-    for(int i = 0; i < htlen; i++)
-        th = mp(mp(hsep_monotone, hthl[i]), th);
-    for(int i = 0; i < ptlen; i++)
-        th = mp(mp(hfact_intro, pthl[i]), th);
-    for(int i = 0; i < cflen; i++)
-        th = mp(hfact_elim, disch(th, cfactl[i]));
-    for(int i = 0; i < kflen; i++)
-    {
-        th = mp(mp(hfact_intro, assume(kfactl[i])), th);
-        th = mp(hfact_elim, disch(th, kfactl[i]));
-    }
-    th = rewrite_rule(hsep_hemp_right, th);
-    th = rewrite_rule(hsep_assoc, th);
-    return th;
-}
-
-// lemmas
 
 /*
     ((! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) /\
@@ -202,8 +43,8 @@ thm break_list_sepconj()
     term casen0 = parse_term("n = 0");
     term casenS = parse_term("n = SUC n'");
     // n = 0
-    thm thml1[] = {assume(casen0), ar1, ar2, TAKE_DEF, REST_DEF, asmp1, hfact_def, sepand_t, hsep_hemp_left};
-    thm th2 = rewrite_after_term_list(9, thml1, goal_lent0_n);
+    thm thml1[] = {assume(casen0), ar1, ar2, TAKE_DEF, REST_DEF, asmp1, hfact_def, sepand_t, hsep_hemp_left, NULL};
+    thm th2 = rewrite_after_term_list(thml1, goal_lent0_n);
     thm thl0n0 = simp(th2);
     // n = SUC n'
     thm th3 = rewrite(assume(casenS), goal_lent0_n);
@@ -217,7 +58,7 @@ thm break_list_sepconj()
                         rewrite_term(parse_term("lent = SUC lent'"), goal_lent));
     term goal_lentS_n = concl(spec(n, assume(goal_lentS)));
     // n = 0    
-    thm th7 = rewrite_after_term_list(9, thml1, goal_lentS_n);
+    thm th7 = rewrite_after_term_list(thml1, goal_lentS_n);
     thm thlSn0 = simp(th7);
     // n = SUC n'
     thm th8 = rewrite(assume(casenS), goal_lentS_n);
@@ -240,8 +81,8 @@ thm break_list_sepconj()
                         rewrite_term(parse_term("l = CONS (h : A) l'"), concgoal));
     thm subasump1 = assume(subasump1_tm);
     thm subasump2 = assume(subasump2_tm);
-    thm thml2[] = {TAKE_DEF, REST_DEF, asmp2, mp(ar4, subasump2), mp(ar8, subasump2)};
-    thm th12 = rewrite_after_term_list(5, thml2, subgoal_cons);
+    thm thml2[] = {TAKE_DEF, REST_DEF, asmp2, mp(ar4, subasump2), mp(ar8, subasump2), NULL};
+    thm th12 = rewrite_after_term_list(thml2, subgoal_cons);
     thm subasump1_ = mp(ar6, subasump1);
     thm subasump2_ = mp(ar7, subasump2);
     term subasump3_tm = dest_bin_fst_comb(dest_bin_snd_comb(concl(th12)));
@@ -1296,67 +1137,27 @@ thm sza_merge()
     "));
 }
 
+/*
+    id2i (i2id i) = i
+*/
 thm i2id2i()
 {
     term tm = parse_term("id2i (i2id i)");
     thm ar = arith_rule(parse_term("! a : num. (start + a) - start = a"));
-    thm thl[] = {ID2I_DEF, I2ID_DEF, ar};
-    thm th = rewrite_after_term_list(3, thl, tm);
+    thm thl[] = {ID2I_DEF, I2ID_DEF, ar, NULL};
+    thm th = rewrite_after_term_list(thl, tm);
     return gen(parse_term("i : num"), th);
 }
-// asmp : ... = pg_pre + &2
-thm data_at_pg_pre_order(thm asmp)
-{
-    term v = parse_term("v : num");
-    term tm = parse_term("data_at (pg_pre + &2, Tuchar, &(v : num))");
-    thm th1 = rewrite(symm(asmp), tm);
-    thm th2 = rewrite(data_at_pg_pre_order_axiom, tm);
-    return gen(v, trans(symm(th1), th2));
-}
-// asmp : ... = buddy_v + &2
-thm data_at_buddy_v_order(thm asmp)
-{
-    term v = parse_term("v : num");
-    term tm = parse_term("data_at (buddy_v + &2, Tuchar, &(v : num))");
-    thm th1 = rewrite(symm(asmp), tm);
-    thm th2 = rewrite(data_at_buddy_v_order_axiom, tm);
-    return gen(v, trans(symm(th1), th2));
-}
-// asmp : ... = pg_v + &2
-thm data_at_pg_v_order(thm asmp)
-{
-    term v = parse_term("v : num");
-    term tm = parse_term("data_at (pg_v + &2, Tuchar, &(v : num))");
-    thm th1 = rewrite(symm(asmp), tm);
-    thm th2 = rewrite(data_at_pg_v_order_axiom, tm);
-    return gen(v, trans(symm(th1), th2));
-}
-thm data_at_pool_pre_max_order()
-{
-    term v = parse_term("v : num");
-    term tm = parse_term("data_at (pool_pre + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, &(v : num))");
-    thm th = rewrite(data_at_pool_pre_max_order_axiom, tm);
-    return gen(v, th);
-}
 
-// spa : spa addr start end l
-// i_l_len : i < len
-// len : len = LENGTH l
-// st_ed : start < end
-thm break_spa_at_i(term spa, thm i_l_len, thm len, thm st_ed)
+thm merge_head_body_axiom()
 {
-    thm tmpth;
-    thm ar3 = rewrite_rule(symm(LEN_DEF), arith_rule(parse_term("end - start <= end")));
-    tmpth = mp(breaknth_list_sepconj(), STORE_PAGEINFO_ARRAY_DEF);
-    tmpth = mp(mp(mp(tmpth, i_l_len), ar3), len);
-    thm ar4 = rewrite_rule(symm(LEN_DEF), arith_rule(parse_term("start < end ==> end - (end - start) = start")));
-    thm ar5 = arith_rule(parse_term("! a : num. 0 + a = a"));
-    tmpth = rewrite_rule(ar5, rewrite_rule(mp(ar4, st_ed), tmpth));
-    tmpth = rewrite(tmpth, spa);
-    thm ar6 = arith_rule(parse_term("! i. start + (SUC i) = SUC (start + i)"));
-    thm thl6[] = {tmpth, ar6, symm(I2ID_DEF), i2id2i(), hsep_assoc};
-    tmpth = rewrite_after_term_list(5, thl6, spa);
-    return tmpth;
+    return new_axiom(parse_term(" \
+    ! (i : num) (sz : num) (order : num). \
+        store_zero_array (i2vi i) (PTR_SIZE * 2) (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order - PTR_SIZE * 2) ** \
+        data_at(i2vi i, Tptr, &0) ** \
+        data_at(i2vi i + &PTR_SIZE, Tptr, &0) \
+    -|- store_zero_array (i2vi i) 0 (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order) \
+    "));
 }
 
 
@@ -1365,6 +1166,7 @@ thm break_spa_at_i(term spa, thm i_l_len, thm len, thm st_ed)
 
 
 
+/* unused lemmas for future work */
 
 /*
     dlist_head addr l dl order maxorder hl

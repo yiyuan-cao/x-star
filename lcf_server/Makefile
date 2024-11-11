@@ -46,9 +46,6 @@ proof-conv/libproof_conv.a: proof-user/*.c includes/*.h proof-user/libproof_user
 	clang -c -o proof-user/proof-conv.o proof-user/proof-conv.c $(LIB_CFLAGS)
 	ar rcs proof-user/libproof_conv.a proof-user/proof-conv.o 
 
-test: test.c proof-conv/libproof_conv.a proof-user/libproof_user.a includes/proof-kernel.h $(TARGET_DIR)/libproof_kernel.a
-	clang -o test test.c $(CFLAGS)
-
 ############### proof-kernel ###############
 
 $(TARGET_DIR)/hol-rpc: $(HOL_RPC_SRC) hol-light/pa_j.cmo
@@ -80,3 +77,7 @@ clean:
 	rm -f reverse
 	rm -f simple
 
+
+test: test.c proof-conv/libproof_conv.a proof-user/libproof_user.a includes/proof-kernel.h $(TARGET_DIR)/libproof_kernel.a
+	clang -o test test.c interface.c lemma.c drule.c def.c $(CFLAGS)
+	./test

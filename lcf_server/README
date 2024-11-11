@@ -1,0 +1,12 @@
+use "quote" branch to compile attach.cpp and get "symbolic execution state"
+put the "state" at the head of proof#i() in proof.c
+
+def.h includes some theorems from cstarlib.ml and definitions used in the proof of buddy allocator 
+drule.h includes some derived rules
+lemma.h includes some lemmas used in the proof of buddy allocator
+interface.h includes some operational derived rules that can directly used by C programmers
+
+due to time limitation:
+    some axioms are involved
+    subfunctions of __hyp_attach_page are not verified
+    some proofs are not are not well modularized

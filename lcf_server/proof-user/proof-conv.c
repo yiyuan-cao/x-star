@@ -131,6 +131,7 @@ thm which_implies(term state, thm th) {
   /// `state` is in the form of `hexists x1..xn. Q1 ** ... ** Qn.
   /// `th` is in the form of `P1 ==> (.. (Pn ==> (Q1 ** ... ** Qn |-- R1 ** ... ** Rn)))`.
 
+exists_count = 0;
   // Destruct `hexists` and record the binders in `exists_list`.
   while (is_binder("hexists", state)) {
     exists_list[++exists_count] = binder_var("hexists", state);
