@@ -591,7 +591,7 @@ let slice_split = new_axiom `!x ty i vs1 vs2.
 add_to_database "slice_split" slice_split;;
 
 let array_split = new_axiom `!x ty vs1 vs2.
-            array_at (x, ty, APPEND vs1 vs2) -|- array_at (x, ty, vs1) ** array_at (x + (sizeof ty) * (ilength vs1), ty, vs2)`;;
+            array_at (x, ty, APPEND vs1 vs2) -|- array_at (x, ty, vs1) ** array_at (x + (ilength vs1) * (sizeof ty), ty, vs2)`;;
 add_to_database "array_split" array_split;;
 
 let undef_slice_split = new_axiom `!x ty i n1 n2.
@@ -714,6 +714,26 @@ let array_at_last_split = new_axiom
 add_to_database "array_at_last_split" array_at_last_split;;
 
 (* forall *)
+let skipn_def = define 
+` skipn 0 l = l /\
+  skipn (SUC n) NIL = NIL /\
+  skipn (SUC n) (CONS (h:int) t) = skipn n t `
+;;
+add_to_database "skipn_def" skipn_def;;
+
+let firstn_def = define
+` firstn 0 l = NIL /\
+  firstn (SUC n) NIL = NIL /\
+  firstn (SUC n) (CONS (h:int) t) = CONS h (firstn n t) `
+;;
+add_to_database "firstn_def" firstn_def;;
+
+let nth_def = define 
+` nth 0 (CONS (h:int) t) = h /\
+  nth (SUC n) (CONS h t) = nth n t `
+;;
+add_to_database "nth_def" nth_def;;
+
 let ilength_map_id = 
   prove(`!(f:int->A) l. ilength (MAP f l) == ilength l`,
     GEN_TAC THEN LIST_INDUCT_TAC THENL
@@ -721,3 +741,50 @@ let ilength_map_id =
         ASM_REWRITE_TAC[MAP; ilength_def] ])
 ;;
 add_to_database "ilength_map_id" ilength_map_id;;
+
+let ilength_ge_0 = 
+  prove(`!(l:int list). ilength l >= &0`,
+    LIST_INDUCT_TAC THENL
+    [ REWRITE_TAC[ilength_def] THEN ARITH_TAC;
+      REWRITE_TAC[ilength_def] THEN ASM_ARITH_TAC ])
+;;
+add_to_database "ilength_ge_0" ilength_ge_0;;
+
+let ilength_firstn_id = new_axiom `!n (l:int list). n == ilength l ==> firstn (num_of_int n) l == l`;;
+add_to_database "ilength_sublist_id" ilength_firstn_id;;
+
+let array_split_first = new_axiom `!x ty v vs.
+  array_at (x, ty, CONS v vs) -|- data_at (x, ty, v) ** array_at (x + (sizeof ty), ty, vs)`;;
+add_to_database "array_split_first" array_split_first;;
+
+let skipn_nth_split = new_axiom `!k n (l:int list). (skipn k (firstn n l)) == CONS (nth k l) (skipn (k + 1) (firstn n l))`;;
+add_to_database "skipn_nth_split" skipn_nth_split;;
+
+let num_of_int_add_one = new_axiom `!n. num_of_int (n + &1) == (num_of_int n) + 1`;;
+add_to_database "num_of_int_add_one" num_of_int_add_one;;
+
+let array_at_empty = new_axiom `!x ty. array_at(x, ty, []) -|- emp`;;
+add_to_database "array_at_empty" array_at_empty;;
+
+let skipn_firstn_empty = new_axiom `!n (l:int list). skipn n (firstn n l) = []`;;
+add_to_database "skipn_firstn_empty" skipn_firstn_empty;;
+
+let array_split_last = new_axiom`!x ty v vs.
+  array_at(x, ty, APPEND vs [v]) -|- array_at(x, ty, vs) ** data_at(x + (ilength vs) * (sizeof ty), ty, v)`
+;;
+add_to_database "array_split_last" array_split_last;;
+
+let sublist_length = new_axiom `!lo hi (l:int list). 
+  ilength (skipn (num_of_int lo) (firstn (num_of_int hi) l)) = hi - lo`
+;;
+add_to_database "sublist_length" sublist_length;;
+
+let firstn_n = new_axiom `!(l:int list). firstn (num_of_int (ilength l)) l == l`;;
+add_to_database "firstn_n" firstn_n;;
+
+let firstn_nth_merge = new_axiom `!n (l:int list).
+  APPEND (firstn (num_of_int n) l) [nth (num_of_int n) l] = firstn (num_of_int (n + &1)) l`
+;;
+add_to_database "firstn_nth_merge" firstn_nth_merge;;
+
+

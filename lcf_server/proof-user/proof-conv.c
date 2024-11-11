@@ -54,9 +54,6 @@ thm hentail_trans_auto(thm th1, thm th2) {
   term th1_post = snd_binop(parse_term("hentail"), conclusion(th1));
   term th2_pre = fst_binop(parse_term("hentail"), conclusion(th2));
   thm eq = sep_cancel(th2_pre, th1_post);
-
-  if (!equals_term(th1_post, fst_binop(parse_term("(=):hprop->hprop->bool"), conclusion(eq)))) puts("1!!!");
-  if (!equals_term(th2_pre, snd_binop(parse_term("(=):hprop->hprop->bool"), conclusion(eq)))) puts("2!!!");
   return hentail_trans_list((thm[]){th1, mp(get_theorem("hentail_sym_left"), eq), th2, NULL});
 }
 
@@ -238,48 +235,58 @@ thm which_implies(term state, thm th) {
   return entail;
 }
 
-// [[cstar::function(
-// thm hfact_auto(term pres[], term posts[]) {
-//   thm result = spec(`emp`, get_theorem("hentail_refl")); // emp |-- emp
-//   term pre_conj = `T`;
-// 
-//   int i = 0;
-//   while (1) {
-//     if (pres[i] == NULL) break;
-//     term pre = pres[i];
-//     pre_conj = `(${pre_conj:bool}) /\ (${pre:bool})`;
-//     i = i + 1;
-//   }
-// 
-//   i = 0;
-//   while (1) {
-//     if (posts[i] == NULL) break;
-//     term post = posts[i];
-//     term check_post_i = `${pre_conj:bool} ==> ${post:bool}`;
-//     thm arith = arith_rule(check_post_i);
-//     if (equals_term(conclusion(arith), check_post_i)) {
-//       result = mp(mp(get_theorem("hfact_intro"), mp(arith, assume(pre_conj))), result);
-//     }
-//     i = i + 1;
-//   }
-// 
-//   puts("hfact_auto");
-//   puts(string_of_thm(result));
-// 
-//   i = 0;
-//   while (1) {
-//     if (pres[i] == NULL) break;
-//     int j = 0;
-//     while (1) {
-//       if (posts[j] == NULL) break;
-//       if (equals_term(pres[i], posts[j])) {
-// 
-//       }
-//       j = j + 1;
-//     }
-//     i = i + 1;
-//   }
-// 
-//   return sep_normalize_rule(result);
-// }
-// )]];
+thm hfact_auto(term pres[], term posts[], thm helpers[]) {
+  thm result = spec(parse_term("emp"), get_theorem("hentail_refl"));
+  term hyps[N];
+  int hyp_cnt = 0;
+  int i = 0;
+  while (1) {
+    if (pres[ i ] == NULL) break;
+    term pre = pres[ i ];
+    _Bool in_post = false;
+    _Bool in_match = false;
+    int j = 0;
+    while (1) {
+      if (posts[ j ] == NULL) break;
+      term post = posts[ j ];
+      if (equals_term(pre, post)) {
+        in_post = true;
+        posts[ j ] = parse_term("F:bool");
+        continue;
+      }
+      term
+        t =
+        subst(post,
+          parse_term("post:bool"),
+          subst(pre, parse_term("pre:bool"), parse_term("pre ==> post")));
+      thm arith = arith_rule(t);
+      int k = 0;
+      while (1) {
+        if (helpers[k] == NULL) break;
+        thm helper = helpers[k];
+        if (equals_term(t, conclusion(helper))) arith = helper;
+        k = k + 1;
+      }
+      if (equals_term(conclusion(arith), t)) {
+        in_match = true;
+        result = mp(mp(get_theorem("hfact_intro"), mp(arith, assume(pre))),
+          result);
+        posts[ j ] = parse_term("F:bool");
+      }
+      j = j + 1;
+    }
+    if (in_post) { hyps[ hyp_cnt ] = pre; hyp_cnt = hyp_cnt + 1; }
+    else
+      if (in_match) {
+        result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+      }
+      else {
+        result = add_assum(pre, result);
+        result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+      }
+    i = i + 1;
+  }
+  i = 0;
+  while (i < hyp_cnt) { result = add_assum(hyps[ i ], result); i = i + 1; }
+  return sep_normalize_rule(result);
+}
