@@ -437,6 +437,19 @@ impl Interface for Session {
     }
 
     /// Uses an instance of a given equation to rewrite a term.
+    async fn pure_rewrite(mut self, _ctx: Context, th: TheoremKey, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(SPURE_REWRITE_CONV as pure_rewrite); // see helpers.ml
+      let thm = {
+          let theorems = self.theorems();
+          let terms = self.terms();
+          let th = theorems.get(th).ok_or("invalid theorem key")?;
+          let tm = terms.get(tm).ok_or("invalid term key")?;
+          unsafe { self.dyn_call(pure_rewrite, args!(th, tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+  }
+
+    /// Uses an instance of a given equation to rewrite a term.
     async fn rewrite(mut self, _ctx: Context, th: TheoremKey, tm: TermKey) -> Result<TheoremKey> {
         load_dyn_function!(SREWRITE_CONV as rewrite); // see helpers.ml
         let thm = {
@@ -448,6 +461,19 @@ impl Interface for Session {
         };
         Ok(self.theorems_mut().insert(thm))
     }
+
+    /// Uses an instance of a given equation to rewrite a theorem.
+    async fn pure_rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(SPURE_REWRITE_RULE as pure_rewrite_rule); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let t = theorems.get(t).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(pure_rewrite_rule, args!(th, t)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
 
     /// Uses an instance of a given equation to rewrite a theorem.
     async fn rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
@@ -763,11 +789,22 @@ impl Interface for Session {
 
     /// Automatically proves natural number arithmetic theorems. 
     async fn arith_rule(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
-      load_dyn_function!(ARITH_RULE_SAFETY as arith_rule);
+      load_dyn_function!(ARITH_RULE_SAFE as arith_rule);
       let thm = {
         let terms = self.terms();
         let tm = terms.get(tm).ok_or("invalid term key")?;
         unsafe { self.dyn_call(arith_rule, args!(tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Proves integer theorems needing basic rearrangement and linear inequality reasoning only. 
+    async fn int_arith(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(INT_ARITH_SAFE as int_arith);
+      let thm = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(int_arith, args!(tm)) }?
       };
       Ok(self.theorems_mut().insert(thm))
     }

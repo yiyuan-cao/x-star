@@ -1,0 +1,203 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+[[cstar::function(
+thm hfact_manual(term pre1, term pre2, term post) {
+  thm arith = undisch(undisch(int_arith(`${pre1:bool} ==> ${pre2:bool} ==> ${post:bool}`)));
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), arith), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return sep_normalize_rule(result);
+}
+)]];
+
+
+[[cstar::function(
+thm hfact_auto_int(term pres[], term posts[]) {
+  thm result = spec(`emp`, get_theorem("hentail_refl")); // emp |-- emp
+  term hyps[N];
+  int hyp_cnt = 0;
+
+  int i = 0;
+  while (1) {
+    if (pres[i] == NULL) break;
+    term pre = pres[i];
+    bool in_match = false;
+
+    int j = 0;
+    while (1) {
+      if (posts[j] == NULL) break;
+      term post = posts[j];
+      term t = `${pre:bool} ==> ${post:bool}`;
+      thm arith = int_arith(t);
+      if (equals_term(conclusion(arith), t)) {
+        in_match = true;
+        result = mp(mp(get_theorem("hfact_intro"), mp(arith, assume(pre))), result);
+        posts[j] = `F:bool`; // (1)
+      }
+
+      j = j + 1;
+    }
+    if (in_match) {      
+      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+    } else {
+      result = add_assum(pre, result);
+      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+    }
+
+    i = i + 1;
+  }
+  
+  i = 0;
+  while (i < hyp_cnt) {
+    result = add_assum(hyps[i], result);
+    i = i + 1;
+  }
+
+  return sep_normalize_rule(result);
+}
+)]];
+
+
+int is_even(int x)
+  [[cstar::require(`x >= &0`)]]
+  [[cstar::ensure(`(fact(x_pre % &2 == &0) ** fact(__return == &1)) 
+                || (fact(~(x_pre % &2 == &0)) ** fact(__return == &0))`)]]
+{
+  [[cstar::assert(`fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+  if (x == 0) {
+    [[cstar::assert(`fact(x_pre == &0) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    return 1;
+
+    [[cstar::proof( 
+      {
+        // proof obligation : [| x@pre = 0 |]  |--
+        //                    [| x@pre % 2 = 0 |] ** [| 1 = 1 |] ||
+        //                    [| x@pre % 2 <> 0 |] ** [| 1 = 0 |] 
+        thm hfact_thm = hfact_auto_int(
+          (term[]){`x_pre == &0`, NULL},
+          (term[]){`x_pre % &2 == &0`, `&1 == &1`, NULL}
+        );
+
+        thm result = hentail_trans_auto(
+          hfact_thm, 
+          spec(`fact(~(x_pre % &2 == &0)) ** fact(&1 == &0)`, 
+            spec(`fact (x_pre % &2 == &0) ** fact (&1 == &1)`, get_theorem("hor_intro1")))
+        );
+        result = rewrite_rule(spec(`fact(x_pre % &2 == &0)`, spec(`fact(&1 == &1)`, get_theorem("hsep_comm"))), result);
+        puts(string_of_thm(result));
+      }
+    )]];
+  } else {
+    [[cstar::assert(`fact(~(x_pre == &0)) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    [[cstar::proof(
+      {
+        thm hfact_thm = hfact_manual(`~(x_pre == &0)`, `x_pre >= &0`, `x_pre - &1 >= &0`);
+        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+      }
+    )]]
+
+    [[cstar::assert(`fact(x_pre - &1 >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    return is_odd(x - 1);
+
+    [[cstar::proof(
+      {
+        // proof obligation 1 : forall retval,
+        //                      [| (x_pre - &1) % &2 == &0 |] ** [| retval == &0 |] ** [| x_pre - &1 >= &0 |]  |--
+        //                      [| x_pre % &2 = &0 |] ** [| retval == &1 |] ||
+        //                      [| x_pre % &2 <> &0 |] ** [| retval == &0 |]
+        thm hfact_thm = hfact_auto_int(
+          (term[]){`(x_pre - &1) % &2 == &0`, `retval == &0`, `x_pre - &1 >= &0`, NULL},
+          (term[]){`~(x_pre % &2 == &0)`, `retval == &0`, NULL}
+        );
+        thm result = hentail_trans_auto(
+          hfact_thm, 
+          spec(`fact (retval == &0) ** fact (~(x_pre % &2 == &0))`, 
+            spec(`fact (x_pre % &2 = &0) ** fact (retval == &1)`, get_theorem("hor_intro2")))
+        );
+        result = rewrite_rule(spec(`fact (retval == &0)`, spec(`fact (x_pre % &2 = &0)`, get_theorem("hsep_comm"))), result);
+        puts(string_of_thm(result));
+      }
+    )]];
+
+    [[cstar::proof(
+      {
+        // proof obligation 2 : forall retval,
+        //                      [| ~((x_pre - &1) % &2 == &0) |] ** [| retval == &1 |] ** [| x_pre - &1 >= &0 |]  |--
+        //                      [| x_pre % &2 = &0 |] ** [| retval == &1 |] ||
+        //                      [| x_pre % &2 <> &0 |] ** [| retval == &0 |]
+      }
+    )]];
+  }
+}
+
+int is_odd(int x) 
+  [[cstar::require(`x >= &0`)]]
+  [[cstar::ensure(`(fact(~(x_pre % &2 == &0)) ** fact(__return == &1)) 
+                || (fact(x_pre % &2 == &0) ** fact(__return == &0))`)]]
+{
+  [[cstar::assert(`fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+  if (x == 0) {
+    [[cstar::assert(`fact(x_pre == &0) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    return 0;
+
+    [[cstar::proof(
+      {
+        // proof obligation : [| x@pre = 0 |]  |--
+        //                    [| x@pre % 2 <> 0 |] ** [| 0 = 1 |] ||
+        //                    [| x@pre % 2 = 0 |] ** [| 1 = 1 |] .
+        thm hfact_thm = hfact_auto_int(
+          (term[]){`x_pre == &0`, NULL},
+          (term[]){`x_pre % &2 == &0`, `&1 == &1`, NULL}
+        );
+
+        thm result = hentail_trans_auto(
+          hfact_thm, 
+          spec(`fact (x_pre % &2 == &0) ** fact (&1 == &1)`, 
+            spec(`fact(~(x_pre % &2 == &0)) ** fact(&1 == &0)`, get_theorem("hor_intro2")))
+        );
+        result = rewrite_rule(spec(`fact(x_pre % &2 == &0)`, spec(`fact(&1 == &1)`, get_theorem("hsep_comm"))), result);
+        puts(string_of_thm(result));
+      }
+    )]];
+  } else {
+    [[cstar::assert(`fact(~(x_pre == &0)) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    [[cstar::proof(
+      {
+        thm hfact_thm = hfact_manual(`~(x_pre == &0)`, `x_pre >= &0`, `x_pre - &1 >= &0`);
+        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+      }
+    )]];
+
+    [[cstar::assert(`fact(x_pre - &1 >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+
+    return is_even(x - 1);
+
+    [[cstar::proof(
+      {
+        // proof obligation 1 : forall retval,
+        //                      [| ~((x_pre - &1) % &2 == &0) |] ** [| retval == &0 |] ** [| x_pre - &1 >= &0 |]  |--
+        //                      [| x_pre % &2 = &0 |] ** [| retval == &1 |] ||
+        //                      [| x_pre % &2 <> &0 |] ** [| retval == &0 |]
+
+      }
+    )]];
+
+    [[cstar::proof(
+      {
+        // proof obligation 2 : forall retval,
+        //                      [| (x_pre - &1) % &2 == &0 |] ** [| retval == &1 |] ** [| x_pre - &1 >= &0 |]  |--
+        //                      [| x_pre % &2 = &0 |] ** [| retval == &1 |] ||
+        //                      [| x_pre % &2 <> &0 |] ** [| retval == &0 |]
+      }
+    )]];
+  }
+}

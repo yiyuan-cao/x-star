@@ -750,7 +750,7 @@ pub unsafe extern "C" fn rewrite(
     let client = ensures_ok!(get_client(), std::ptr::null());
     let th = unsafe { &*th }.as_ref();
     let tm = unsafe { &*tm }.as_ref();
-    let thm = ensures_ok!(client.rewrite(th, tm), std::ptr::null());
+    let thm = ensures_ok!(client.pure_rewrite(th, tm), std::ptr::null());
     thm.into_gc()
 }
 
@@ -774,7 +774,7 @@ pub unsafe extern "C" fn rewrite_rule(
     let client = ensures_ok!(get_client(), std::ptr::null());
     let th = unsafe { &*th }.as_ref();
     let t = unsafe { &*t }.as_ref();
-    let thm = ensures_ok!(client.rewrite_rule(th, t), std::ptr::null());
+    let thm = ensures_ok!(client.pure_rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
 
@@ -1265,6 +1265,18 @@ pub unsafe extern "C" fn arith_rule(tm: *const Gc<Term>) -> *const Gc<Theorem> {
   thm.into_gc()
 }
 
+/// Proves integer theorems needing basic rearrangement and linear inequality reasoning only. 
+#[no_mangle]
+pub unsafe extern "C" fn int_arith(tm: *const Gc<Term>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let tm = unsafe { &*tm }.as_ref();
+  let thm = ensures_ok!(client.int_arith(tm), std::ptr::null());
+  thm.into_gc()
+}
+
 /// Get a theorem from the search database.
 #[no_mangle]
 pub unsafe extern "C" fn get_theorem(name: *const c_char) -> *const Gc<Theorem> {
@@ -1278,62 +1290,6 @@ pub unsafe extern "C" fn get_theorem(name: *const c_char) -> *const Gc<Theorem> 
   let thm = ensures_ok!(client.get_theorem(name), std::ptr::null());
   thm.into_gc()
 }
-
-/*
-/// `sep lift` conversion.
-/// 
-/// # Parameters
-/// - `lft` : The term to be lifted.
-/// - `tm`: The term to do conversion.
-///
-/// # Returns
-/// Suppose both lft and tm are separating conjunction of atomic assertion.
-/// If `lft` = `A * B * C` and {A,B,C} in `tm`,
-/// then the return theorem is `tm = (A * B * C) * (D * ...)`.
-#[no_mangle]
-pub unsafe extern "C" fn sep_lift(
-  lft: *const Gc<Term>,
-  tm: *const Gc<Term>
-) -> *const Gc<Theorem> {
-  clear_last_error();
-  ensures!(!lft.is_null(), "`lft` is null", std::ptr::null());
-  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
-
-  let client = ensures_ok!(get_client(), std::ptr::null());
-  let lft = unsafe { &*lft }.as_ref();
-  let tm = unsafe { &*tm }.as_ref();
-
-  let thm = ensures_ok!(client.sep_lift(lft, tm), std::ptr::null());
-  thm.into_gc()
-}
-
-/// `which implies` conversion.
-/// 
-/// # Parameters
-/// - `state` : The symbolic state before `which implies`.
-/// - `trans`: The transformation entailment.
-///
-/// # Returns
-/// Suppose `state` is a separating conjunction of atomic assertion with `hexists` outside,
-/// and `trans` is entailment of two separating conjunctions of atomic assertion.
-/// The return theorem is `state |-- state'`, where `state'`` is sep_apply `trans` on `state`.
-#[no_mangle]
-pub unsafe extern "C" fn which_implies(
-  state: *const Gc<Term>, 
-  trans: *const Gc<Theorem>
-) -> *const Gc<Theorem> {
-  clear_last_error();
-  ensures!(!state.is_null(), "`state` is null", std::ptr::null());
-  ensures!(!trans.is_null(), "`trans` is null", std::ptr::null());
-
-  let client = ensures_ok!(get_client(), std::ptr::null());
-  let state = unsafe { &*state }.as_ref();
-  let trans = unsafe { &*trans }.as_ref();
-  
-  let thm = ensures_ok!(client.which_implies(state, trans), std::ptr::null());
-  thm.into_gc()
-}
-*/
 
 /// Applies a conversion to the operand of an application. 
 #[no_mangle]

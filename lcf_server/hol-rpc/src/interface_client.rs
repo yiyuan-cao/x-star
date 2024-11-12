@@ -286,9 +286,21 @@ impl Client {
     }
 
     /// Uses an instance of a given equation to rewrite a term.
+    pub fn pure_rewrite(&self, th: &Theorem, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().pure_rewrite(context::current(), th.key, tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+  }
+
+    /// Uses an instance of a given equation to rewrite a term.
     pub fn rewrite(&self, th: &Theorem, tm: &Term) -> Result<Theorem> {
         let key = self.execute(self.interface().rewrite(context::current(), th.key, tm.key))??;
         Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Uses an instance of a given equation to rewrite a theorem. 
+    pub fn pure_rewrite_rule(&self, th: &Theorem, t: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().pure_rewrite_rule(context::current(), th.key, t.key))??;
+      Ok(Theorem::new(key, self.clone()))
     }
 
     /// Uses an instance of a given equation to rewrite a theorem. 
@@ -449,6 +461,12 @@ impl Client {
     /// Automatically proves natural number arithmetic theorems. 
     pub fn arith_rule(&self, tm: &Term) -> Result<Theorem> {
       let key = self.execute(self.interface().arith_rule(context::current(), tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Proves integer theorems needing basic rearrangement and linear inequality reasoning only. 
+    pub fn int_arith(&self, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().int_arith(context::current(), tm.key))??;
       Ok(Theorem::new(key, self.clone()))
     }
 

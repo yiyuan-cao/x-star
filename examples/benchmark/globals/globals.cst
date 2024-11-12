@@ -1,0 +1,138 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+static int x;
+
+struct counter {
+    int f;
+};
+
+static struct counter *c;
+
+[[cstar::function(
+thm data_at_to_undef_data_at(term x, term ty, term v) {
+  return spec(v, spec(ty, spec(x, get_theorem("data_at_to_undef_data_at"))));
+}
+)]];
+
+[[cstar::function(
+thm hsep_cancel_left(term hp, thm th) {
+  return spec(hp, mp(get_theorem("hsep_cancel_left"), th));
+}
+)]];
+
+[[cstar::function(
+thm hexists_intro(term x, term state) {
+  return mp(spec(x, get_theorem("hexists_intro")), spec(state, get_theorem("hentail_refl")));
+}
+)]];
+
+void m(struct counter *cnt)
+  [[cstar::require(`exists (v:int). undef_data_at(&"x", Tint) ** data_at(&"cnt->f", Tint, v)`)]]
+  [[cstar::ensure(`data_at(&"x", Tint, &0) ** undef_data_at(&"cnt_pre->f", Tint)`)]]
+{
+  [[cstar::assert(`
+    exists (v:int).
+      undef_data_at(&"x", Tint) ** 
+      data_at(&"cnt_pre->f", Tint, v) **
+      data_at(&"cnt", Tptr, cnt_pre)
+  `)]];
+
+  x = cnt->f - cnt->f;
+
+  [[cstar::assert(`
+    exists (v:int).
+      data_at(&"x", Tint, v - v) ** 
+      data_at(&"cnt_pre->f", Tint, v) **
+      data_at(&"cnt", Tptr, cnt_pre)
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm data_to_undef = data_at_to_undef_data_at(`&"cnt_pre->f"`, `Tint`, `v:int`);
+      data_to_undef = hsep_cancel_left(`data_at(&"x", Tint, v - v)`, data_to_undef);
+      data_to_undef = rewrite_rule(
+        rewrite(int_arith(`v - v == &0`), consequent(conclusion(data_to_undef))),
+        data_to_undef
+      );
+      set_symbolic_state(which_implies(get_symbolic_state(), data_to_undef));
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (v:int).
+      data_at(&"x", Tint, &0) ** 
+      undef_data_at(&"cnt_pre->f", Tint) **
+      data_at(&"cnt", Tptr, cnt_pre)
+  `)]];
+}
+
+int main()
+  [[cstar::require(`undef_data_at(&"x", Tint) ** undef_data_at(&"c", Tptr)`)]]
+  [[cstar::ensure(`fact(__return == &0) ** data_at(&"x", Tint, &0) ** undef_data_at(&"c", Tptr)`)]]
+{
+  [[cstar::assert(`
+    undef_data_at(&"x", Tint) **
+    undef_data_at(&"c", Tptr)
+  `)]];
+  
+  struct counter cnt;
+
+  [[cstar::assert(`
+    undef_data_at(&"x", Tint) **
+    undef_data_at(&"c", Tptr) **
+    undef_data_at(&"cnt.f", Tint)
+  `)]];
+
+  c = &cnt;
+
+  [[cstar::assert(`
+    undef_data_at(&"x", Tint) **
+    data_at(&"c", Tptr, &"cnt") **
+    undef_data_at(&"cnt.f", Tint)
+  `)]];
+
+  c->f = (int)&x;
+
+  [[cstar::assert(`
+    undef_data_at(&"x", Tint) **
+    data_at(&"c", Tptr, &"cnt") **
+    data_at(&"cnt.f", Tint, signed_last_nbits(&"x", &32)) 
+  `)]]; 
+
+  [[cstar::proof(
+    {
+      thm final_thm = hexists_intro(`signed_last_nbits(&"x", &32)`, get_symbolic_state());
+      set_symbolic_state(final_thm);
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (v:int).
+      undef_data_at(&"x", Tint) **
+      data_at(&"c", Tptr, &"cnt") **
+      data_at(&"cnt.f", Tint, v)
+  `)]];
+
+  m(c);
+
+  [[cstar::assert(`
+    data_at(&"x", Tint, &0) **
+    data_at(&"c", Tptr, &"cnt") **
+    undef_data_at(&"cnt.f", Tint)
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm data_to_undef = data_at_to_undef_data_at(`&"c"`, `Tptr`, `&"cnt"`);
+      set_symbolic_state(which_implies(get_symbolic_state(), data_to_undef));
+    }
+  )]];
+
+  [[cstar::assert(`
+    data_at(&"x", Tint, &0) **
+    undef_data_at(&"c", Tptr) **
+    undef_data_at(&"cnt.f", Tint)
+  `)]];
+  return x;
+}

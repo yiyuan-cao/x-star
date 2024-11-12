@@ -1,4 +1,3 @@
-@@ -0,0 +1,123 @@
 // https://github.com/verifast/verifast/blob/b351656ae5b89afe0539be4c3c2703af8dc94c90/examples/globals.c
 
 #include "vst_ide.h"

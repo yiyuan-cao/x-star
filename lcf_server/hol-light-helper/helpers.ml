@@ -18,10 +18,12 @@ let parse_conv_from_string conv_str =
   topeval ("let pt_internal = " ^ conv_str ^ ";;");
   Topeval.getvalue "pt_internal" |> Obj.obj;;
 
+let SPURE_REWRITE_CONV thm tm = PURE_REWRITE_CONV [thm] tm;;
+let SPURE_REWRITE_RULE thm t = PURE_REWRITE_RULE [thm] t;;
 let SREWRITE_CONV thm tm = REWRITE_CONV [thm] tm;;
 let SREWRITE_RULE thm t = REWRITE_RULE [thm] t;;
-let SONCE_REWRITE_CONV thm tm = ONCE_REWRITE_CONV [thm] tm;;
-let SONCE_REWRITE_RULE thm t = ONCE_REWRITE_RULE [thm] t;;
+let SONCE_REWRITE_CONV thm tm = PURE_ONCE_REWRITE_CONV [thm] tm;;
+let SONCE_REWRITE_RULE thm t = PURE_ONCE_REWRITE_RULE [thm] t;;
 
 let INDUCT_INSTANTIATE ind tm1 tm2 = 
   INSTANTIATE (term_match [] tm1 tm2) (SPEC_ALL ind);;
@@ -126,32 +128,5 @@ let apply_conv conv tm = conv tm;;
 let hypth th = hd (hyp th);;
 let equals_term t1 t2 = t1 = t2;;
 
-let ARITH_RULE_SAFETY =
-  let init_conv =
-    NUM_SIMPLIFY_CONV THENC
-    GEN_REWRITE_CONV DEPTH_CONV [ADD1] THENC
-    PROP_ATOM_CONV (BINOP_CONV NUM_NORMALIZE_CONV) THENC
-    PRENEX_CONV THENC
-    (GEN_REWRITE_CONV TOP_SWEEP_CONV o map GSYM)
-      [INT_OF_NUM_EQ; INT_OF_NUM_LE; INT_OF_NUM_LT; INT_OF_NUM_GE;
-       INT_OF_NUM_GT; INT_OF_NUM_ADD; SPEC `NUMERAL k` INT_OF_NUM_MUL;
-       INT_OF_NUM_MAX; INT_OF_NUM_MIN]
-  and is_numimage t =
-    match t with
-      Comb(Const("int_of_num",_),n) when not(is_numeral n) -> true
-    | _ -> false in
-  fun tm ->
-    try
-      let th1 = init_conv tm in
-      let tm1 = rand(concl th1) in
-      let avs,bod = strip_forall tm1 in
-      let nim = setify(find_terms is_numimage bod) in
-      let gvs = map (genvar o type_of) nim in
-      let pths = map (fun v -> SPEC (rand v) INT_POS) nim in
-      let ibod = itlist (curry mk_imp o concl) pths bod in
-      let gbod = subst (zip gvs nim) ibod in
-      let th2 = INST (zip nim gvs) (INT_ARITH gbod) in
-      let th3 = GENL avs (rev_itlist (C MP) pths th2) in
-      EQ_MP (SYM th1) th3
-    with Failure _ -> TRUTH 
-;;
+let ARITH_RULE_SAFE t = try ARITH_RULE t with Failure _ -> TRUTH;;
+let INT_ARITH_SAFE t = try INT_ARITH t with Failure _ -> TRUTH;;

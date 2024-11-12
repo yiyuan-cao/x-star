@@ -1,0 +1,59 @@
+void swap(int *a, int *b)
+  [[cstar::parameter(`a_v:int`, `b_v:int`)]]
+  [[cstar::require(`data_at(a, Tint, a_v) ** data_at(b, Tint, b_v)`)]]
+  [[cstar::ensure(`data_at(a_pre, Tint, b_v) ** data_at(b_pre, Tint, a_v)`)]]
+{
+  [[cstar::assert(`
+    data_at(a_pre, Tint, a_v) **
+    data_at(b_pre, Tint, b_v) **
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"b", Tptr, b_pre)
+  `)]];
+  
+  int tmp = *a;
+
+  [[cstar::assert(`
+    data_at(a_pre, Tint, b_v) **
+    data_at(b_pre, Tint, b_v) **
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"b", Tptr, b_pre)
+    data_at(&"tmp", Tint, a_v)
+  `)]];
+
+  *a = *b;
+
+  *b = tmp;
+
+  [[cstar::assert(`
+    data_at(a_pre, Tint, b_v) **
+    data_at(b_pre, Tint, a_v) **
+    data_at(&"a", Tptr, a_pre) **
+    data_at(&"b", Tptr, b_pre)
+    data_at(&"tmp", Tint, a_v)
+  `)]];
+}
+
+struct point {
+    int x;
+    int y;
+};
+
+void point_mirror(struct point *p)
+  [[cstar::parameter(`x:int`, `y:int`)]]
+  [[cstar::require(`data_at(&"p->x", Tint, x) ** data_at(&"p->y", Tint, y)`)]]
+  [[cstar::ensure(`data_at(&"p->x", Tint, y) ** data_at(&"p->y", Tint, x)`)]]
+{
+  [[cstar::assert(`
+    data_at(&"p_pre->x", Tint, x) **
+    data_at(&"p_pre->y", Tint, y) **
+    data_at(&"p", Tptr, p_pre)
+  `)]];
+  
+  [[cstar::parameter(`x:int`, `y:int`)]] swap(&p->x, &p->y);
+
+  [[cstar::assert(`
+    data_at(&"p_pre->x", Tint, y) **
+    data_at(&"p_pre->y", Tint, x) **
+    data_at(&"p", Tptr, p_pre)
+  `)]];
+}

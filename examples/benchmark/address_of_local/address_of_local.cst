@@ -1,7 +1,7 @@
+[[cstar::parameter(`P:hprop`)]]
+[[cstar::require(`false && emp`)]]
+[[cstar::ensure(`P:hprop`)]]
 void abort();
-  [[cstar::parameter(`P:hprop`)]]
-  [[cstar::require(`false && emp`)]]
-  [[cstar::ensure(`P:hprop`)]]
 
 typedef const struct Gc_Term *term;
 typedef const struct Gc_Theorem *thm;

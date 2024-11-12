@@ -233,6 +233,7 @@ the_implicit_types := [
     "hps2", `:hlist`;
 ];;
 
+
 (* Overload the notation `==` for equality *)
 make_overloadable "==" `:A -> A -> B`;;
 overload_interface("==", `(==):A -> A -> (A->A->bool) -> bool`);; (* Warning: the notation `==` is used for congruence relations in `int.ml` *)
@@ -240,6 +241,8 @@ overload_interface("==", `(=):A -> A -> bool`);;
 override_interface("<=>", `(=):bool->bool->bool`);;
 
 (* arithmetic operators *)
+parse_as_infix("%", (22, "left"));;
+override_interface ("%", `(rem):int->int->int`);; 
 override_interface ("/", `(div):int->int->int`);;
 
 (* Notations for parsing and printing separation logic assertions *)
@@ -395,7 +398,7 @@ add_to_database "hor_elim" hor_elim;;
 let himpl_hand_adjoint = new_axiom `!hp1 hp2 hp3. (hp1 && hp2 |-- hp3) <=> (hp1 |-- hp2 --> hp3)`;;
 add_to_database "himpl_hand_adjoint" himpl_hand_adjoint;;
 
-let hexists_intro = new_axiom `!hp hpA (x : A). (hp |-- hpA x) ==> (hp |-- (exists x : A. hpA x))`;; (* Instantiation on the right *)
+let hexists_intro = new_axiom `!(x : A) hp hpA. (hp |-- hpA x) ==> (hp |-- (exists x : A. hpA x))`;; (* Instantiation on the right *)
 add_to_database "hexists_intro" hexists_intro;;
 
 let hexists_elim = new_axiom `!hp hpA. (!x : A. hpA x |-- hp) ==> ((exists x : A. hpA x) |-- hp)`;; (* Used for extraction *)
@@ -560,7 +563,7 @@ let undef_data_at_def = new_axiom `!x ty. undef_data_at (x, ty) =
                                     bytes_at (x, bs)`;;
 add_to_database "undef_data_at_def" undef_data_at_def;;
 
-let data_at_to_undef_data_at = new_axiom `!x ty. data_at (x, ty, v) |-- undef_data_at (x, ty)`;;
+let data_at_to_undef_data_at = new_axiom `!x ty v. data_at (x, ty, v) |-- undef_data_at (x, ty)`;;
 add_to_database "data_at_to_undef_data_at" data_at_to_undef_data_at;;
 
 (* definition of cell_at and undef_cell_at *)
@@ -631,7 +634,7 @@ let which_implies (hp_pre, th_part_entail) =
     printf "\n"; *)
 
     let assumps, part_entail = dest_thm th_part_entail in
-    let hp_pre_part, hp_post_part = dest_binop `(|-)` part_entail in
+    let hp_pre_part, hp_post_part = dest_binop `(|--)` part_entail in
     (* First, assumps should be pure facts that can be proved (by very simple means) from the pure facts in hp_pre *)
     assert (assumps = []); (* TODO: add support for non-empty assumps *)
     (* Then, hp_pre_part should be a subset of hp_pre *)
@@ -787,4 +790,5 @@ let firstn_nth_merge = new_axiom `!n (l:int list).
 ;;
 add_to_database "firstn_nth_merge" firstn_nth_merge;;
 
-
+(* globals *)
+let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;

@@ -2,7 +2,9 @@ typedef const struct Gc_Term *term;
 typedef const struct Gc_Theorem *thm;
 typedef const struct IndType *indtype;
 
+[[cstar::proof(
 thm sublist, znth;
+)]];
 
 [[cstar::function(
 thm array_split1(term x, term ty, term vs1, term vs2) {

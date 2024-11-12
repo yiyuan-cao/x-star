@@ -203,7 +203,13 @@ pub trait Interface {
     async fn define(tm: TermKey) -> Result<TheoremKey>;
 
     /// Uses an instance of a given equation to rewrite a term.
+    async fn pure_rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a given equation to rewrite a term.
     async fn rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a given equation to rewrite a theorem.
+    async fn pure_rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
 
     /// Uses an instance of a given equation to rewrite a theorem.
     async fn rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
@@ -282,6 +288,9 @@ pub trait Interface {
 
     /// Automatically proves natural number arithmetic theorems. 
     async fn arith_rule(tm: TermKey) -> Result<TheoremKey>;
+    
+    /// Proves integer theorems needing basic rearrangement and linear inequality reasoning only. 
+    async fn int_arith(tm: TermKey) -> Result<TheoremKey>;
 
     /// Get a theorem from the search database.
     async fn get_theorem(name: String) -> Result<TheoremKey>;

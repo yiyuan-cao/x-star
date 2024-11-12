@@ -1,0 +1,46 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+void external_func();
+[[cstar::require(`emp`)]]
+[[cstar::ensure(`fact(false)`)]]
+
+static void static_proxy_func()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`fact(false)`)]]
+{
+  [[cstar::assert(`emp`)]];
+
+	external_func();
+  
+  [[cstar::assert(`fact(false)`)]];
+}
+
+void do_something();
+[[cstar::require(`emp`)]]
+[[cstar::ensure(`emp`)]]
+
+void endless_while()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`fact(false)`)]]
+{
+  [[cstar::assert(`emp`)]];
+
+  while(1) 
+    [[cstar::invariant(`emp`)]]
+  {
+    [[cstar::assert(`emp`)]];
+    do_something();
+    [[cstar::assert(`emp`)]];
+  }
+
+  [[cstar::assert(`fact(~(&1 == &1))`)]];
+
+  [[cstar::proof(
+    {
+      set_symbolic_state(hfact_auto((term[]){`~(&1 == &1)`, NULL}, (term[]){`~(&1 == &1)`, NULL}, (thm[]){NULL}));
+    }
+  )]]
+
+  [[cstar::assert(`fact(false)`)]];
+}

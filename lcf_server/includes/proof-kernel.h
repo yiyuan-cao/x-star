@@ -758,6 +758,11 @@ const struct IndDef *new_inductive_definition(const struct Gc_Term *tm);
 const struct Gc_Theorem *arith_rule(const struct Gc_Term *tm);
 
 /**
+ * Proves integer theorems needing basic rearrangement and linear inequality reasoning only.
+ */
+const struct Gc_Theorem *int_arith(const struct Gc_Term *tm);
+
+/**
  * Get a theorem from the search database.
  */
 const struct Gc_Theorem *get_theorem(const char *name);
