@@ -241,9 +241,9 @@ overload_interface("==", `(=):A -> A -> bool`);;
 override_interface("<=>", `(=):bool->bool->bool`);;
 
 (* arithmetic operators *)
-parse_as_infix("%", (22, "left"));;
-override_interface ("%", `(rem):int->int->int`);; 
-override_interface ("/", `(div):int->int->int`);;
+ 
+override_interface ("/", `(div):int->int->int`);parse_as_infix("%", (22, "left"));;
+override_interface ("%", `(rem):int->int->int`);;;
 
 (* Notations for parsing and printing separation logic assertions *)
 parse_as_infix ("|--", (2, "right"));;
@@ -791,4 +791,4 @@ let firstn_nth_merge = new_axiom `!n (l:int list).
 add_to_database "firstn_nth_merge" firstn_nth_merge;;
 
 (* globals *)
-let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;
+let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;5
