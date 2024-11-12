@@ -241,9 +241,9 @@ overload_interface("==", `(=):A -> A -> bool`);;
 override_interface("<=>", `(=):bool->bool->bool`);;
 
 (* arithmetic operators *)
- 
-override_interface ("/", `(div):int->int->int`);parse_as_infix("%", (22, "left"));;
-override_interface ("%", `(rem):int->int->int`);;;
+parse_as_infix("%", (22, "left"));;
+override_interface ("/", `(div):int->int->int`);;
+override_interface ("%", `(rem):int->int->int`);;
 
 (* Notations for parsing and printing separation logic assertions *)
 parse_as_infix ("|--", (2, "right"));;
