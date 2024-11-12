@@ -202,12 +202,18 @@ and make_proof_of_local_cstar_attr = function
       [Sexpr (Ebinary (Oassign, Evar "__state", expr), [], dummy_range)]
   | _ -> []
 
+let make_proof_of_global_proof_stmt = function
+  | Sdecl (decl, _) -> [decl]
+  | _ -> []
+
 let make_proof_of_global_cstar_attr = function
   | Afunction (Ddeffun (funsym, _, stmt)) ->
       let stmt =
         make_proof_of_stmt stmt ~only_attrs:false |> flatten_stmts
       in
       [Ddeffun (funsym, [], stmt)]
+  | Aproof stmts ->
+      stmts |> List.map ~f:make_proof_of_global_proof_stmt |> List.concat
   | _ -> []
 
 let make_proof_of_global_decl = function
@@ -219,7 +225,6 @@ let make_proof_of_global_decl = function
       [Ddeffun (funsym, [], stmt)]
   | Ddecltype (t, r) -> [Ddecltype (t, r)]
   | Ddecltypedef (i, t, r) -> [Ddecltypedef (i, t, r)]
-  | Ddeclvar (t, id, i, r) -> [Ddeclvar (t, id, i, r)]
   | _ -> []
 
 let make_proof program =
