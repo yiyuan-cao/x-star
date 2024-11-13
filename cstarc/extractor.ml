@@ -76,16 +76,14 @@ let constant_to_str =
   | Cboolean b -> Bool.to_string b 
   | Cstring str -> str.value
   | Cnullval -> "(&0)" (* Dead code? `NULL` is Evar "NULL". *)
+  | Cquoted s -> s 
 
 let typ_to_str = 
   function 
-  | T_Bool -> "bool"
-  | Tint -> "int"
-  | Tunsigned -> "num"
-  | Tprop -> "bool"
-  | Thprop -> "HPROP"
-  | Tptr _ -> "PTR"
-  | Tarray _ -> "PTR"
+  | Tchar | Tint | Tlong | Tptr _ -> "int"
+  | Tuchar | Tuint | Tulong -> "num"
+  | T_Bool | Tprop -> "bool"
+  | Thprop -> "hprop"
   | Tnamed id -> id 
   | _ -> failwith "typ_to_str: not a spec type."
 
@@ -125,15 +123,15 @@ let rec expr_to_str =
       ( let op = 
         ( match op with 
           | Omul -> `Op "*" 
-          | Odiv -> `Op "/" (* MOD: only for `:num` in HOL-light. *)
-          | Omod -> `Op "MOD" 
+          | Odiv -> `Op "/" 
+          | Omod -> `Op "%" 
           | Oadd -> `Op "+"
           | Osub -> `Op "-"
           | Olt -> `Op "<"
           | Ogt -> `Op ">"
           | Ole -> `Op "<="
           | Oge -> `Op ">="
-          | Oeq -> `Op "="
+          | Oeq -> `Op "=="
           | One -> `One 
           | Ologand -> `Op "&&"
           | Ologor -> `Op "||"
@@ -144,8 +142,8 @@ let rec expr_to_str =
           | Obitrsh -> `Func "word_ushr"
           | Obitlsh -> `Func "word_shl"
           | Oassign -> `Op "="
-          | Osep -> `Op "SEPCONJ"
-          | Osepand -> `Op "SEPAND"
+          | Osep -> `Op "**"
+          | Osepand -> `Op "&&"
           (* TODO: array indexing. *)
           | _ -> failwith "binary_expr_to_str: unsupported operator."
         ) in 
@@ -185,17 +183,16 @@ let func_to_str ps stmt =
   let local_var : (typ StrMap.t) ref = ref StrMap.empty in 
   let decl_var id ty = local_var := StrMap.add id ty !local_var in 
   let typ_var id = StrMap.find id !local_var in
-  let typ_suffix = 
+  let c_type = 
     function
-    | T_Bool -> "_BOOL"
-    | Tint -> "_INT"
-    | Tunsigned -> "_UINT"
-    | Tptr _ -> "_PTR"
-    | Tarray _ -> failwith "data_at: unsupported array."
-    | Tstruct _ -> failwith "data_at: unsupported struct."
-    | Tunion _ -> failwith "data_at: unsupported union."
-    | _ -> failwith "data_at: wrong type."
-  in
+    | Tchar -> "Tchar"
+    | Tuchar -> "Tuchar"
+    | Tint -> "Tint"
+    | Tuint  -> "Tuint"
+    | Tlong -> "Tlong"
+    | Tulong -> "Tulong"
+    | Tptr _ -> "Tptr"
+    | _ -> "" in 
   let rec stmt_to_str =
     function 
     | Sskip (_, _)-> ""
@@ -208,26 +205,26 @@ let func_to_str ps stmt =
             | Eunary (Oaddrof, e) -> 
               ( match e with 
                 | Evar p -> 
-                    parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "," ^ id))
+                    parens ("data_at" ^ parens (p ^ "," ^ c_type ty ^ "," ^ id))
                 | Eunary ((Oarrow fid), Evar p) -> 
                   ( match (typ_var p) with 
                     | Tptr (Tstruct tid) -> 
-                      parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "+" 
-                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ id)) 
+                      parens ("data_at" ^ parens (p ^ "+" 
+                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ c_type ty ^ "," ^ id)) 
                     | _ -> failwith "let_data_at: use arrow but not a struct pointer." )
                 | Eunary ((Odot fid), Evar p) -> 
                   ( match (typ_var p) with 
                     | Tstruct tid -> 
-                      parens ("DATA_AT" ^ typ_suffix ty ^ parens (p ^ "+" 
-                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ id)) 
+                      parens ("data_at" ^ parens (p ^ "+" 
+                        ^ parens ("&" ^ Int.to_string (field_ofs (Tstruct tid) fid)) ^ "," ^ c_type ty ^ "," ^ id)) 
                     | _ -> failwith "let_data_at: use dot but not a struct." )
                 | _ -> failwith "let_data_at: unsupported pointer syntax."
                 (* TODO: DATA_AT_STRUCT/ARRAY *)
               )
             | _ -> failwith "let_data_at: unsupported syntax." 
           ) in 
-        "SEPEXISTS " ^ parens (id ^ ":" ^ typ_to_str ty) ^ ". "
-          ^ expr_str ^ " SEPCONJ " 
+        "exists " ^ parens (id ^ ":" ^ typ_to_str ty) ^ ". "
+          ^ expr_str ^ " ** " 
       )
     | Sexpr (Ebinary (Oassign, e1, e2), _, _) ->
       "let " ^ expr_to_str e1 ^ "=" ^ expr_to_str e2 ^ " in " 
@@ -236,7 +233,7 @@ let func_to_str ps stmt =
         ^ "then" ^ parens (stmt_to_str c1)
         ^ "else" ^ parens (stmt_to_str c2)
     | Sreturn (Some e, _) -> expr_to_str e
-    | Sdecl (Ddeclvar (ty, id, init, _)) -> 
+    | Sdecl (Ddeclvar (ty, id, init, _), _) -> 
       decl_var id ty;
       ( match init with 
         | None -> ""
@@ -302,16 +299,16 @@ let attribute_decl =
           accessor_decl constructors;
           constructor_decl constructors;
         )
-      | Afunction (Ddeffun ((ty, id, ps, _), _, stmt)) 
-      | Arepresentation (Ddeffun ((ty, id, ps, _), _, stmt)) 
-      | Apredicate (Ddeffun ((ty, id, ps, _), _, stmt)) -> 
-          ( register_ghost_def 
+      | Afunction (Ddeffun ((_, id, ps, _), _, stmt)) 
+      | Arepresentation (Ddeffun ((_, id, ps, _), _, stmt)) 
+      | Apredicate (Ddeffun ((_, id, ps, _), _, stmt)) -> 
+          ( (*register_ghost_def 
               { lval = None
               ; func = "new_constant"
               ; params = [ (String, id); 
                            (Type, (ps |> List.concat_map (fun (t, _) -> [typ_to_str t]) |> String.concat "#")
                                     ^ "->" ^ typ_to_str ty) ]
-              };
+              };*)
             register_ghost_def 
               { lval = Some id 
               ; func = "new_axiom"

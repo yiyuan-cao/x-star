@@ -2,12 +2,14 @@
 
 thm simp(thm th);
 thm trans_list(thm thl[]);
+thm once_rewrite_list(thm thl[], term tm);
 thm rewrite_list(thm thl[], term tm);
 thm rewrite_rhs(thm th1, thm th2);
 thm rewrite_list_rhs(thm thl[], thm th);
 term rewrite_term(term th, term tm);
 thm eq2ent(thm th);
 thm rewrite_after_ent(thm th1, thm th2);
+thm once_rewrite_rule_list(thm thl[], thm th);
 thm rewrite_rule_list(thm thl[], thm th);
 thm hent_trans(thm, thm);
 thm hentail_trans_list(thm thl[]);

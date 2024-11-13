@@ -368,6 +368,9 @@ add_to_database "hfalse_def" hfalse_def;;
 let htrue_intro = new_axiom `!hp. hp |-- htrue`;;
 add_to_database "htrue_intro" htrue_intro;;
 
+let htrue_hemp = new_axiom `(hfact T) -|- emp`;;
+add_to_database "htrue_hemp" htrue_hemp;;
+
 let hfalse_elim = new_axiom `!hp. hfalse |-- hp`;;
 add_to_database "hfalse_elim" hfalse_elim;;
 
@@ -798,3 +801,33 @@ add_to_database "firstn_nth_merge" firstn_nth_merge;;
 
 (* globals *)
 let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;5
+
+(* reverse *)
+let intlist_INDUCT, intlist_RECURSIVE = define_type("intlist = nil | cons int intlist");;
+let is_nil = define(parse_term("(is_nil(nil) = T) && (!(head_var:int) (tail_var:intlist). is_nil(cons head_var tail_var) = F)"));;
+let is_cons = define(parse_term("(is_cons(nil) = F) && (!(head_var:int) (tail_var:intlist). is_cons(cons head_var tail_var) = T)"));;
+let head = define(parse_term("!(head_var:int) (tail_var:intlist). head(cons head_var tail_var) = head_var"));;
+let tail = define(parse_term("!(head_var:int) (tail_var:intlist). tail(cons head_var tail_var) = tail_var"));;
+new_constant("app", parse_type("intlist#intlist->intlist"));;
+let app = new_axiom(parse_term("!(l1:intlist) (l2:intlist). app(l1,l2) = (if(is_nil(l1))then(l2)else(cons(head(l1))(app(tail(l1),l2))))"));;
+new_constant("rev", parse_type("intlist->intlist"));;
+let rev = new_axiom(parse_term("!(l:intlist). rev(l) = (if(is_nil(l))then((l))else((let (h:int)=head(l) in (let (rev_t:intlist)=rev(tail(l)) in (append(rev_t,cons(h)(nil)))))))"));;
+new_constant("listrep", parse_type("int#intlist->hprop"));;
+let listrep = new_axiom(parse_term("!(pt:int) (l:intlist). listrep(pt,l) = (if(is_nil(l))then((fact((pt)==((&0)))))else((let (h:int)=head(l) in (let (t:intlist)=tail(l) in (exists (value:int). (data_at(pt+(&0),Tint,value)) ** (exists (next:int). (data_at(pt+(&4),Tptr,next)) ** ((fact((value)==(h)))**(listrep(next,t)))))))))"));;
+
+add_to_database "is_nil" is_nil;;
+add_to_database "is_cons" is_cons;;
+add_to_database "head" head;;
+add_to_database "tail" tail;;
+add_to_database "app" app;;
+add_to_database "rev" rev;;
+add_to_database "listrep" listrep;;
+add_to_database "intlist_INDUCT" intlist_INDUCT;;
+
+extend_basic_rewrites[is_nil; is_cons; head; tail];;
+extend_basic_convs("elimination on condition 1", 
+    (`if T then c1:A else c2:A`, CONDS_ELIM_CONV));;
+extend_basic_convs("elimination on condition 2",
+    (`if F then c1:A else c2:A`, CONDS_ELIM_CONV));;
+extend_basic_convs("elimination on let bindings",
+    (`let x = e in t`, let_CONV));;

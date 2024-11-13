@@ -9,11 +9,32 @@ thm simp(thm th)
     return rewrite_rule(refl(parse_term("T")), th);
 }
 
+thm once_rewrite_list(thm thl[], term tm) {
+  if (thl[0] == NULL) return refl(tm);
+  thm result = once_rewrite(thl[0], tm);
+  for (int i = 1; ; ++i) {
+    if (thl[i] == NULL) break;
+    result = trans(result, once_rewrite(thl[i], consequent(conclusion(result))));
+  }
+  return result;
+}
+
+thm once_rewrite_rule_list(thm thl[], thm th) {
+  if (thl[0] == NULL) return NULL;
+  thm result = once_rewrite_rule(thl[0], th);
+  for (int i = 1; ; ++i) {
+    if (thl[i] == NULL) break;
+    result = once_rewrite_rule(thl[i], result);
+  }
+  return result;
+}
+
 /// Suppose `thl` end with `NULL`.
 thm rewrite_list(thm thl[], term tm) {
   if (thl[0] == NULL) return refl(tm);
   thm result = rewrite(thl[0], tm);
-  for (int i = 1; thl[i] != NULL; ++i) {
+  for (int i = 1; ; ++i) {
+    if (thl[i] == NULL) break;
     result = trans(result, rewrite(thl[i], consequent(conclusion(result))));
   }
   return result;

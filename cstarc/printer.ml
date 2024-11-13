@@ -279,7 +279,7 @@ let rec program_to_doc program =
   default_header ^^
   (program |> List.map ~f:declaration_to_doc |> seperate (hardlines 2))
   ^^ hardline ^^
-  (default_main "increment_all(); ") (* modify proof function name here. *)
+  (default_main "reverse();") (* modify proof function name here. *)
 
 and declaration_to_doc = function
   | Ddeffun _ as d -> declaration_to_doc_inner d
@@ -294,7 +294,7 @@ and declaration_to_doc_inner = function
   | Ddecltype (typ, _) -> typ_to_doc typ
   | Ddecltypedef (ident, typ, _) ->
     ( match ident with 
-      | "thm" | "term" | "indtype" -> empty
+      | "thm" | "term" | "indtype" | "conv" -> empty
       | _ -> kwd "typedef" ^^ break ^^ parameter_to_doc (typ, ident)
           |> nest |> group )
   | Ddeclfun (func, _) -> funsym_to_doc func

@@ -22,8 +22,8 @@ let SPURE_REWRITE_CONV thm tm = PURE_REWRITE_CONV [thm] tm;;
 let SPURE_REWRITE_RULE thm t = PURE_REWRITE_RULE [thm] t;;
 let SREWRITE_CONV thm tm = REWRITE_CONV [thm] tm;;
 let SREWRITE_RULE thm t = REWRITE_RULE [thm] t;;
-let SONCE_REWRITE_CONV thm tm = PURE_ONCE_REWRITE_CONV [thm] tm;;
-let SONCE_REWRITE_RULE thm t = PURE_ONCE_REWRITE_RULE [thm] t;;
+let SONCE_REWRITE_CONV thm tm = ONCE_REWRITE_CONV [thm] tm;;
+let SONCE_REWRITE_RULE thm t = ONCE_REWRITE_RULE [thm] t;;
 
 let INDUCT_INSTANTIATE ind tm1 tm2 = 
   INSTANTIATE (term_match [] tm1 tm2) (SPEC_ALL ind);;
