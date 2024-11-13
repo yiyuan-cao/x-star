@@ -753,6 +753,11 @@ const struct Gc_Theorem *new_axiom(const struct Gc_Term *tm);
 const struct IndDef *new_inductive_definition(const struct Gc_Term *tm);
 
 /**
+ * Proves a propositional tautology.
+ */
+const struct Gc_Theorem *taut(const struct Gc_Term *tm);
+
+/**
  * Automatically proves natural number arithmetic theorems.
  */
 const struct Gc_Theorem *arith_rule(const struct Gc_Term *tm);

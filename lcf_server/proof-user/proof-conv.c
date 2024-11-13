@@ -4,6 +4,11 @@
 
 #define N 100
 
+thm simp(thm th)
+{
+    return rewrite_rule(refl(parse_term("T")), th);
+}
+
 /// Suppose `thl` end with `NULL`.
 thm rewrite_list(thm thl[], term tm) {
   if (thl[0] == NULL) return refl(tm);
@@ -12,6 +17,35 @@ thm rewrite_list(thm thl[], term tm) {
     result = trans(result, rewrite(thl[i], consequent(conclusion(result))));
   }
   return result;
+}
+
+thm rewrite_rhs(thm th1, thm th2)
+{
+    return trans(th2, rewrite(th1, consequent(conclusion(th2))));
+}
+
+/// Suppose `thl` end with `NULL`.
+thm rewrite_list_rhs(thm thl[], thm th) {
+  thm result = th;
+  for (int i = 0; thl[i] != NULL; ++i) {
+    result = rewrite_rhs(thl[i], result);
+  }
+  return result;
+}
+
+term rewrite_term(term th, term tm)
+{
+    return dest_bin_snd_comb(conclusion(rewrite(assume(th), tm)));
+}
+
+thm eq2ent(thm th)
+{
+    return mp(get_theorem("hentail_sym_left"), th);
+}
+
+thm rewrite_after_ent(thm th1, thm th2)
+{
+    return hent_trans(th2, eq2ent(rewrite(th1, consequent(conclusion(th2)))));
 }
 
 /// Suppose `thl` end with `NULL`.
@@ -34,6 +68,11 @@ thm rewrite_rule_list(thm thl[], thm th) {
     result = rewrite_rule(thl[i], result);
   }
   return result;
+}
+
+thm hent_trans(thm th1, thm th2)
+{
+    return mp(mp(get_theorem("hentail_trans"), th1), th2);
 }
 
 thm hentail_trans_list(thm thl[]) {
@@ -64,6 +103,19 @@ thm hentail_trans_auto_list(thm thl[]) {
     result = hentail_trans_auto(result, thl[i]);
   }
   return result;
+}
+
+// eq : a = b
+// tm : f a
+// res : f a = (\b. f b) a 
+thm abs_term(term tm, term eq)
+{
+    term a = dest_bin_fst_comb(eq);
+    term b = dest_bin_snd_comb(eq);
+    term tm1 = rewrite_term(eq, tm);
+    term tm2 = mk_comb(mk_abs(b, tm1), a);
+    thm th = symm(rewrite(refl(parse_term("T")), tm2));
+    return th;
 }
 
 bool has_typ(thm th) {
@@ -166,6 +218,35 @@ thm sep_reorder(term lft, term septerm) {
   } else {
     return refl(lft);
   }
+}
+
+// facts to consume/keep
+// pure theorem : asmps |- concl
+// heap theorem : asmps |- hp1 |-- hp2
+// assert all asumps are in cfacts or kfacts
+// return : {cfacts} ** {kfacts} ** {hp1s} |-- {kfacts} ** {concls} ** {hp2s}
+thm create_trans_auto(term cfactl[], term kfactl[], thm pthl[], thm hthl[])
+{
+  thm hsep_monotone = get_theorem("hsep_monotone");
+  thm hfact_intro = get_theorem("hfact_intro");
+  thm hfact_elim = get_theorem("hfact_elim");
+  thm hsep_hemp_right = get_theorem("hsep_hemp_right");
+  thm hsep_assoc = get_theorem("hsep_assoc");
+    thm th = spec(parse_term("emp"), get_theorem("hentail_refl"));
+    for(int i = 0; hthl[i] != NULL; i++)
+        th = mp(mp(hsep_monotone, hthl[i]), th);
+    for(int i = 0; pthl[i] != NULL; i++)
+        th = mp(mp(hfact_intro, pthl[i]), th);
+    for(int i = 0; cfactl[i] != NULL; i++)
+        th = mp(hfact_elim, disch(th, cfactl[i]));
+    for(int i = 0; kfactl[i] != NULL; i++)
+    {
+        th = mp(mp(hfact_intro, assume(kfactl[i])), th);
+        th = mp(hfact_elim, disch(th, kfactl[i]));
+    }
+    th = rewrite_rule(hsep_hemp_right, th);
+    th = rewrite_rule(hsep_assoc, th);
+    return th;
 }
 
 thm which_implies(term state, thm th) {
@@ -288,4 +369,63 @@ thm hfact_auto(term pres[], term posts[], thm helpers[]) {
   i = 0;
   while (i < hyp_cnt) { result = add_assum(hyps[ i ], result); i = i + 1; }
   return sep_normalize_rule(result);
+}
+
+// ent : hp |- hpx x
+// eq : x = y
+// return : hp |- exists y. hpx y
+thm hexists_intro_auto(thm ent, term eq)
+{
+    term state = dest_bin_snd_comb(conclusion(ent));
+    term exists_list[N];
+    int exists_count = 0;
+    while (is_binder("hexists", state)) {
+        exists_list[++exists_count] = binder_var("hexists", state);
+        state = binder_body("hexists", state);
+    }
+
+    thm th = spec(state, get_theorem("hentail_refl"));
+    thm absth = abs_term(state, eq);
+    th = hentail_trans_list((thm[]){th, eq2ent(absth), NULL});
+    th = mp(get_theorem("hexists_intro"), th);
+    th = simp(th);
+    
+    for (int i = exists_count; i > 0; --i) {
+        th = gen(exists_list[i], th);
+        th = mp(get_theorem("hexists_monotone"), th);
+    }
+    return hent_trans(ent, th);
+}
+
+bool compare_hprop_(term hp1, term hp2)
+{
+    thm th = sep_reorder(hp1, hp2);
+    if(strcmp(string_of_term(hp1), string_of_term(dest_bin_snd_comb(conclusion(th))))) 
+    {
+        printf("Fail to match!\n");
+        printf("%s\n\n%s\n\n", string_of_term(hp1), string_of_term(dest_bin_snd_comb(conclusion(th))));
+        return 0;
+    }
+    if(strcmp(string_of_term(hp2), string_of_term(dest_bin_fst_comb(conclusion(th))))) 
+    {
+        printf("Fail to match!\n");
+        printf("%s\n\n%s\n\n", string_of_term(hp2), string_of_term(dest_bin_fst_comb(conclusion(th))));
+        return 0;
+    }
+    printf("Match!\n");
+    return 1;
+}
+
+bool compare_hprop(term hp1, term hp2)
+{
+    if(is_binder("hexists", hp1))
+    {
+        term tm1 = binder_var("hexists", hp1);
+        term tm2 = binder_var("hexists", hp2);
+        hp1 = binder_body("hexists", hp1);
+        hp2 = binder_body("hexists", hp2);
+        hp2 = subst(tm1, tm2, hp2);
+        return compare_hprop(hp1, hp2);
+    }
+    else return compare_hprop_(hp1, hp2);
 }

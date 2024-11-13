@@ -286,6 +286,9 @@ pub trait Interface {
     /// Define a relation or family of relations inductively.
     async fn new_inductive_definition(tm: TermKey) -> Result<IndDefKey>;
 
+    /// Proves a propositional tautology.
+    async fn taut(tm: TermKey) -> Result<TheoremKey>;
+
     /// Automatically proves natural number arithmetic theorems. 
     async fn arith_rule(tm: TermKey) -> Result<TheoremKey>;
     

@@ -58,6 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   let typ_of_primitive { data_type; signed } = 
     match data_type with
     | Dchar -> if signed then Tchar else Tuchar
+    | Dshort -> if signed then Tshort else Tushort
     | Dint -> if signed then Tint else Tuint
     | Dlong -> if signed then Tlong else Tulong
     | _ -> failwith "unsupported primitive type"

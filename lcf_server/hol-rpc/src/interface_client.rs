@@ -458,6 +458,12 @@ impl Client {
       })
     }
 
+    /// Proves a propositional tautology.
+    pub fn taut(&self, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().taut(context::current(), tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
     /// Automatically proves natural number arithmetic theorems. 
     pub fn arith_rule(&self, tm: &Term) -> Result<Theorem> {
       let key = self.execute(self.interface().arith_rule(context::current(), tm.key))??;

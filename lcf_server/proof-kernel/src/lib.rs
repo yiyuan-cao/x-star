@@ -750,7 +750,7 @@ pub unsafe extern "C" fn rewrite(
     let client = ensures_ok!(get_client(), std::ptr::null());
     let th = unsafe { &*th }.as_ref();
     let tm = unsafe { &*tm }.as_ref();
-    let thm = ensures_ok!(client.pure_rewrite(th, tm), std::ptr::null());
+    let thm = ensures_ok!(client.rewrite(th, tm), std::ptr::null());
     thm.into_gc()
 }
 
@@ -774,7 +774,7 @@ pub unsafe extern "C" fn rewrite_rule(
     let client = ensures_ok!(get_client(), std::ptr::null());
     let th = unsafe { &*th }.as_ref();
     let t = unsafe { &*t }.as_ref();
-    let thm = ensures_ok!(client.pure_rewrite_rule(th, t), std::ptr::null());
+    let thm = ensures_ok!(client.rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
 
@@ -1251,6 +1251,18 @@ pub unsafe extern "C" fn new_inductive_definition(tm: *const Gc<Term>) -> *const
     let cases = ind_def.cases.into_gc();
     let ind_def = IndDef { def, ind, cases };
     ind_def.into_gc()
+}
+
+/// Proves a propositional tautology.
+#[no_mangle]
+pub unsafe extern "C" fn taut(tm: *const Gc<Term>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let tm = unsafe { &*tm }.as_ref();
+  let thm = ensures_ok!(client.taut(tm), std::ptr::null());
+  thm.into_gc()
 }
 
 /// Automatically proves natural number arithmetic theorems. 

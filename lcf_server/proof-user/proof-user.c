@@ -129,6 +129,19 @@ thm induction_with_goal(indtype i, thm basis, thm step, term goal) {
   return mp(induction_aux(spec_all(i->ind), parse_term("!x. P x"), goal), conjunct(basis, step));
 }
 
+void show_induct_goal(term itype, term goal, thm ithm)
+{
+    term P = mk_abs(itype, goal);
+    thm th = spec(P, ithm);                         
+    thm sth = rewrite_rule(get_theorem("ABS_SIMP"), th);
+    term cl = conclusion(sth);
+    term igoal = dest_bin_fst_comb(cl);
+    term igoal_basis = dest_bin_fst_comb(igoal);
+    term igoal_step = dest_bin_snd_comb(igoal);
+    printf("basis : %s\n", string_of_term(igoal_basis));
+    printf("step : %s\n", string_of_term(igoal_step));
+}
+
 // Induction
 //
 // ## Parameters
@@ -142,232 +155,64 @@ thm induction(indtype i, thm basis, thm step) {
   return mp(i->ind, conjunct(basis, step));
 }
 
-/*  Logic Properties  */
-
-// ## Returns
-//   !A B. (A /\ B) = (B /\ A)
-thm conj_comm_prop()
-{
-  thm th1 = conjunct1(assume(parse_term("A /\\ B")));
-  thm th2 = conjunct2(assume(parse_term("A /\\ B")));
-  thm th3 = conjunct(th2, th1);
-  thm th4 = conjunct1(assume(parse_term("B /\\ A")));
-  thm th5 = conjunct2(assume(parse_term("B /\\ A")));
-  thm th6 = conjunct(th5, th4);
-  thm th7 = deduct_antisym(th6, th3);
-  thm th8 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), th7));
-  return th8;
+thm add_assum(term tm, thm th) {
+  return mp(disch(th, tm), assume(tm));
 }
 
 // ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//
-// ## Returns
-//   a new theorem `(A /\ B) = (B /\ A)`
-thm conj_comm(term tm1, term tm2)
-{
-  return spec(tm2, spec(tm1, conj_comm_prop()));
-}
-
-// ## Returns
-//   !A B C. (A /\ B) /\ C) = (A /\ (B /\ C))
-thm conj_assoc_prop()
-{
-  term tm1 = parse_term("(A /\\ B) /\\ C");
-  thm th1 = conjunct1(conjunct1(assume(tm1)));
-  thm th2 = conjunct2(conjunct1(assume(tm1)));
-  thm th3 = conjunct2(assume(tm1));
-  thm th4 = conjunct(th1, conjunct(th2, th3));
-  term tm2 = parse_term("A /\\ (B /\\ C)");
-  thm th5 = conjunct1(assume(tm2));
-  thm th6 = conjunct1(conjunct2(assume(tm2)));
-  thm th7 = conjunct2(conjunct2(assume(tm2)));
-  thm th8 = conjunct(conjunct(th5, th6), th7);
-  thm th9 = deduct_antisym(th8, th4);
-  thm th10 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th9)));
-  return th10;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `(A /\ B) /\ C) = (A /\ (B /\ C))`
-thm conj_assoc(term tm1, term tm2, term tm3)
-{
-  return spec(tm3, spec(tm2, spec(tm1, conj_assoc_prop())));
-}
-
-// ## Returns
-//   !A B C. (A = B) ==> ((C /\ A) = (C /\ B))
-thm eq_conj_l_prop()
-{
-  thm th1 = conjunct1(assume(parse_term("C /\\ A")));
-  thm th2 = conjunct2(assume(parse_term("C /\\ A")));
-  thm th3 = eq_mp(assume(parse_term("A <=> B")), th2);
-  thm th4 = conjunct(th1, th3);
-  thm th5 = conjunct1(assume(parse_term("C /\\ B")));
-  thm th6 = conjunct2(assume(parse_term("C /\\ B")));
-  thm th7 = eq_mp(symm(assume(parse_term("A <=> B"))), th6);
-  thm th8 = conjunct(th5, th7);
-  thm th9 = deduct_antisym(th8, th4);
-  thm th10 = disch(th9, parse_term("A <=> B"));
-  thm th11 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th10)));
-  return th11;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `(A = B) ==> ((C /\ A) = (C /\ B))`
-thm eq_conj_l(term tm1, term tm2, term tm3)
-{
-  return spec(tm3, spec(tm2, spec(tm1, eq_conj_l_prop())));
-}
-
-// ## Returns
-//   !A B C. (A = B) ==> ((A /\ C) = (B /\ C))
-thm eq_conj_r_prop()
-{
-  thm th1 = conjunct2(assume(parse_term("A /\\ C")));
-  thm th2 = conjunct1(assume(parse_term("A /\\ C")));
-  thm th3 = eq_mp(assume(parse_term("A <=> B")), th2);
-  thm th4 = conjunct(th3, th1);
-  thm th5 = conjunct2(assume(parse_term("B /\\ C")));
-  thm th6 = conjunct1(assume(parse_term("B /\\ C")));
-  thm th7 = eq_mp(symm(assume(parse_term("A <=> B"))), th6);
-  thm th8 = conjunct(th7, th5);
-  thm th9 = deduct_antisym(th8, th4);
-  thm th10 = disch(th9, parse_term("A <=> B"));
-  thm th11 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th10)));
-  return th11;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `(A = B) ==> ((A /\ C) = (B /\ C))`
-thm eq_conj_r(term tm1, term tm2, term tm3)
-{
-  return spec(tm3, spec(tm2, spec(tm1, eq_conj_r_prop())));
-}
-
-// ## Returns
-//   !A B C. (A ==> B) ==> ((C /\ A) ==> (C /\ B))
-thm impl_conj_l_prop()
-{
-  thm th1 = conjunct1(assume(parse_term("C /\\ A")));
-  thm th2 = conjunct2(assume(parse_term("C /\\ A")));
-  thm th3 = mp(assume(parse_term("A ==> B")), th2);
-  thm th4 = conjunct(th1, th3);
-  thm th5 = disch(th4, parse_term("C /\\ A"));
-  thm th6 = disch(th5, parse_term("A ==> B"));
-  thm th7 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th6)));
-  return th7;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `(A ==> B) ==> ((C /\ A) ==> (C /\ B))`
-thm impl_conj_l(term tm1, term tm2, term tm3)
-{
-  return spec(tm3, spec(tm2, spec(tm1, impl_conj_l_prop())));
-}
-
-// ## Returns
-//   !A B C. (A ==> B) ==> ((A /\ C) ==> (B /\ C))
-thm impl_conj_r_prop()
-{
-  thm th1 = conjunct2(assume(parse_term("A /\\ C")));
-  thm th2 = conjunct1(assume(parse_term("A /\\ C")));
-  thm th3 = mp(assume(parse_term("A ==> B")), th2);
-  thm th4 = conjunct(th3, th1);
-  thm th5 = disch(th4, parse_term("A /\\ C"));
-  thm th6 = disch(th5, parse_term("A ==> B"));
-  thm th7 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th6)));
-  return th7;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `(A ==> B) ==> ((A /\ C) ==> (B /\ C))`
-thm impl_conj_r(term tm1, term tm2, term tm3)
-{
-  return spec(tm3, spec(tm2, spec(tm1, impl_conj_r_prop())));
-}
-
-// ## Returns
-//   !A B C. ((A ==> B) /\ (B ==> C)) ==> (A ==> C)
-thm impl_trans_prop()
-{
-  term tm1 = parse_term("(A ==> B) /\\ (B ==> C)");
-  thm th1 = conjunct1(assume(tm1));
-  thm th2 = conjunct2(assume(tm1));
-  thm th3 = mp(th1, assume(parse_term("A:bool")));
-  thm th4 = mp(th2, th3);
-  thm th5 = disch(th4, parse_term("A:bool"));
-  thm th6 = disch(th5, tm1);
-  thm th7 = gen(parse_term("A:bool"), gen(parse_term("B:bool"), gen(parse_term("C:bool"), th6)));
-  return th7;
-}
-
-// ## Parameters
-//   tm1 : term `A`
-//   tm2 : term `B`
-//   tm3 : term `C`
-//
-// ## Returns
-//   a new theorem `((A ==> B) /\ (B ==> C)) ==> (A ==> C)`
-thm impl_trans(thm th1, thm th2)
-{
-  return mp(impl_trans_prop(), conjunct(th1, th2));
-}
-
-// ## Parameters
-//   th1 : theorem `A1 /\ A2 /\ ... /\ Am` (you can use "conj_assoc_prop" to get a form without bracket)
+//   th1 : theorem `A1 /\ A2 /\ ... /\ Am`
 //   n : ordinal number
 // ## Returns
-//   a new theorem `An` (if n == m then there will be an error message)
+//   a new theorem `An`
 thm conjunctn(thm th1, int n)
 {
   thm res = th1;
   for(int i = 1; i < n; i++)
     res = conjunct2(res);
-  if(conjunct2(res) == NULL) return res;
+  term conj = dest_bin_op(conclusion(conjunct(assume(parse_term("a:bool = a")), assume(parse_term("b:bool = b")))));
+  if(strcmp(string_of_term(dest_bin_op(conclusion(res))), string_of_term(conj)))
+    return res;
   return conjunct1(res);
 }
 
-/*  Added temporarily  */
-
-// (A \/ ~(A))
-thm disj_split(term tm1)
+// ## Parameters
+//   th1 : theorem `A1 ==> A2`
+//   th1 : theorem `A3 ==> A4`
+// ## Returns
+//   a new theorem `(A1 /\ A3) ==> (A2 /\ A4)`
+thm impl_conj_mono(thm th1, thm th2)
 {
-  return spec(tm1, disj_split_axiom);
+    return mp(taut(parse_term("! p1 p2 p3 p4. (p1 ==> p3) /\\ (p2 ==> p4) ==> ((p1 /\\ p2) ==> (p3 /\\ p4))")), conjunct(th1, th2));
 }
 
-// ~(a <= b) ==> (b <= a)
-thm int_le(term tm1, term tm2)
+// ## Parameters
+//   th1 : theorem `A1 ==> A2`
+//   th1 : theorem `A3 ==> A4`
+// ## Returns
+//   a new theorem `(A1 \/ A3) ==> (A2 \/ A4)`
+thm impl_disj_mono(thm th1, thm th2)
 {
-  return spec(tm2, spec(tm1, int_le_axiom));
+    return mp(taut(parse_term("! p1 p2 p3 p4. (p1 ==> p3) /\\ (p2 ==> p4) ==> ((p1 \\/ p2) ==> (p3 \\/ p4))")), conjunct(th1, th2));
 }
 
-thm add_assum(term tm, thm th) {
-  return mp(disch(th, tm), assume(tm));
+// ## Parameters
+//   cond : term `P`
+//   thenth : theorem `A1 ==> A2`
+//   elseth : theorem `A3 ==> A4`
+// ## Returns
+//   a new theorem `!P. if P then A1 else A3 ==> if P then A2 else A4`
+thm impl_if_mono(term cond, thm thenth, thm elseth)
+{
+    return mp(spec(cond, taut(parse_term("! P A B C D. (A ==> C) /\\ (B ==> D) ==> (if P then A else B) ==> (if P then C else D)"))), conjunct(thenth, elseth));
+}
+
+// ## Parameters
+//   casep : term `P`
+//   pos : theorem `A u {P} |- t`
+//   neg : theorem `A u {~P} |- t`
+// ## Returns
+//   a new theorem `A |- t`
+thm merge_disj_cases(term casep, thm pos, thm neg)
+{
+    return disj_cases(spec(casep, get_theorem("EXCLUDED_MIDDLE")), pos, neg);
 }

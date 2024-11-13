@@ -40,6 +40,8 @@ and typ =
   | T_Bool  (** [_Bool], the C program bool type **)
   | Tchar  (** [char], the C 8-bit integer *)
   | Tuchar  (** [unsigned char], the C 8-bit unsigned integer *)
+  | Tshort (** [short], the C 16-bit integer *)
+  | Tushort  (** [unsigned short], the C 16-bit unsigned integer *)
   | Tint  (** [int], the C 32-bit integer *)
   | Tuint  (** [unsigned int], the C 32-bit unsigned integer *)
   | Tlong  (** [long], the C long integer *)

@@ -787,6 +787,17 @@ impl Interface for Session {
       Ok(IndDefKey { def, ind, cases })
     }
 
+    /// Proves a propositional tautology.
+    async fn taut(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(TAUT as taut);
+      let thm = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(taut, args!(tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
     /// Automatically proves natural number arithmetic theorems. 
     async fn arith_rule(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
       load_dyn_function!(ARITH_RULE_SAFE as arith_rule);

@@ -78,28 +78,13 @@ thm rewrite_refl(thm, term, term);
 thm rewrites(rewrites_item[], int);
 thm gens(term[], int, thm);
 thm induction_with_goal(indtype, thm, thm, term);
+void show_induct_goal(term, term, thm);
 thm induction(indtype, thm, thm);
-
-/*  Logic Properties  */
-thm conj_comm_prop();
-thm conj_comm(term, term);
-thm conj_assoc_prop();
-thm conj_assoc(term, term, term);
-thm eq_conj_l_prop();
-thm eq_conj_l(term, term, term);
-thm eq_conj_r_prop();
-thm eq_conj_r(term, term, term);
-thm impl_conj_l_prop();
-thm impl_conj_l(term, term, term);
-thm impl_conj_r_prop();
-thm impl_conj_r(term, term, term);
-thm impl_trans_prop();
-thm impl_trans(thm, thm);
-thm conjunctn(thm, int);
-/*  Added temporarily  */
-thm disj_split(term);
-thm int_le(term, term);
-
 thm add_assum(term, thm);
+thm conjunctn(thm, int);
+thm impl_conj_mono(thm, thm);
+thm impl_disj_mono(thm, thm);
+thm impl_if_mono(term, thm, thm);
+thm merge_disj_cases(term, thm, thm);
 
 #endif

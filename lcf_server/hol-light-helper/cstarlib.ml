@@ -371,6 +371,12 @@ add_to_database "htrue_intro" htrue_intro;;
 let hfalse_elim = new_axiom `!hp. hfalse |-- hp`;;
 add_to_database "hfalse_elim" hfalse_elim;;
 
+let htrue_elim_left = new_axiom `!hp. (hfact T) ** hp -|- hp`;;
+add_to_database "htrue_elim_left" htrue_elim_left;;
+
+let hfalse_elim_right = new_axiom `!hp. hp ** (hfact T) -|- hp`;;
+add_to_database "hfalse_elim_right" hfalse_elim_right;;
+
 let hfalse_absorb_left = new_axiom `!hp. (hfact F) ** hp -|- (hfact F)`;;
 add_to_database "hfalse_absorb_left" hfalse_absorb_left;;
 
@@ -732,8 +738,8 @@ let firstn_def = define
 add_to_database "firstn_def" firstn_def;;
 
 let nth_def = define 
-` nth 0 (CONS (h:int) t) = h /\
-  nth (SUC n) (CONS h t) = nth n t `
+` nth (CONS (h:A) t) (0 : num) = h /\
+  nth (CONS (h:A) t) (SUC n) = nth t n`
 ;;
 add_to_database "nth_def" nth_def;;
 
@@ -760,7 +766,7 @@ let array_split_first = new_axiom `!x ty v vs.
   array_at (x, ty, CONS v vs) -|- data_at (x, ty, v) ** array_at (x + (sizeof ty), ty, vs)`;;
 add_to_database "array_split_first" array_split_first;;
 
-let skipn_nth_split = new_axiom `!k n (l:int list). (skipn k (firstn n l)) == CONS (nth k l) (skipn (k + 1) (firstn n l))`;;
+let skipn_nth_split = new_axiom `!k n (l:int list). (skipn k (firstn n l)) == CONS (nth l k) (skipn (k + 1) (firstn n l))`;;
 add_to_database "skipn_nth_split" skipn_nth_split;;
 
 let num_of_int_add_one = new_axiom `!n. num_of_int (n + &1) == (num_of_int n) + 1`;;
@@ -786,7 +792,7 @@ let firstn_n = new_axiom `!(l:int list). firstn (num_of_int (ilength l)) l == l`
 add_to_database "firstn_n" firstn_n;;
 
 let firstn_nth_merge = new_axiom `!n (l:int list).
-  APPEND (firstn (num_of_int n) l) [nth (num_of_int n) l] = firstn (num_of_int (n + &1)) l`
+  APPEND (firstn (num_of_int n) l) [nth l (num_of_int n)] = firstn (num_of_int (n + &1)) l`
 ;;
 add_to_database "firstn_nth_merge" firstn_nth_merge;;
 
