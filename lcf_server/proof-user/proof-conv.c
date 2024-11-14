@@ -450,3 +450,29 @@ bool compare_hprop(term hp1, term hp2)
     }
     else return compare_hprop_(hp1, hp2);
 }
+
+thm unfold(term hp, thm def)
+{
+    thm th = rewrite(def, hp);
+    return eq2ent(th);
+}
+thm fold(term hp, thm def)
+{
+    thm th = rewrite(def, hp);
+    return eq2ent(symm(th));
+}
+
+thm use_fact_rewrite(term fact, term target)
+{
+    thm th = assume(fact);
+    th = rewrite(th, target);
+    th = eq2ent(th);
+    return th;
+}
+thm use_fact_symm_rewrite(term fact, term target)
+{
+    thm th = symm(assume(fact));
+    th = rewrite(th, target);
+    th = eq2ent(th);
+    return th;
+}

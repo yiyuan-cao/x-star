@@ -27,3 +27,7 @@ thm which_implies(term state, thm trans);
 thm hfact_auto(term pres[], term posts[], thm helpers[]);
 thm hexists_intro_auto(thm, term);
 bool compare_hprop(term, term);
+thm unfold(term, thm);
+thm fold(term, thm);
+thm use_fact_rewrite(term, term);
+thm use_fact_symm_rewrite(term, term);

@@ -1,0 +1,1358 @@
+#include "cstar.h"
+#include "def.h"
+#include "lemma.h"
+
+[[cstar::proof(
+    thm pg2order_axiom;
+    thm buddy2order_axiom;
+    thm pool2max_order_axiom;
+)]];
+
+// axiomatize field_offset and padding layout
+[[cstar::proof(
+void point_to_axioms()
+{
+    pg2order_axiom = new_axiom(`! pg_v v. data_at(&"pg", Tptr, pg_v) ** data_at(pg_v + &2, Tuchar, v) 
+                                                    -|- data_at(&"pg", Tptr, pg_v) ** data_at(&"pg -> order", Tuchar, v)`);
+    buddy2order_axiom = new_axiom(`! bd_v v. data_at(&"buddy", Tptr, bd_v) ** data_at(bd_v + &2, Tuchar, v) 
+                                                    -|- data_at(&"buddy", Tptr, bd_v) ** data_at(&"buddy -> order", Tuchar, v)`);
+    pool2max_order_axiom = new_axiom(`!pool_v v. data_at(&"pool", Tptr, pool_v) ** data_at(pool_v + &(LIST_HEAD_SIZE * MAX_ORDER + 16), Tuchar, v) 
+                                                        -|- data_at(&"pool", Tptr, pool_v) ** data_at(&"pool -> max_order", Tuchar, v)`);
+}
+)]];
+
+// data_at(&"p", Tptr, pv)
+[[cstar::proof(
+thm point_to_handler(thm ent, thm axiom, term p, term pv)
+{
+    axiom = spec(pv, spec(p, axiom));
+    term pointer = dest_bin_fst_comb(antecedent(conclusion(axiom)));
+    term point_to = dest_bin_snd_comb(antecedent(conclusion(axiom)));
+    term tm = mk_comb(mk_comb(`hsep`, pointer), point_to);
+    ent = spec(pointer, mp(hsep_cancel_left, ent));
+    ent = rewrite_rule_list((thm[]){
+        sep_lift(tm, dest_bin_fst_comb(conclusion(ent))),
+        sep_lift(tm, dest_bin_snd_comb(conclusion(ent))),
+        axiom, hsep_assoc, NULL
+    }, ent);
+    return ent;
+}
+)]];
+
+/*
+    ((! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
+    (! (arg1 : B) (lo : num) (hi : num) (h : A) (t : (A)list). P arg1 lo hi (CONS h t) = ((ONE arg1 h lo) ** (P arg1 (SUC lo) hi t)))) ==>
+    (! (len : num) (n : num) (l : (A)list) (arg1 : B) (hi : num).
+        (n <= len) ==> (len <= hi) ==> (len = LENGTH l) ==>
+        P arg1 (hi - len) hi l = (P arg1 (hi - len) (hi - len + n) (take l n) ** P arg1 (hi - len + n) hi (rest l n)))
+*/
+[[cstar::proof(
+thm break_list_sepconj()
+{
+    term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
+        (! (arg1 : B) (lo : num) (hi : num) (h : A) (t : (A)list). P arg1 lo hi (CONS h t) = ((ONE arg1 h lo) ** (P arg1 (SUC lo) hi t)))`;
+    thm asmp1 = conjunct1(assume(asmp_tm));
+    thm asmp2 = conjunct2(assume(asmp_tm));
+    term goal = `! (lent : num) (n : num) (l : (A)list) (arg1 : B) (hi : num). 
+        (n <= lent) ==> (lent <= hi) ==> (lent = LENGTH l) ==> 
+        (P arg1 (hi - lent) hi l) = ((P arg1 (hi - lent) (hi - lent + n) (take l n)) ** (P arg1 (hi - lent + n) hi (rest l n)))`;
+    term lent = `lent : num`;
+    term n = `n : num`;
+    term l = `l : (A)list`;
+    thm ar1 = arith_rule(`! a. a - 0 = a`);
+    thm ar2 = arith_rule(`! a. a + 0 = a`);
+    thm ar3 = arith_rule(`! n. SUC n <= 0 <=> F`);
+    thm ar4 = arith_rule(`! a b c. SUC b <= a ==> (a - SUC b + SUC c) = (a - b + c)`);
+    thm ar5 = arith_rule(`! n. SUC n == 0 <=> F`);
+    thm ar6 = arith_rule(`! a b. SUC a <= SUC b ==> a <= b`);
+    thm ar7 = arith_rule(`! a b. SUC a <= b ==> a <= b`);
+    thm ar8 = arith_rule(`! a b. SUC a <= b ==> SUC (b - SUC a) = b - a`);
+    thm ar9 = arith_rule(`! a b. SUC a = SUC b ==> a = b`);
+
+    term goal_lent = conclusion(spec(lent, assume(goal)));
+    // show_induct_goal(lent, goal_lent, num_INDUCTION);
+
+    // lent = 0
+    term goal_lent0 = rewrite_term(`lent = 0`, goal_lent);
+    term goal_lent0_n = conclusion(spec(n, assume(goal_lent0)));
+    term casen0 = `n = 0`;
+    term casenS = `n = SUC n1`;
+    // n = 0
+    thm *thml = (thm[]){assume(casen0), ar1, ar2, TAKE_DEF, REST_DEF, asmp1, htrue_elim_left, hsep_hemp_left, NULL};
+    thm th2 = rewrite_list(thml, goal_lent0_n);
+    thm thl0n0 = simp(th2);
+    // n = SUC n1
+    thm th3 = rewrite(assume(casenS), goal_lent0_n);
+    thm th4 = rewrite_rhs(ar3, th3);
+    thm th5 = simp(th4);
+    thm thl0nS = choose(`n1 : num`, th5);
+    thm th6 = disj_cases(spec(n, num_CASES), thl0n0, thl0nS);
+    thm thl0 = gen(n, th6);
+    // lent = SUC lent1
+    term goal_lentS = rewrite_term(`SUC lent1 = SUC lent`,
+                        rewrite_term(`lent = SUC lent1`, goal_lent));
+    term goal_lentS_n = conclusion(spec(n, assume(goal_lentS)));
+    // n = 0    
+    thm th7 = rewrite_list(thml, goal_lentS_n);
+    thm thlSn0 = simp(th7);
+    // n = SUC n1
+    thm th8 = rewrite(assume(casenS), goal_lentS_n);
+    term subgoal = conclusion(spec(l, assume(dest_bin_snd_comb(conclusion(th8)))));
+    term subasump1_tm = `SUC n1 <= SUC lent`;
+    term subasump2_tm = `SUC lent <= hi`;
+    term concgoal = `SUC lent == LENGTH (l : (A)list) ==>
+        (P (arg1 : B) (hi - SUC lent) hi (l : (A)list) -|-
+        P arg1 (hi - SUC lent) (hi - SUC lent + SUC n1) (take l (SUC n1)) **
+        P arg1 (hi - SUC lent + SUC n1) hi (rest l (SUC n1)))`;
+    // show_induct_goal(l, subgoal, list_INDUCT);
+    // l = []
+    term subgoal_nil = rewrite_term(`(l : (A)list) = []`, concgoal);
+    thm th9 = rewrite(LENGTH, subgoal_nil);
+    thm th10 = rewrite_rhs(ar5, th9);
+    thm th11 = disch(disch(simp(th10), subasump2_tm), subasump1_tm);
+    thm thnil = gen(`arg1 : B`, gen(`hi : num`, th11));
+    // l = CONS
+    term subgoal_cons = rewrite_term(`CONS (h : A) l1 = CONS h l`, 
+                        rewrite_term(`l = CONS (h : A) l1`, concgoal));
+    thm subasump1 = assume(subasump1_tm);
+    thm subasump2 = assume(subasump2_tm);
+    thm th12 = rewrite_list((thm[]){TAKE_DEF, REST_DEF, asmp2, mp(ar4, subasump2), mp(ar8, subasump2), NULL}, subgoal_cons);
+    thm subasump1_ = mp(ar6, subasump1);
+    thm subasump2_ = mp(ar7, subasump2);
+    term subasump3_tm = dest_bin_fst_comb(dest_bin_snd_comb(conclusion(th12)));
+    term subconcgoal = dest_bin_snd_comb(dest_bin_snd_comb(conclusion(th12)));
+    thm subasump3_ = mp(ar9, rewrite_rule(LENGTH, assume(subasump3_tm)));
+    thm th13 = mp(mp(mp(assume(goal_lent), subasump1_), subasump2_), subasump3_);
+    thm th14 = rewrite(th13, subconcgoal);
+    thm th15 = rewrite_rhs(hsep_assoc, th14);
+    thm th16 = disch(simp(th15), subasump3_tm);
+    thm th17 = rewrite_rhs(th16, th12);
+    thm th18 = disch(disch(simp(th17), subasump2_tm), subasump1_tm);
+    thm th19 = gen(`arg1 : B`, gen(`hi : num`, th18));
+    thm thcons = gen(`h : A`, gen(l, disch(th19, subgoal)));
+    thm th20 = mp(list_INDUCT, conjunct(thnil, thcons));
+    thm th21 = rewrite_rule(symm(assume(casenS)), th20);
+    thm thlSnS = undisch(undisch(choose(`n1 : num`, disch(disch(th21, asmp_tm), goal_lent))));
+    thm th22 = disj_cases(spec(n, num_CASES), thlSn0, thlSnS);
+    thm thlS = gen(lent, disch(gen(n, th22), goal_lent));
+    thm solve = mp(num_INDUCTION, conjunct(thl0, thlS));
+
+    thm th = gen(`P : B -> num -> num -> (A)list -> hprop`, gen(`ONE : B -> A -> num -> hprop`, disch(solve, asmp_tm)));
+    return th;
+}
+)]];
+
+/*
+    n < LENGTH l
+==> rest l n = CONS (nth l n) (rest l (SUC n))
+*/
+[[cstar::proof(
+thm rest_nth()
+{
+    thm tmpth;
+    term l = `l : (A)list`;
+    term n = `n : num`;
+    term v = `v : A`;
+    term goall = `!(l : (A)list). (n < LENGTH l) ==> (rest l n = CONS (nth l n) (rest l (SUC n)))`;
+    term goal = `(n < LENGTH (l : (A)list)) ==> (rest l n = CONS (nth l n) (rest l (SUC n)))`;
+    // show_induct_goal(n, goall, num_INDUCTION);
+
+    term asmp = `!(l : (A)list). n < LENGTH l ==> (rest l n == CONS (nth l n) (rest l (SUC n)))`;
+
+    term goaln0 = subst(`0 : num`, n, goal);
+    term goaln0lnil = subst(`NIL : (A)list`, l, goaln0);
+    thm ar1 = arith_rule(`0 < 0 <=> F`);
+    thm thn0lnil = simp(rewrite_list((thm[]){LENGTH, ar1, NULL}, goaln0lnil));
+    term goaln0lcons = subst(`CONS h t : (A)list`, l, goaln0);
+    tmpth = simp(rewrite_list((thm[]){REST_DEF, NTH_DEF, NULL}, goaln0lcons));
+    tmpth = disch(tmpth, `(0 < LENGTH (t : (A)list) ==> rest t 0 == CONS (nth t 0) (rest t (SUC 0)))`);
+    thm thn0lcons = gens((term[]){`h : A`, `t : (A)list`}, 2, tmpth);
+    thm thn0 = mp(list_INDUCT, conjunct(thn0lnil, thn0lcons));
+
+    term goalnS = subst(`SUC n : num`, n, goal);
+    term goalnSlnil = subst(`NIL : (A)list`, l, goalnS);
+    thm ar2 = arith_rule(`SUC n < 0 <=> F`);
+    thm thnSlnil = simp(rewrite_list((thm[]){LENGTH, ar2, NULL}, goalnSlnil));
+    term goalnSlcons = `rest (CONS (h : A) t) (SUC n) == CONS (nth (CONS h t) (SUC n)) (rest (CONS h t) (SUC (SUC n)))`;
+    thm thpre = simp(rewrite_list((thm[]){REST_DEF, NTH_DEF, NULL}, goalnSlcons));
+    thm ar3 = arith_rule(`SUC n < SUC (LENGTH (t : (A)list)) ==> n < LENGTH t`);
+    term asmp2 = `SUC n < LENGTH (CONS (h : A) t)`;
+    tmpth = mp(assume(asmp), mp(ar3, rewrite_rule(LENGTH, assume(asmp2))));
+    tmpth = simp(rewrite_rhs(tmpth, thpre));
+    tmpth = disch(tmpth, asmp2);
+    tmpth = disch(tmpth, `(SUC n < LENGTH (t : (A)list) ==> rest t (SUC n) == CONS (nth t (SUC n)) (rest t (SUC (SUC n))))`);
+    thm thnSlcons = gens((term[]){`h : A`, `t : (A)list`}, 2, tmpth);
+    tmpth = mp(list_INDUCT, conjunct(thnSlnil, thnSlcons));
+    thm thnS = gen(n, disch(tmpth, asmp));
+    thm th = mp(num_INDUCTION, conjunct(thn0, thnS));
+
+    return th;
+}
+)]];
+
+/*
+    ((! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
+    (! (arg1 : B) (lo : num) (hi : num) (h : A) (t : (A)list). P arg1 lo hi (CONS h t) = ((ONE arg1 h lo) ** (P arg1 (SUC lo) hi t)))) ==>
+    (! (len : num) (n : num) (l : (A)list) (arg1 : B) (hi : num).
+        (n < len) ==> (len <= hi) ==> (len = LENGTH l) ==>
+        P arg1 (hi - len) hi l = 
+        (P arg1 (hi - len) (hi - len + n) (take l n) ** 
+        ONE arg1 (nth l n) (hi - len + n) **
+        P arg1 (hi - len + SUC n) hi (rest l (SUC n))))
+*/
+[[cstar::proof(
+thm breaknth_list_sepconj()
+{
+    term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
+        (! (arg1 : B) (lo : num) (hi : num) (h : A) (t : (A)list). P arg1 lo hi (CONS h t) = ((ONE arg1 h lo) ** (P arg1 (SUC lo) hi t)))`;
+    thm asmp1 = conjunct1(assume(asmp_tm));
+    thm asmp2 = conjunct2(assume(asmp_tm));
+    term asmp3 = `n < lent : num`;
+    term asmp4 = `lent <= hi : num`;
+    term asmp5 = `lent = LENGTH (l : (A)list)`;
+    term goal = ` 
+        (P : B -> num -> num -> (A)list -> hprop) arg1 (hi - len) hi l = ( 
+        (P arg1 (hi - len) (hi - len + n) (take l n)) **  
+        ((ONE : B -> A -> num -> hprop) arg1 (nth l n) (hi - len + n)) ** 
+        (P arg1 (hi - len + (SUC n)) hi (rest l (SUC n))))`;
+    term lent = `lent : num`;
+    term n = `n : num`;
+    term l = `l : (A)list`;
+    term arg = `arg1 : B`;
+    term hi = `hi : num`;
+    thm ar1 = arith_rule(`n < lent : num ==> n <= lent`);
+    thm asmp3th = mp(ar1, assume(asmp3));
+    thm thpre = mps(break_list_sepconj(), (thm[]){assume(asmp_tm), asmp3th, assume(asmp4), assume(asmp5), NULL});
+    thpre = spec(arg, thpre);
+    thm ar2 = arith_rule(`SUC (hi - lent + n) == hi - lent + (SUC n)`);
+    thm tmpth = rewrite_rule(assume(asmp5), assume(asmp3));
+    tmpth = mp(rest_nth(), tmpth);
+    tmpth = rewrite_rule_list((thm[]){tmpth, asmp2, ar2, NULL}, thpre);
+    tmpth = disch(disch(disch(tmpth, asmp5), asmp4), asmp3);
+    tmpth = gens((term[]){lent, n, l, arg, hi}, 5, tmpth);
+    tmpth = disch(tmpth, asmp_tm);
+    tmpth = gen(`P : B -> num -> num -> (A)list -> hprop`, 
+            gen(`ONE : B -> A -> num -> hprop`, tmpth));
+    return tmpth;
+}
+)]];
+
+/*
+    ((! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi 0 = (hfact (lo = hi))) &&
+    (! (arg1 : B) (lo : num) (hi : num) (n : num). P arg1 lo hi (SUC n) = ((ONE arg1 lo) ** (P arg1 (SUC lo) hi n)))) ==> 
+    (! (n : num) (i : num) (arg1 : B) (hi : num). 
+        (i <= n) ==> (n <= hi) ==> 
+        P arg1 (hi - n) hi n = (P arg1 (hi - n) (hi - n + i) i ** P arg1 (hi - n + i) hi (n - i)))
+*/
+[[cstar::proof(
+thm break_array_sepconj()
+{
+    // similar to break_list_sepconj
+    // verified in hol-light
+    term asmp_tm = `((! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi 0 = (hfact (lo = hi))) &&
+        (! (arg1 : B) (lo : num) (hi : num) (n : num). P arg1 lo hi (SUC n) = ((ONE arg1 lo) ** (P arg1 (SUC lo) hi n))))`;
+    thm asmp1 = conjunct1(assume(asmp_tm));
+    thm asmp2 = conjunct2(assume(asmp_tm));
+    term goal = `(! (n : num) (i : num) (arg1 : B) (hi : num). 
+        (i <= n) ==> (n <= hi) ==> 
+        P arg1 (hi - n) hi n = (P arg1 (hi - n) (hi - n + i) i ** P arg1 (hi - n + i) hi (n - i)))`;
+    term i = `i : num`;
+    term n = `n : num`;
+    thm ar1 = arith_rule(`! a. a - 0 = a`);
+    thm ar2 = arith_rule(`! a. a + 0 = a`);
+    thm ar3 = arith_rule(`! n. SUC n <= 0 <=> F`);
+    thm ar4 = arith_rule(`! a b c. SUC b <= a ==> (a - SUC b + SUC c) = (a - b + c)`);
+    thm ar5 = arith_rule(`! n m. SUC n - SUC i = n - i`);
+    thm ar6 = arith_rule(`! a b. SUC a <= SUC b ==> a <= b`);
+    thm ar7 = arith_rule(`! a b. SUC a <= b ==> a <= b`);
+    thm ar8 = arith_rule(`! a b. SUC a <= b ==> SUC (b - SUC a) = b - a`);
+
+    term goal_n = conclusion(spec(n, assume(goal)));
+    // show_induct_goal(n, goal_n, num_INDUCTION);
+
+    // n = 0
+    term goal_lent0 = rewrite_term(`n = 0`, goal_n);
+    term goal_lent0_i = conclusion(spec(i, assume(goal_lent0)));
+    term casei0 = `i = 0`;
+    term caseiS = `i = SUC i1`;
+    // i = 0
+    thm *thml = (thm[]){assume(casei0), ar1, ar2, asmp1, htrue_elim_left, hsep_hemp_left, NULL};
+    thm th2 = rewrite_list(thml, goal_lent0_i);
+    thm thn0i0 = simp(th2);
+    // i = SUC i1
+    thm th3 = rewrite(assume(caseiS), goal_lent0_i);
+    thm th4 = rewrite_rhs(ar3, th3);
+    thm th5 = simp(th4);
+    thm thn0iS = choose(`i1 : num`, th5);
+    thm th6 = disj_cases(spec(i, num_CASES), thn0i0, thn0iS);
+    thm thn0 = gen(i, th6);
+    // n = SUC n
+    term goal_nS = rewrite_term(`SUC n1 = SUC n`,
+                        rewrite_term(`n = SUC n1`, goal_n));
+    term goal_nS_i = conclusion(spec(i, assume(goal_nS)));
+    // i = 0 
+    thm th7 = rewrite_list(thml, goal_nS_i);
+    thm thnSi0 = simp(th7);
+    // i = SUC i1
+    thm th8 = rewrite(assume(caseiS), goal_nS_i);
+    // term subgoal = (dest_bin_snd_comb(conclusion(th8)));
+    term subasmp1_tm = `i <= SUC n`;
+    term subasmp2_tm = `SUC n <= hi`;
+    term subgoal = ` 
+        ((P : B -> num -> num -> num -> hprop) arg1 (hi - SUC n) hi (SUC n) -|- 
+        P arg1 (hi - SUC n) (hi - SUC n + i) i ** 
+        P arg1 (hi - SUC n + i) hi (SUC n - i))`;
+    thm subasmp1 = mp(ar6, rewrite_rule(assume(caseiS), assume(subasmp1_tm)));
+    thm subasmp2 = mp(ar7, assume(subasmp2_tm));
+    term asmp = subst(`i1 : num`, `i : num`, goal_n);
+    thm asmppre = mps(assume(asmp), (thm[]){subasmp1, subasmp2, NULL});
+    thm th9 = rewrite_list((thm[]){assume(caseiS), asmp2, mp(ar4, assume(subasmp2_tm)), ar5, mp(ar8, assume(subasmp2_tm)), asmppre, hsep_assoc, NULL}, subgoal);
+    thm th10 = disch(disch(disch(disch(simp(th9), subasmp2_tm), subasmp1_tm), asmp), asmp_tm);
+    thm th11 = choose(`i1 : num`, th10);
+    thm th12 = undisch(undisch(th11));
+    thm thnSiS = gens((term[]){`arg1 : B`, `hi : num`}, 2, th12);
+    thm th13 = disj_cases(spec(i, num_CASES), thnSi0, thnSiS);
+    thm thnS = gen(n, disch(gen(i, th13), asmp));
+    thm th = mp(num_INDUCTION, conjunct(thn0, thnS));
+    th = disch(th, asmp_tm);
+    th = gen(`P : B -> num -> num -> n -> hprop`, 
+            gen(`ONE : B -> num -> hprop`, th));
+    return th;
+}
+)]];
+
+/*
+    n < LENGTH l
+==> (nth (modified l n v) n) = v
+*/
+[[cstar::proof(
+thm modified_nth()
+{
+    term l = `l : (A)list`;
+    term n = `n : num`;
+    term v = `v : A`;
+    term goal = `!(n : num). n < LENGTH (l : (A)list) ==> (nth (modified l n (v : A)) n) = v`;
+    // show_induct_goal(l, goal, list_INDUCT);
+
+    term tm1 = `(n : num) < LENGTH ([] : (A)list)`;
+    thm th1 = rewrite(LENGTH, tm1);
+    term tm2 = `(n:num) < 0 <=> F`;
+    thm th2 = arith_rule(tm2);
+    thm th3 = trans(th1, th2);
+    term tm3 = `(n : num) < LENGTH ([] : (A)list) ==> (nth (modified [] n (v : A)) n) = v`;
+    thm th4 = rewrite_rule(refl(l), rewrite(th3, tm3));
+    thm basis = gen(n, th4);
+
+    thm asmp = assume(goal);
+    
+    term goal2 = `(n : num) < LENGTH (CONS (h : A) l) ==> (nth (modified (CONS h l) n (v : A)) n = v)`;
+    // show_induct_goal(n, goal2, num_INDUCTION);
+    
+    term tm4 = `nth (modified (CONS (h : A) l) 0 (v : A)) 0`;
+    thm th5 = rewrite(MODIFIED_DEF, tm4);
+    thm th6 = rewrite_rule(NTH_DEF, th5);
+    term tm5 = `0 < LENGTH (CONS (h : A) l)`;
+    thm basis2 = disch(th6, tm5);
+
+    thm asmp2 = assume(goal2);
+    term asmp3_tm = `SUC (n : num) < LENGTH (CONS (h : A) l)`;
+    thm asmp3 = assume(asmp3_tm);
+    thm th7 = rewrite_rule(LENGTH, asmp3);
+    term tm6 = `!(a : num) (b : num). SUC a < SUC b ==> a < b`;
+    thm th8 = arith_rule(tm6);
+    thm th9 = mp(th8, th7);
+    thm th10 = mp(asmp, th9);
+    term tm7 = `nth (modified (CONS (h : A) l) (SUC (n : num)) (v : A)) (SUC n) = v`;
+    thm th11 = rewrite(MODIFIED_DEF, tm7);
+    thm th12 = rewrite_rule(NTH_DEF, th11);
+    thm th13 = once_rewrite_rule(symm(th12), th10);
+    thm th14 = disch(th13, asmp3_tm);
+    thm th15 = disch(th14, goal2);
+    thm step2 = gen(n, th15);
+
+    thm goal2_th = mp(num_INDUCTION, conjunct(basis2, step2));
+
+    thm th16 = disch(goal2_th, goal);
+    thm th17 = gen(l, th16);
+    term h = `h : A`;
+    thm step = gen(h, th17);
+
+    thm goal_th = gen(v, mp(list_INDUCT, conjunct(basis, step)));
+    return goal_th;
+}
+)]];
+
+/*
+    n < LENGTH l
+==> ~(m = n)
+==> (nth (modified l n v) m) = nth l m
+*/
+[[cstar::proof(
+thm modified_mth()
+{
+    term l = `l : (A)list`;
+    term n = `n : num`;
+    term m = `m : num`;
+    term v = `v : A`;
+    term goal = `!(n : num) (m : num). n < LENGTH (l : (A)list) ==> ~(m = n) ==> (nth (modified l n (v : A)) m) = nth l m`;
+    // show_induct_goal(l, goal, list_INDUCT);
+
+    term tm1 = `(n : num) < LENGTH ([] : (A)list)`;
+    thm th1 = rewrite(LENGTH, tm1);
+    term tm2 = `(n:num) < 0 <=> F`;
+    thm th2 = arith_rule(tm2);
+    thm th3 = trans(th1, th2);
+    term tm3 = `(n : num) < LENGTH ([] : (A)list) ==> ~(m = n) ==> (nth (modified [] n (v : A)) m) = nth [] m`;
+    thm th4 = rewrite_rule(refl(l), rewrite(th3, tm3));
+    thm basis = gen(n, gen(m, th4));
+
+    thm asmp = assume(goal);
+    
+    term asmp1 = `(n : num) < LENGTH (CONS (h : A) l)`;
+    term asmp2 = `~((m : num) = n)`;
+    term goal2 = `nth (modified (CONS h l) n (v : A)) m = nth (CONS h l) m`;
+    term goal3 = `(n : num) < LENGTH (CONS (h : A) l) ==> ~(m = n) ==> nth (modified (CONS h l) n (v : A)) m = nth (CONS h l) m`;
+
+    thm n_CASES = spec(n, num_CASES);
+    thm m_CASES = spec(m, num_CASES);
+    term n0 = `(n : num) = 0`;
+    term nS = `n = SUC n1`;
+    term m0 = `(m : num) = 0`;
+    term mS = `m = SUC m1`;
+    thm asmpn0 = assume(n0);
+    thm asmpnS = assume(nS);
+    thm asmpm0 = assume(m0);
+    thm asmpmS = assume(mS);
+    
+    term tm4 = `~((m : num) = n)`;
+    term tm5 = `~((m : num) = 0)`;
+    thm th5 = rewrite_refl(asmpn0, tm4, tm5);
+    thm th6 = rewrite(asmpm0, tm5);
+    thm th7 = trans(th5, th6);
+    thm thn0m0 = rewrite_rule(refl(l), rewrite(th7, goal3));
+    
+    thm th13 = rewrite_list((thm[]){asmpn0, asmpmS, MODIFIED_DEF, NTH_DEF, NULL}, goal2);
+    thm th14 = rewrite_rule(refl(l), th13);
+    thm thn0mS = choose(`m1 : num`, disch(disch(th14, asmp2), asmp1));
+
+    thm thn0 = disj_cases(m_CASES, thn0m0, thn0mS);
+
+    thm th18 = rewrite_list((thm[]){asmpnS, asmpm0, MODIFIED_DEF, NTH_DEF, NULL}, goal2);
+    thm th19 = rewrite_rule(refl(l), th18);
+    thm thnSm0 = disch(disch(th19, asmp2), asmp1);
+
+    thm th24 = rewrite_list((thm[]){asmpnS, asmpmS, MODIFIED_DEF, NTH_DEF, LENGTH, NULL}, goal3);
+    term tm6 = `~(SUC m1 = SUC n1) ==> ~(m1 = n1)`;
+    thm th25 = undisch(arith_rule(tm6));
+    term tm7 = `SUC n1 < SUC (LENGTH (l : (A)list)) ==> n1 < (LENGTH l)`;
+    thm th26 = undisch(arith_rule(tm7));
+    thm th27 = mp(mp(assume(goal), th26), th25);
+    thm th28 = disch(th27, `~(SUC m1 = SUC n1)`);
+    thm th29 = disch(th28, `SUC n1 < SUC (LENGTH (l : (A)list))`);
+    thm th30 = rewrite_rule(symm(th24), th29);
+    thm th31 = choose(`m1 : num`, disch(th30, goal));
+    thm thnSmS = undisch(th31);
+
+    thm th32 = disj_cases(m_CASES, thnSm0, thnSmS);
+    thm th33 = choose(`n1 : num`, disch(th32, goal));
+    thm thnS = undisch(th33);
+
+    thm th34 = disj_cases(n_CASES, thn0, thnS);
+    thm th35 = gen(n, gen(m, th34));
+    thm th36 = disch(th35, goal);
+    thm step = gen(`h : A`, gen(l, th36));
+
+    thm goal_th = gen(v, mp(list_INDUCT, conjunct(basis, step)));
+
+    return goal_th;
+}
+)]];
+
+[[cstar::proof(
+thm modified_taken_restn_lemma(term goal, term subgoal, thm DEF)
+{
+    term l = `l : (A)list`;
+
+    // basis
+    term basis_goal = rewrite_term(`(l : (A)list) = []`, goal);
+    thm th1 = rewrite(LENGTH, basis_goal);
+    thm th2 = arith_rule(`n < 0 <=> F`);
+    thm th3 = rewrite_rhs(th2, th1);
+    thm basis = simp(th3);
+
+    // step
+    thm step_asmp = assume(goal);
+    term step_goal = rewrite_term(`l1 = (l : (A)list)`, 
+                    rewrite_term(`(l : (A)list) = CONS h l1`, goal));
+    thm th4 = rewrite(LENGTH, step_goal);
+    term subasmp = `n < LENGTH (CONS (h : A) l)`;
+    // case0
+    term case0 = `n = 0`;
+    thm th6 = rewrite_list((thm[]){assume(case0), MODIFIED_DEF, DEF, NULL}, subgoal);
+    thm thcase0 = disch(simp(th6), subasmp);
+    // caseS
+    term caseS = `n = SUC n1`;
+    thm th9 = rewrite_list((thm[]){assume(caseS), MODIFIED_DEF, DEF, NULL}, subgoal);
+
+    thm th10 = assume(subasmp);
+    thm th11 = rewrite_rule(assume(caseS), th10);
+    thm th12 = rewrite_rule(LENGTH, th11);
+    thm th13 = arith_rule(`SUC n1 < SUC (LENGTH l) ==> n1 < LENGTH (l : (A)list)`);
+    thm asmp_ = mp(th13, th12);
+    thm th14 = mp(step_asmp, asmp_);
+    thm th15 = rewrite_rhs(th14, th9);
+    thm th16 = disch(simp(th15), subasmp);
+    thm thcaseS = undisch(choose(`n1 : num`, disch(th16, goal)));
+    // merge
+    term n = `n : num`;
+    thm th17 = disj_cases(spec(n, num_CASES), thcase0, thcaseS);
+    thm th18 = gen(n, gen(`v : A`, th17));
+    thm th19 = disch(th18, goal);
+    thm step = gen(`h : A`, gen(l, th19));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+    return th;
+}
+)]];
+
+/*
+    n < LENGTH l
+==> (take (modified l n v) n) = (take l n)
+*/
+[[cstar::proof(
+thm modified_taken()
+{
+    term goal = `! (n : num) (v : A). 
+        (n < LENGTH l) ==> ((take (modified l n v) n) = (take l n))`;
+    term subgoal = `take (modified (CONS (h : A) l) n v) n == take (CONS h l) n`;
+    return modified_taken_restn_lemma(goal, subgoal, TAKE_DEF);
+}
+)]];
+
+/*
+    n < LENGTH l
+==> (rest (modified l n v) (SUC n)) = (rest l (SUC n))
+*/
+[[cstar::proof(
+thm modified_restn()
+{
+    term goal = `! (n : num) (v : A). 
+        (n < LENGTH l) ==> ((rest (modified l n v) (SUC n)) = (rest l (SUC n)))`;
+    term subgoal = `rest (modified (CONS (h : A) l) n v) (SUC n) == rest (CONS h l) (SUC n)`;
+    return modified_taken_restn_lemma(goal, subgoal, REST_DEF);
+}
+)]];
+
+/*
+    LENGTH (modified l n v) = LENGTH l
+*/
+[[cstar::proof(
+thm modified_len()
+{
+    term l = `l : (A)list`;
+    term goal = `! n v. LENGTH (modified l n (v : A)) = LENGTH l`;
+    // show_induct_goal(l, goal, list_INDUCT);
+
+    // basis
+    term basis_goal = rewrite_term(`(l : (A)list) = []`, goal);
+    thm th2 = rewrite_list((thm[]){MODIFIED_DEF, LENGTH, NULL}, basis_goal);
+    thm basis = simp(th2);
+
+    // step
+    thm step_asmp = assume(goal);
+    term step_goal = `! v. LENGTH (modified (CONS h l) n (v : A)) = LENGTH (CONS h l)`;
+    // case0
+    term case0 = `n = 0`;
+    thm th5 = rewrite_list((thm[]){assume(case0), MODIFIED_DEF, LENGTH, NULL}, step_goal);
+    thm thcase0 = simp(th5);
+    // caseS
+    term caseS = `n = SUC n1`;
+    thm th9 = spec(`n1 : num`, assume(goal));
+    thm th10 = rewrite_list((thm[]){assume(caseS), MODIFIED_DEF, LENGTH, th9, NULL}, step_goal);
+    thm th11 = simp(th10);
+    thm thcaseS = undisch(choose(`n1 : num`, disch(th11, goal)));
+    // merge
+    term n = `n : num`;
+    thm th12 = disj_cases(spec(n, num_CASES), thcase0, thcaseS);
+    thm th13 = gen(n, th12);
+    thm th14 = disch(th13, goal);
+    thm step = gen(`h : A`, gen(l, th14));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+    return th;
+}
+)]];
+
+/*
+    i < LENGTH l
+==> free_head v = free_head (nth l i)
+==> ifilter l = ifilter (modified l i v)
+*/
+[[cstar::proof(
+thm filter_inv()
+{
+    term j = `j : num`;
+    term asmp1_tm = `(i : num) < LENGTH (l : (num#num)list)`;
+    term asmp2_tm = `free_head v = free_head (nth l i)`;
+    term goal = `ifilter l = ifilter (modified l i v)`;
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = assume(asmp2_tm);
+    term tm1 = `(ifilter (modified l i v)) j`;
+    term tm2 = `(ifilter l) j`;
+    thm th1 = rewrite(IFILTER_DEF, tm1);
+    thm th2 = rewrite(IFILTER_DEF, tm2);
+
+    term casep = `id2i j = (i : num)`;
+    term casen = mk_comb(`~`, casep);
+
+    thm asmpp = assume(casep);
+    thm th3 = rewrite_rule(asmpp, th1);
+    thm th4 = rewrite_rule(mp(modified_nth(), asmp1), th3);
+    thm th5 = rewrite_rule(asmp2, th4);
+    thm th6 = rewrite_rule(asmpp, th2);
+    thm thp = trans(th6, symm(th5));
+
+    thm asmpn = assume(casen);
+    thm th7 = mp(mp(modified_mth(), asmp1), asmpn);
+    thm th8 = rewrite_rule(th7, th1);
+    thm thn = trans(th2, symm(th8));
+
+    thm th9 = merge_disj_cases(casep, thp, thn);
+    thm EQ_EXT = get_theorem("EQ_EXT");
+    term tm3 = `ifilter l`;
+    term tm4 = `ifilter (modified l i v)`;
+    thm th10 = spec(tm4, spec(tm3, EQ_EXT));
+    thm th11 = mp(th10, gen(j, th9));
+    thm th = disch(disch(th11, asmp2_tm), asmp1_tm);
+    
+    return th;
+}
+)]];
+
+/*
+    start <= end
+==> len = end - start
+==> i < len
+==> len = LENGTH l
+==> ~filter (i2id i)
+==> free_area_repr filter start end l =
+    free_area_repr filter start end (modified l i v)
+*/
+[[cstar::proof(
+thm far_inv()
+{
+    term asmp0_tm = `(start : num) <= end`;
+    term asmp1_tm = `(len : num) = end - start`;
+    term asmp2_tm = `(i : num) < len`;
+    term asmp3_tm = `len = LENGTH (l : (num#num)list)`;
+    term asmp4_tm = `~((filter : num -> bool) (i2id i))`;
+    thm asmp0 = assume(asmp0_tm);
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = rewrite_rule(asmp1, assume(asmp2_tm));
+    thm asmp3 = rewrite_rule(asmp1, assume(asmp3_tm));
+    thm asmp4 = rewrite_rule(I2ID_DEF, assume(asmp4_tm));
+    term lhs = `free_area_repr filter start end l`;
+    term rhs = `free_area_repr filter start end (modified l i v)`;
+    thm th1 = mp(breaknth_list_sepconj(), FREE_AREA_REPR_DEF);
+    thm th2 = mp(th1, asmp2);
+    term tm1 = `end - start <= (end : num)`;
+    thm th3 = arith_rule(tm1);
+    thm th4 = mp(th2, th3);
+
+    thm th5 = mp(th4, asmp3);
+    term tm2 = `start <= end ==> end - (end - start) = (start : num)`;
+    thm th6 = mp(arith_rule(tm2), asmp0);
+    thm th7 = rewrite_rule(th6, th5);
+    thm th8 = rewrite(th7, lhs);
+
+    term tm3 = `LENGTH (modified l i (v : num#num))`;
+    thm th9 = rewrite(modified_len(), tm3);
+    thm th10 = trans(asmp3, symm(th9));
+    thm th11 = mp(th4, th10);
+    thm th12 = rewrite_rule(th6, th11);
+    thm th13 = rewrite(th12, rhs);
+    thm th14 = rewrite_rule(asmp3, asmp2);
+    thm th15 = rewrite_rule(mp(modified_taken(), th14), th13);
+    thm th16 = rewrite_rule(mp(modified_restn(), th14), th15);
+    thm th17 = rewrite_rule(mp(modified_nth(), th14), th16);
+    thm th18 = rewrite_rule(asmp4, th17);
+    thm th19 = rewrite_rule(asmp4, th8);
+    thm th20 = trans(th19, symm(th18));
+    thm th21 = disch(disch(disch(disch(disch(th20, asmp4_tm), asmp3_tm), asmp2_tm), asmp1_tm), asmp0_tm);
+    thm th = gen(`l : (num#num)list`, gen(`i : num`, gen(`v : num#num`, gen(`filter : num -> bool`, th21))));
+    return th;
+}
+)]];
+
+[[cstar::proof(
+thm dn_inv_lemma(term goal, thm asmp1, thm asmp2, thm asmp3, term casep_tm, term casen_tm)
+{
+    thm disconj1 = taut(`! A B. A ==> A || B`);
+    thm casep = assume(casep_tm);
+    thm th5 = rewrite_list((thm[]){DLIST_NODE_ONE_DEF, casep, asmp3, asmp2, disconj1, NULL}, goal);
+    thm thp = simp(th5);
+
+    thm casen = assume(casen_tm);
+    thm th6 = mp(mp(modified_mth(), asmp1), casen);
+    thm th8 = rewrite_list((thm[]){DLIST_NODE_ONE_DEF, th6, asmp3, NULL}, goal);
+    thm thn = simp(th8);
+
+    thm th = merge_disj_cases(casep_tm, thp, thn);
+
+    return th;
+}
+)]];
+
+/*
+    i < LENGTH l
+==> ~free_head (nth l i)
+==> dlist_node addr (ifilter l) l dl hl lo hi dl'
+==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi dl'
+*/
+[[cstar::proof(
+thm dn_inv()
+{
+    term dl_ = `dl1 : (addr#addr)list`;
+    term goal = `! l hl dl i v addr lo hi. 
+        i < LENGTH l 
+        ==> ~free_head (nth l i) 
+        ==> dlist_node addr (ifilter l) l dl hl lo hi dl1 
+        ==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi dl1`;
+    // show_induct_goal(dl_, goal, list_INDUCT);
+
+    term tm1 = `(dl1 : (addr#addr)list) = []`;
+    term basis_goal = rewrite_term(tm1, goal);
+    thm th1 = rewrite(DLIST_NODE_DEF, basis_goal);
+    thm basis = rewrite_rule(refl(dl_), th1);
+
+    term asmp1_tm = `i < LENGTH (l : (num#num)list)`;
+    term asmp2_tm = `~free_head (nth l i)`;
+    term asmp3_tm = `dlist_node addr (ifilter l) l dl hl lo hi dl1`;
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = assume(asmp2_tm);
+    thm asmp3 = assume(asmp3_tm);
+
+    thm ind_asmp = assume(goal);
+    term ind_goal = ` 
+        dlist_node addr (ifilter l) l dl hl lo hi (CONS h dl1) 
+    ==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi (CONS h dl1)`;
+    thm th2 = rewrite(DLIST_NODE_DEF, ind_goal);
+    thm th3 = rewrite_rule(IFILTER_DEF, th2);
+
+    term casep = `id2i lo = i`;
+    term casen = mk_comb(`~`, casep);
+
+    thm th4 = assume(casep);
+    thm th5 = rewrite_rule(th4, th3);
+    thm th6 = rewrite_rule(asmp2, th5);
+    thm th7 = mp(mp(ind_asmp, asmp1), asmp2);
+    thm thp = rewrite_rule(th7, th6);
+
+    thm th8 = assume(casen);
+    thm th9 = mp(mp(modified_mth(), asmp1), th8);
+    
+    term goal1 = `dlist_node_one addr l dl hl lo h NXT PRV 
+                        ==> dlist_node_one addr (modified l i v) dl hl lo h NXT PRV`;
+    term case1p_tm = `vi2i (NXT h) = i`;
+    term case1n_tm = mk_comb(`~`, case1p_tm);
+    thm solve1 = dn_inv_lemma(goal1, asmp1, asmp2, th9, case1p_tm, case1n_tm);
+
+    term goal2 = `dlist_node_one addr l dl hl lo h PRV NXT 
+                        ==> dlist_node_one addr (modified l i v) dl hl lo h PRV NXT`;
+    term case2p_tm = `vi2i (PRV h) = i`;
+    term case2n_tm = mk_comb(`~`, case2p_tm);
+    thm solve2 = dn_inv_lemma(goal2, asmp1, asmp2, th9, case2p_tm, case2n_tm);
+
+    term cond = `free_head (nth l (id2i lo))`;
+    thm th10 = impl_conj_mono(solve1, solve2);
+    thm th11 = disch(assume(`T`), `T`);
+    thm th12 = impl_if_mono(cond, th10, th11);
+
+    term goal3 = `dlist_node addr (ifilter l) l dl hl (SUC lo) hi dl1 
+                        ==> dlist_node addr (ifilter l) (modified l i v) dl hl (SUC lo) hi dl1`;
+    thm solve3 = rewrite_rule(refl(dl_), rewrite(th7, goal3));
+    
+    thm th13 = impl_conj_mono(th12, solve3);
+    thm th14 = rewrite_rhs(th13, th3);
+    thm thn = simp(th14);
+
+    thm th16 = merge_disj_cases(casep, thp, thn);
+    thm th17 = disch(disch(th16, asmp2_tm), asmp1_tm);
+    thm th18 = gen(`l : (num#num)list`, gen(`hl : (addr#addr)list`, 
+                gen(`dl : (addr#addr)list`, gen(`i : num`, 
+                gen(`v : num#num`, gen(`addr : addr`, 
+                gen(`lo : num`, gen(`hi : num`, th17))))))));
+    thm th19 = disch(th18, goal);
+    thm step = gen(`h : addr#addr`, gen(dl_, th19));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+
+    return th;
+}
+)]];
+
+/*
+    i < LENGTH l
+==> ~free_head (nth l i)
+==> dlist_head addr l dl order maxorder hl
+==> dlist_head addr (modified l i v) dl order maxorder hl
+*/
+[[cstar::proof(
+thm dh_inv()
+{
+    term hl = `hl : (addr#addr)list`;
+    term goal = `! l dl i v addr order maxorder. 
+        i < LENGTH l 
+        ==> ~free_head (nth l i) 
+        ==> dlist_head addr l dl order maxorder hl 
+        ==> dlist_head addr (modified l i v) dl order maxorder hl`;
+    // show_induct_goal(hl, goal, list_INDUCT);
+
+    term tm1 = `(hl : (addr#addr)list) = []`;
+    term basis_goal = rewrite_term(tm1, goal);
+    thm th1 = rewrite(DLIST_HEAD_DEF, basis_goal);
+    thm basis = rewrite_rule(refl(hl), th1);
+
+    thm ind_asmp = assume(goal);
+    term ind_goal = ` 
+        dlist_head addr l dl order maxorder (CONS h hl) 
+    ==> dlist_head addr (modified l i v) dl order maxorder (CONS h hl)`;
+    thm th2 = rewrite(DLIST_HEAD_DEF, ind_goal);
+
+    term asmp1_tm = `i < LENGTH (l : (num#num)list)`;
+    term asmp2_tm = `~free_head (nth l i)`;
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = assume(asmp2_tm);
+
+    term goal1 = `dlist_head_one addr l dl order h 
+                        ==> dlist_head_one addr (modified l i v) dl order h`;
+    term case1p_tm = `vi2i (NXT h) = i`;
+    term case1n_tm = mk_comb(`~`, case1p_tm);
+    term case2p_tm = `vi2i (PRV h) = i`;
+    term case2n_tm = mk_comb(`~`, case2p_tm);
+    thm case1p = assume(case1p_tm);
+    thm case1n = assume(case1n_tm);
+    thm case2p = assume(case2p_tm);
+    thm case2n = assume(case2n_tm);
+
+    thm disconj1 = taut(`! A B. A ==> A || B`);
+    thm th6 = rewrite_list((thm[]){DLIST_HEAD_ONE_DEF, DLIST_HEAD_HALF_DEF, case1p, asmp2, disconj1, NULL}, goal1);
+    thm thp = simp(th6);
+
+    thm th9 = rewrite_list((thm[]){DLIST_HEAD_ONE_DEF, DLIST_HEAD_HALF_DEF, case2p, asmp2, disconj1, NULL}, goal1);
+    thm thnp = simp(th9);
+
+    thm th10 = mp(mp(modified_mth(), asmp1), case1n);
+    thm th11 = mp(mp(modified_mth(), asmp1), case2n);
+    thm th13 = rewrite_list((thm[]){DLIST_HEAD_ONE_DEF, DLIST_HEAD_HALF_DEF, th10, th11, NULL}, goal1);
+    thm thnn = simp(th13);
+    thm thn = merge_disj_cases(case2p_tm, thnp, thnn);
+    thm solve1 = merge_disj_cases(case1p_tm, thp, thn);
+
+    term goal2 = `dlist_head addr l dl (SUC order) maxorder hl 
+                        ==> dlist_head addr (modified l i v) dl (SUC order) maxorder hl`;
+    thm th14 = mp(mp(ind_asmp, asmp1), asmp2);
+    thm solve2 = simp(rewrite(th14, goal2));
+
+    thm th15 = rewrite_rule(impl_conj_mono(solve1, solve2), th2);
+    thm th16 = disch(disch(th15, asmp2_tm), asmp1_tm);
+    thm th17 = gen(`l : (num#num)list`, gen(`dl : (addr#addr)list`, 
+                gen(`i : num`, gen(`v : num#num`, 
+                gen(`addr : addr`, gen(`order : num`, 
+                gen(`maxorder : num`, th16)))))));
+    thm th18 = disch(th17, goal);
+    thm step = gen(`h : addr#addr`, gen(hl, th18));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+
+    return th;
+}
+)]];
+
+/*
+    (i2id i < lo) ==> (i < LENGTH l)
+==> (free_area_repr (ifilter l) lo hi l' =
+    free_area_repr (ifilter (modified l i (0, order))) lo hi l')
+*/
+[[cstar::proof(
+thm far_lemma()
+{   
+    term l_ = `l1 : (num#num)list`;
+    term goal = `! l i lo hi order. 
+        (i2id i < lo) ==> (i < LENGTH l) 
+        ==> (free_area_repr (ifilter l) lo hi l1 -|- 
+            free_area_repr (ifilter (modified l i (0, order))) lo hi l1)`;
+    // show_induct_goal(l_, goal, list_INDUCT);
+
+    term asmp1_tm = `i2id i < (lo : num)`;
+    term asmp2_tm = `i < LENGTH (l : (num#num)list)`;
+    thm asmp1 = rewrite_rule(I2ID_DEF, assume(asmp1_tm));
+    thm asmp2 = assume(asmp2_tm);
+
+    // basis
+    term basis_goal = rewrite_term(`(l1 : (num#num)list) = []`, goal);
+    thm th1 = rewrite(FREE_AREA_REPR_DEF, basis_goal);
+    thm basis = simp(th1);
+
+    // step
+    thm ind_asmp = assume(goal);
+    term ind_goal = `free_area_repr (ifilter l) lo hi (CONS h l1) -|- 
+            free_area_repr (ifilter (modified l i (0, order))) lo hi (CONS h l1)`;
+    thm th4 = rewrite_list((thm[]){FREE_AREA_REPR_DEF, IFILTER_DEF, ID2I_DEF, NULL}, ind_goal);
+    term tm1 = `start + i < (lo : num) ==> ~(lo - start = i)`;
+    thm th5 = arith_rule(tm1);
+    thm th6 = mp(mp(modified_mth(), asmp2), mp(th5, asmp1));
+    thm th7 = rewrite_rhs(th6, th4);
+    term tm2 = `i2id i < lo ==> i2id i < SUC lo`;
+    thm th8 = arith_rule(tm2);
+    thm th9 = mp(mp(ind_asmp, mp(th8, assume(asmp1_tm))), asmp2);
+    thm th10 = rewrite_rhs(th9, th7);
+    thm th11 = simp(th10);
+    thm th12 = disch(disch(th11, asmp2_tm), asmp1_tm);
+    thm th13 = gen(`l : (num#num)list`, gen(`i : num`, 
+                gen(`lo : num`, gen(`hi : num`, 
+                gen(`order : num`, th12)))));
+    thm th14 = disch(th13, goal);
+    thm step = gen(`h : num#num`, gen(l_, th14));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+
+    return th;
+}
+)]];
+
+/*
+    start <= lo ==> lo <= i2id i ==> i2id i < hi
+==> i < LENGTH l
+==> ifilter l (i2id i)
+==> nth l i = nth l' ((i2id i) - lo)
+==> free_area_repr (ifilter l) lo hi l' = (
+    free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l' **
+    store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2))
+*/
+[[cstar::proof(
+thm far_split()
+{
+    term l_ = `l1 : (num#num)list`;
+    term goal = `! (l : (num#num)list) lo hi i. 
+        (start : num) <= lo ==> lo <= i2id i ==> i2id i < hi 
+    ==> i < LENGTH l 
+    ==> ifilter l (i2id i) 
+    ==> nth l i = nth l1 ((i2id i) - lo) 
+    ==> free_area_repr (ifilter l) lo hi l1 = ( 
+        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l1) ** 
+        (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
+    // show_induct_goal(l_, goal, list_INDUCT);
+
+    term asmp1_tm = `(start : num) <= lo`;
+    term asmp2_tm = `(lo : num) <= i2id i`;
+    term asmp3_tm = `i2id i < (hi : num)`;
+    term asmp4_tm = `i < LENGTH (l : (num#num)list)`;
+    term asmp5_tm = `ifilter l (i2id i)`;
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = assume(asmp2_tm);
+    thm asmp3 = assume(asmp3_tm);
+    thm asmp4 = assume(asmp4_tm);
+    thm asmp5 = assume(asmp5_tm);
+
+    // basis
+    term tm1 = `nth (l : (num#num)list) i = nth l1 ((i2id i) - lo) 
+    ==> free_area_repr (ifilter l) lo hi l1 = ( 
+        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l1) ** 
+        (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
+    term tm2 = rewrite_term(`(l1 : (num#num)list) = []`, tm1);
+    term tm3 = `(lo : num) <= i2id i && i2id i < hi ==> ~(lo = hi)`;
+    thm th2 = arith_rule(tm3);
+    thm th3 = mp(th2, conjunct(asmp2, asmp3));
+    thm th6 = rewrite_list((thm[]){FREE_AREA_REPR_DEF, th3, hfalse_absorb_left, NULL}, tm2);
+    thm th7 = simp(th6);
+    thm th8 = disch(disch(disch(disch(disch(th7, asmp5_tm), asmp4_tm), asmp3_tm), asmp2_tm), asmp1_tm);
+    thm basis = gen(`l : (num#num)list`, gen(`lo : num`, 
+                gen(`hi : num`, gen(`i : num`, th8))));
+    
+    // step
+    term goal2 = `nth (l : (num#num)list) i == nth (CONS h l1) ((i2id i) - lo) 
+    ==> free_area_repr (ifilter l) lo hi (CONS h l1) = ( 
+        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi (CONS h l1)) ** 
+        (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
+    thm th9 = rewrite(FREE_AREA_REPR_DEF, goal2);
+    
+    term casep_tm = `(lo : num) = i2id i`;
+    term casen_tm = mk_comb(`~`, casep_tm);
+    thm casep = assume(casep_tm);
+    thm casen = assume(casen_tm);
+
+    // casep
+    term tm4 = `(i2id i) - (i2id i) = 0`;
+    thm th17 = arith_rule(tm4);
+    thm th20 = rewrite_list_rhs((thm[]){casep, asmp5, IFILTER_DEF, i2id2i(), mp(modified_nth(), asmp4),
+        FREE_HEAD_DEF, ORD_DEF, th17, NTH_DEF, hsep_hemp_left, NULL}, th9);
+    // break into subgoals
+    term tm5 = `nth l i = (h : num#num)`;
+    thm th21 = assume(tm5);
+    term tm6 = `store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) 
+        (PAGE_SIZE * 2 EXP SND (h : num#num)) 
+        (PAGE_SIZE * 2 EXP SND (h : num#num) - PTR_SIZE * 2)`;
+    thm th22 = rewrite(symm(th21), tm6);
+    term tm7 = `i2id i < SUC (i2id i)`;
+    thm th23 = arith_rule(tm7);
+    thm th24 = mp(mp(far_lemma(), th23), asmp4);
+    term tm8 = `free_area_repr (ifilter l) (SUC (i2id i)) hi l1`;
+    thm th25 = rewrite(th24, tm8);
+    term tm9 = mk_comb(mk_comb(`**`, tm6), tm8);
+    thm th28 = rewrite_list((thm[]){th22, th25, hsep_comm, NULL}, tm9);
+    thm th29 = disch(th28, tm5);
+    thm th30 = rewrite_rhs(th29, th20);
+    thm thp = simp(th30);
+
+    // casen
+    thm th32 = rewrite_rhs(IFILTER_DEF, th9);
+    thm th33 = rewrite_rhs(ID2I_DEF, th32);
+    term tm10 = `(start : num) <= lo ==> ~(lo = start + i) ==> ~((lo - start) = i)`;
+    thm th34 = rewrite_rule(symm(I2ID_DEF), arith_rule(tm10));
+    thm th35 = mp(mp(th34, asmp1), casen);
+    thm th36 = mp(mp(modified_mth(), asmp4), th35);
+    thm th37 = rewrite_rhs(th36, th33);
+    term tm11 = `start <= lo ==> start <= SUC lo`;
+    thm th38 = arith_rule(tm11);
+    thm asmp1_ = mp(th38, asmp1);
+    term tm12 = `lo <= i2id i ==> ~(lo = i2id i) ==> SUC lo <= i2id i`;
+    thm th39 = arith_rule(tm12);
+    thm asmp2_ = mp(mp(th39, asmp2), casen);
+    thm th40 = mp(mp(mp(mp(mp(assume(goal), asmp1_), asmp2_), asmp3), asmp4), asmp5);
+    term tm15 = `SUC lo <= i2id i ==> ((i2id i) - lo) = SUC ((i2id i) - SUC lo)`;
+    thm th47 = arith_rule(tm15);
+    thm th48 = mp(th47, asmp2_);
+    term tm13 = `nth (l : (num#num)list) i == nth (CONS h l1) ((i2id i) - (lo : num))`;
+    thm th49 = rewrite_rule(th48, assume(tm13));
+    thm th50 = rewrite_rule(NTH_DEF, th49);
+    thm th41 = mp(th40, th50);
+    term tm14 = dest_bin_fst_comb(dest_bin_snd_comb(dest_bin_snd_comb(conclusion(th37))));
+    thm th42 = rewrite(th41, tm14);
+    thm th43 = disch(th42, tm13);
+    thm th44 = rewrite_rhs(hsep_assoc, th37);
+    thm th45 = rewrite_rhs(th43, th44);
+    thm thn = simp(th45);
+    
+    // merge
+    thm th46 = merge_disj_cases(casep_tm, thp, thn);
+    thm th52 = disch(disch(disch(disch(disch(th46, asmp5_tm), asmp4_tm), asmp3_tm), asmp2_tm), asmp1_tm);
+    
+    thm th53 = gen(`l : (num#num)list`, gen(`lo : num`, 
+                gen(`hi : num`, gen(`i : num`, th52))));
+    thm th54 = disch(th53, goal);
+    thm step = gen(`h : num#num`, gen(l_, th54));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+    return th;
+}
+)]];
+
+/*
+    start <= lo ==> lo <= i2id i ==> i2id i < hi
+==> i < LENGTH l
+==> ~(ifilter l (i2id i))
+==> ~(order = NO_ORDER)
+==> (nth l i = nth l' ((i2id i) - lo))
+==> (free_area_repr (ifilter l) lo hi l' **
+    store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
+    free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l' ((i2id i) - lo) (0, order)))
+*/
+[[cstar::proof(
+thm far_merge()
+{
+    term l_ = `l1 : (num#num)list`;
+    term goal = `! (l : (num#num)list) lo hi i. 
+        (start : num) <= lo ==> lo <= i2id i ==> i2id i < hi 
+    ==> i < LENGTH l 
+    ==> ~(ifilter l (i2id i)) 
+    ==> ~(order = NO_ORDER) 
+    ==> nth l i = nth l1 ((i2id i) - lo) 
+    ==> (free_area_repr (ifilter l) lo hi l1 ** 
+        store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
+        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
+    // show_induct_goal(l_, goal, list_INDUCT);
+
+    term asmp1_tm = `(start : num) <= lo`;
+    term asmp2_tm = `(lo : num) <= i2id i`;
+    term asmp3_tm = `i2id i < (hi : num)`;
+    term asmp4_tm = `i < LENGTH (l : (num#num)list)`;
+    term asmp5_tm = `~(ifilter l (i2id i))`;
+    term asmp6_tm = `~((order : num) = NO_ORDER)`;
+    thm asmp1 = assume(asmp1_tm);
+    thm asmp2 = assume(asmp2_tm);
+    thm asmp3 = assume(asmp3_tm);
+    thm asmp4 = assume(asmp4_tm);
+    thm asmp5 = assume(asmp5_tm);
+    thm asmp6 = assume(asmp6_tm);
+
+    // basis
+    term tm1 = `nth l i = nth l1 ((i2id i) - lo) 
+    ==> (free_area_repr (ifilter l) lo hi l1 ** 
+        store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
+        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
+    term tm2 = rewrite_term(`(l1 : (num#num)list) = []`, tm1);
+    term tm3 = `(lo : num) <= i2id i && i2id i < hi ==> ~(lo = hi)`;
+    thm th2 = arith_rule(tm3);
+    thm th3 = mp(th2, conjunct(asmp2, asmp3));
+    thm th6 = rewrite_list((thm[]){MODIFIED_DEF, FREE_AREA_REPR_DEF, th3, hfalse_absorb_left, NULL}, tm2);
+    
+    thm th7 = simp(th6);
+    thm th8 = disch(disch(disch(disch(disch(disch(th7, asmp6_tm), asmp5_tm), asmp4_tm), asmp3_tm), asmp2_tm), asmp1_tm);
+    thm basis = gen(`l : (num#num)list`, gen(`lo : num`, 
+                gen(`hi : num`, gen(`i : num`, th8))));
+    
+    // step
+    term goal2 = `nth l i = nth (CONS h l1) ((i2id i) - lo) 
+    ==> (free_area_repr (ifilter l) lo hi (CONS h l1) ** 
+        store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
+        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified (CONS h l1) ((i2id i) - lo) (0, order))`;
+    
+    term casep_tm = `(lo : num) = i2id i`;
+    term casen_tm = mk_comb(`~`, casep_tm);
+    thm casep = assume(casep_tm);
+    thm casen = assume(casen_tm);
+
+    // casep
+    term tm4 = `(i2id i) - (i2id i) = 0`;
+    thm th10 = arith_rule(tm4);
+    thm th25 = rewrite_list((thm[]){casep, th10, MODIFIED_DEF, FREE_AREA_REPR_DEF, 
+        asmp5, IFILTER_DEF, i2id2i(), mp(modified_nth(), asmp4), FREE_HEAD_DEF, REF_DEF,
+        ORD_DEF, asmp6, NTH_DEF, hsep_hemp_left, NULL}, goal2);
+    // break into subgoals
+    term tm6 = `store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) 
+        (PAGE_SIZE * 2 EXP order) 
+        (PAGE_SIZE * 2 EXP order - PTR_SIZE * 2)`;
+    term tm7 = `i2id i < SUC (i2id i)`;
+    thm th26 = arith_rule(tm7);
+    thm th27 = mp(mp(far_lemma(), th26), asmp4);
+    term tm8 = `free_area_repr (ifilter l) (SUC (i2id i)) hi l1`;
+    thm th28 = rewrite(th27, tm8);
+    term tm9 = mk_comb(mk_comb(`**`, tm8), tm6);
+    thm th29 = rewrite(spec(tm8, hsep_comm), tm9);
+    thm th30 = rewrite_rhs(th28, th29);
+    thm th31 = rewrite_rhs(th30, th25);
+    thm thp = simp(th31);
+
+    // casen
+    term tm10 = `(start : num) <= lo ==> ~(lo = start + i) ==> ~((lo - start) = i)`;
+    thm th32 = arith_rule(tm10);
+    thm th33 = mp(mp(th32, asmp1), rewrite_rule(I2ID_DEF, casen));
+    term tm11 = `start <= lo ==> start <= SUC lo`;
+    thm th34 = arith_rule(tm11);
+    thm asmp1_ = mp(th34, asmp1);
+    term tm12 = `lo <= i2id i ==> ~(lo = i2id i) ==> SUC lo <= i2id i`;
+    thm th35 = arith_rule(tm12);
+    thm asmp2_ = mp(mp(th35, asmp2), casen);
+    term tm13 = `SUC lo <= i2id i ==> ((i2id i) - lo) = SUC ((i2id i) - SUC lo)`;
+    thm th36 = arith_rule(tm13);
+    thm th37 = mp(th36, asmp2_);
+    thm th43 = mp(mp(modified_mth(), asmp4), th33);
+    thm th45 = rewrite_list((thm[]){th37, MODIFIED_DEF, FREE_AREA_REPR_DEF, IFILTER_DEF, 
+        ID2I_DEF, th43, NTH_DEF, NULL}, goal2);
+    thm th46 = mp(mp(mp(mp(mp(mp(assume(goal), asmp1_), asmp2_), asmp3), asmp4), asmp5), asmp6);
+    term tm14 = dest_bin_fst_comb(dest_bin_snd_comb(dest_bin_snd_comb(conclusion(th45))));
+    thm th47 = rewrite(hsep_assoc, tm14);
+    thm th48 = rewrite_rhs(undisch(th46), th47);
+    term tm15 = `nth (l : (num#num)list) i == nth l1 ((i2id i) - SUC lo)`;
+    thm th49 = disch(th48, tm15);
+    thm th50 = rewrite_rhs(th49, th45);
+    thm thn = simp(th50);
+
+    // merge
+    thm th51 = merge_disj_cases(casep_tm, thp, thn);
+    thm th52 = disch(disch(disch(disch(disch(disch(th51, asmp6_tm), asmp5_tm), asmp4_tm), asmp3_tm), asmp2_tm), asmp1_tm);
+    thm th53 = gen(`l : (num#num)list`, gen(`lo : num`, 
+                gen(`hi : num`, gen(`i : num`, th52))));
+    thm th54 = disch(th53, goal);
+    thm step = gen(`h : num#num`, gen(l_, th54));
+
+    thm th = mp(list_INDUCT, conjunct(basis, step));
+    return th;
+}
+)]];
+
+/*
+    store_zero_array (addr + &i) lo hi n =
+    store_zero_array addr (lo + i) (hi + i) n
+*/
+[[cstar::proof(
+thm store_array_addr()
+{
+    term n = `n : num`;
+    term goal = `! addr i lo hi. 
+        store_zero_array (addr + &i) lo hi n = 
+        store_zero_array addr (lo + i) (hi + i) n`;
+    // show_induct_goal(n, goal, num_INDUCTION);
+
+    // basis
+    term basis_goal = rewrite_term(`n = 0`, goal);
+    thm th1 = rewrite(STORE_ZERO_ARRAY_DEF, basis_goal);
+    term tm1 = `(lo + i) = (hi + i) <=> (lo : num) = hi`;
+    thm th2 = arith_rule(tm1);
+    thm th3 = rewrite_rhs(th2, th1);
+    thm basis = simp(th3);
+
+    // step
+    term tm2 = rewrite_term(`n = SUC m`, goal);
+    term step_goal = rewrite_term(`SUC m = SUC n`, tm2);
+    thm th4 = rewrite(STORE_ZERO_ARRAY_DEF, step_goal);
+    term tm3 = `(addr + &i) + &lo = addr + &(lo + i)`;
+    thm th5 = arith_rule(tm3);
+    thm th6 = rewrite_rhs(th5, th4);
+    thm th7 = assume(goal);
+    thm th8 = rewrite_rhs(th7, th6);
+    term tm4 = `SUC lo + i = SUC (lo + i)`;
+    thm th9 = arith_rule(tm4);
+    thm th10 = rewrite_rhs(th9, th8);
+    thm th11 = simp(th10);
+    thm th12 = disch(th11, goal);
+    thm step = gen(n, th12);
+
+    thm th = mp(num_INDUCTION, conjunct(basis, step));
+
+    return th;
+}
+)]];
+
+/*
+    id2vi (pid + n) == id2vi pid + &(PAGE_SIZE * n)
+*/
+[[cstar::proof(
+thm sza_merge_lemma()
+{
+    term tm1 = `id2vi (pid + n)`;
+    term tm2 = `((pid + n) * PAGE_SIZE) = (pid * PAGE_SIZE) + (PAGE_SIZE * n)`;
+    thm th4 = arith_rule(tm2);
+    term tm3 = `&((pid * PAGE_SIZE) + (PAGE_SIZE * n)) = &(pid * PAGE_SIZE) + &(PAGE_SIZE * n)`;
+    thm th5 = arith_rule(tm3);
+    term tm4 = `(&(pid * PAGE_SIZE) + &(PAGE_SIZE * n)) - &offset = (&(pid * PAGE_SIZE) - &offset) + &(PAGE_SIZE * n)`;
+    thm th6 = arith_rule(tm4);
+    thm th9 = rewrite_list((thm[]){ID2VI_DEF, PH2VI_DEF, ID2PH_DEF, th4, 
+        th5, th6, NULL}, tm1);
+    term tm5 = `id2vi pid + &(PAGE_SIZE * n)`;
+    thm th12 = rewrite_list((thm[]){ID2VI_DEF, PH2VI_DEF, ID2PH_DEF, NULL}, tm5);
+    thm th13 = trans(th9, symm(th12));
+    return th13;
+}
+)]];
+
+/*
+    (store_zero_array (id2vi pid) 0 (PAGE_SIZE * n) (PAGE_SIZE * n) **
+    store_zero_array (id2vi (pid + n)) 0 (PAGE_SIZE * n) (PAGE_SIZE * n)) =
+    store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))
+*/
+[[cstar::proof(
+thm sza_merge_lemma2()
+{
+    term rhs = `store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))`;
+    thm th1 = mp(break_array_sepconj(), STORE_ZERO_ARRAY_DEF);
+    term tm1 = `PAGE_SIZE * n <= PAGE_SIZE * (n * 2)`;
+    thm th2 = arith_rule(tm1);
+    term tm2 = `PAGE_SIZE * (n * 2) <= PAGE_SIZE * (n * 2)`;
+    thm th3 = arith_rule(tm2);
+    thm th4 = mp(mp(th1, th2), th3);
+    term tm3 = `! (a : num). a - a = 0`;
+    thm th5 = arith_rule(tm3);
+    term tm4 = `! (a : num). 0 + a = a`;
+    thm th6 = arith_rule(tm4);
+    term tm5 = `PAGE_SIZE * n * 2 - PAGE_SIZE * n = PAGE_SIZE * n`;
+    thm th7 = arith_rule(tm5);
+    thm th8 = rewrite_rule(th5, th4);
+    thm th9 = rewrite_rule(th6, th8);
+    thm th10 = rewrite_rule(th7, th9);
+    
+    term lhs2 = `store_zero_array (id2vi (pid + n)) 0 (PAGE_SIZE * n) (PAGE_SIZE * n)`;
+    thm th13 = rewrite_list((thm[]){sza_merge_lemma(), store_array_addr(), th6, NULL}, lhs2);
+    term tm6 = `PAGE_SIZE * n + PAGE_SIZE * n = PAGE_SIZE * n * 2`;
+    thm th14 = arith_rule(tm6);
+    thm th15 = rewrite_rhs(th14, th13);
+
+    thm th16 = rewrite(th10, rhs);
+    thm th17 = rewrite_rhs(symm(th15), th16);
+    thm th = gen(`n : num`, gen(`pid : num`, symm(th17)));
+    
+    return th;
+}
+)]];
+
+/*
+    (abs(&j - &i) = &(2 EXP ord)) 
+==> store_zero_array (i2vi i) 0 (PAGE_SIZE * 2 EXP ord) (PAGE_SIZE * 2 EXP ord) ** 
+    store_zero_array (i2vi j) 0 (PAGE_SIZE * 2 EXP ord) (PAGE_SIZE * 2 EXP ord)
+-|- store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))
+*/
+[[cstar::proof(
+thm sza_merge()
+{
+    term goal = `store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))`;
+    term asmp = `abs(&(j : num) - &(i : num)) = &(2 EXP ord)`;
+    term casep = `(j : num) <= i`;
+    term casen = mk_comb(`~`, casep);
+    thm ar1 = arith_rule(`! x : num. j <= i ==> (abs(&j - &i) = &x) ==> i = j + x`);
+    thm ar2 = arith_rule(`! x : num. ~(j <= i) ==> (abs(&j - &i) = &x) ==> j = i + x`);
+    thm ar3 = arith_rule(`! x : num. 2 * x = x * 2`);
+    thm ar4 = arith_rule(`! x y. (start + x) + y = start + x + y`);
+
+    thm thpre = rewrite_list((thm[]){get_theorem("EXP"), ar3, I2VI_DEF, symm(sza_merge_lemma2()), NULL}, goal);
+
+    term min = `MIN j i`;
+    thm min_def = rewrite(get_theorem("MIN"), min);
+    thm p1 = rewrite_rhs(assume(casep), min_def);
+    thm n1 = rewrite_rhs(assume(casen), min_def);
+    thm p2 = mp(mp(ar1, assume(casep)), assume(asmp));
+    thm n2 = mp(mp(ar2, assume(casen)), assume(asmp));
+    thm thp = symm(rewrite_list_rhs((thm[]){p1, I2ID_DEF, ar4, symm(I2ID_DEF), symm(p2), symm(I2VI_DEF), hsep_comm, NULL}, thpre));
+    thm thn = symm(rewrite_list_rhs((thm[]){n1, I2ID_DEF, ar4, symm(I2ID_DEF), symm(n2), symm(I2VI_DEF), NULL}, thpre));
+    thm th = merge_disj_cases(casep, thp, thn);
+    th = gen(`i : num`, gen(`j : num`, gen(`ord : num`, disch(th, asmp))));
+    return th;
+}
+)]];
+
+/*
+    id2i (i2id i) = i
+*/
+[[cstar::proof(
+thm i2id2i()
+{
+    term tm = `id2i (i2id i)`;
+    thm ar = arith_rule(`! a : num. (start + a) - start = a`);
+    thm th = rewrite_list((thm[]){ID2I_DEF, I2ID_DEF, ar, NULL}, tm);
+    return gen(`i : num`, th);
+}
+)]];
+
+[[cstar::proof(
+thm merge_head_body_axiom()
+{
+    return new_axiom(` 
+    ! (i : num) (sz : num) (order : num). 
+        store_zero_array (i2vi i) (PTR_SIZE * 2) (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order - PTR_SIZE * 2) ** 
+        data_at(i2vi i, Tptr, &0) ** 
+        data_at(i2vi i + &PTR_SIZE, Tptr, &0) 
+    -|- store_zero_array (i2vi i) 0 (PAGE_SIZE * 2 EXP order) (PAGE_SIZE * 2 EXP order) 
+    `);
+}
+)]];
+
+
+// spa : spa addr start end l
+// i_l_len : i < len
+// len : len = LENGTH l
+// st_ed : start < end
+[[cstar::proof(
+thm break_spa_at_i(term spa, thm i_l_len, thm len, thm st_ed)
+{
+    thm ar1 = rewrite_rule(symm(LEN_DEF), arith_rule(`end - start <= end`));
+    thm ar2 = rewrite_rule(symm(LEN_DEF), arith_rule(`start < end ==> end - (end - start) = start`));
+    thm ar3 = arith_rule(`! a : num. 0 + a = a`);
+    thm ar4 = arith_rule(`! i. start + (SUC i) = SUC (start + i)`);
+    thm tmpth;
+    tmpth = mps(breaknth_list_sepconj(), (thm[]){STORE_PAGEINFO_ARRAY_DEF, i_l_len, ar1, len, NULL});
+    tmpth = rewrite_rule_list((thm[]){mp(ar2, st_ed), ar3, NULL}, tmpth);
+    tmpth = rewrite_list((thm[]){tmpth, ar4, symm(I2ID_DEF), i2id2i(), hsep_assoc, NULL}, spa);
+    return tmpth;
+}
+)]];
+

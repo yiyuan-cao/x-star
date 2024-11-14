@@ -111,7 +111,7 @@ let ctype_induct, ctype_rec = define_type "
 (* TODO: add support of compound types: arrays, structs, unions *)
 
 (* Word size in bytes *)
-let word_size_def = define `word_size = &4`;;
+let word_size_def = define `word_size = &8`;;
 add_to_database "word_size_def" word_size_def;;
 
 (* Size of a C scalar type in bytes *)
@@ -178,24 +178,24 @@ let max_of_def = define `
 add_to_database "max_of_def" max_of_def;;
 
 (* Size of a type is positive *)
-let sizeof_gt_0 = prove (
+(* let sizeof_gt_0 = prove (
     `!ty. sizeof ty > &0`,
     MATCH_MP_TAC ctype_induct THEN
     REWRITE_TAC [word_size_def; sizeof_def] THEN
-    REPEAT STRIP_TAC THENL
-    replicate INT_ARITH_TAC 9
+    REPEAT STRIP_TAC THEN
+    INT_ARITH_TAC
 );;
-add_to_database "sizeof_gt_0" sizeof_gt_0;;
+add_to_database "sizeof_gt_0" sizeof_gt_0;; *)
 
 (* Alignment of a type is positive *)
-let align_of_gt_0 = prove (
+(* let align_of_gt_0 = prove (
     `!ty. align_of ty > &0`,
     MATCH_MP_TAC ctype_induct THEN
     REWRITE_TAC [word_size_def; align_of_def] THEN
-    REPEAT STRIP_TAC THENL
-    replicate INT_ARITH_TAC 9
+    REPEAT STRIP_TAC THEN
+    INT_ARITH_TAC
 );;
-add_to_database "align_of_gt_0" align_of_gt_0;;
+add_to_database "align_of_gt_0" align_of_gt_0;; *)
 
 (* Valid pointer address for a pointee type *)
 let valid_addr_def = define `

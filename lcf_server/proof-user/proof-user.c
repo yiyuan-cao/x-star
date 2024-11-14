@@ -115,6 +115,20 @@ thm gens(term tms[], int len, thm th) {
   return result;
 }
 
+thm specs(thm th, term tml[])
+{
+  for(int i = 0; tml[i] != NULL; i++)
+    th = spec(tml[i], th);
+  return th;
+}
+
+thm mps(thm th, thm thl[])
+{
+  for(int i = 0; thl[i] != NULL; i++)
+    th = mp(th, thl[i]);
+  return th;
+}
+
 // General version of induction
 //
 // ## Parameters

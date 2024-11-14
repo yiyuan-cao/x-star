@@ -77,6 +77,8 @@ thm rewrite_thm(thm, thm);
 thm rewrite_refl(thm, term, term);
 thm rewrites(rewrites_item[], int);
 thm gens(term[], int, thm);
+thm specs(thm, term[]);
+thm mps(thm, thm[]);
 thm induction_with_goal(indtype, thm, thm, term);
 void show_induct_goal(term, term, thm);
 thm induction(indtype, thm, thm);
