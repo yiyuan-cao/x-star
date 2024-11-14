@@ -681,6 +681,44 @@ pub unsafe extern "C" fn choose(tm: *const Gc<Term>, th: *const Gc<Theorem>) -> 
     thm.into_gc()
 }
 
+/// Proves equality of alpha-equivalent terms. 
+#[no_mangle]
+pub unsafe extern "C" fn alpha(t1: *const Gc<Term>, t2: *const Gc<Term>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!t1.is_null(), "`t1` is null", std::ptr::null());
+  ensures!(!t2.is_null(), "`t2` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let t1 = unsafe { &*t1 }.as_ref();
+  let t2 = unsafe { &*t2 }.as_ref();
+  let thm = ensures_ok!(client.alpha(t1, t2), std::ptr::null());
+  thm.into_gc()
+}
+
+/// Performs a simple beta-conversion. 
+#[no_mangle]
+pub unsafe extern "C" fn beta_conv(tm: *const Gc<Term>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let tm = unsafe { &*tm }.as_ref();
+  let thm = ensures_ok!(client.beta_conv(tm), std::ptr::null());
+  thm.into_gc()
+}
+
+/// Beta-reduces all the beta-redexes in the conclusion of a theorem. 
+#[no_mangle]
+pub unsafe extern "C" fn beta_rule(th: *const Gc<Theorem>) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let th = unsafe { &*th }.as_ref();
+  let thm = ensures_ok!(client.beta_rule(th), std::ptr::null());
+  thm.into_gc()
+}
+
 /// Define an inductive type.
 ///
 /// # Parameters
@@ -730,6 +768,34 @@ pub unsafe extern "C" fn define(tm: *const Gc<Term>) -> *const Gc<Theorem> {
     thm.into_gc()
 }
 
+/// Produce cases theorem for an inductive type. 
+#[no_mangle]
+pub unsafe extern "C" fn cases(s: *const c_char) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!s.is_null(), "`s` is null", std::ptr::null());
+
+    let s = unsafe { CStr::from_ptr(s) }.to_str();
+    let s = ensures_ok!(s, std::ptr::null()).to_string();
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let thm = ensures_ok!(client.cases(s), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Produce distinctness theorem for an inductive type. 
+#[no_mangle]
+pub unsafe extern "C" fn distinctness(s: *const c_char) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!s.is_null(), "`s` is null", std::ptr::null());
+
+    let s = unsafe { CStr::from_ptr(s) }.to_str();
+    let s = ensures_ok!(s, std::ptr::null()).to_string();
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let thm = ensures_ok!(client.distinctness(s), std::ptr::null());
+    thm.into_gc()
+}
+
 /// Uses an instance of a given equation to rewrite a term.
 ///
 /// # Parameters
@@ -754,6 +820,30 @@ pub unsafe extern "C" fn rewrite(
     thm.into_gc()
 }
 
+/// Uses an instance of a given equation to rewrite a term.
+///
+/// # Parameters
+/// - `th`: The theorem to use for rewriting.
+/// - `tm`: The term to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn pure_rewrite(
+    th: *const Gc<Theorem>,
+    tm: *const Gc<Term>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let tm = unsafe { &*tm }.as_ref();
+    let thm = ensures_ok!(client.pure_rewrite(th, tm), std::ptr::null());
+    thm.into_gc()
+}
+
 /// Uses an instance of a given equation to rewrite a theorem.
 /// 
 /// # Parameter 
@@ -775,6 +865,30 @@ pub unsafe extern "C" fn rewrite_rule(
     let th = unsafe { &*th }.as_ref();
     let t = unsafe { &*t }.as_ref();
     let thm = ensures_ok!(client.rewrite_rule(th, t), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Uses an instance of a given equation to rewrite a theorem.
+/// 
+/// # Parameter 
+/// - `th`: The theorem to use for rewriting.
+/// - `t`: The theorem to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn pure_rewrite_rule(
+    th: *const Gc<Theorem>,
+    t: *const Gc<Theorem>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!t.is_null(), "`t` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let t = unsafe { &*t }.as_ref();
+    let thm = ensures_ok!(client.pure_rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
 
@@ -825,6 +939,55 @@ pub unsafe extern "C" fn once_rewrite_rule(
     let thm = ensures_ok!(client.once_rewrite_rule(th, t), std::ptr::null());
     thm.into_gc()
 }
+
+/// Uses an instance of a given equation to rewrite a term only once.
+///
+/// # Parameters
+/// - `th`: The theorem to use for rewriting.
+/// - `tm`: The term to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn pure_once_rewrite(
+    th: *const Gc<Theorem>,
+    tm: *const Gc<Term>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let tm = unsafe { &*tm }.as_ref();
+    let thm = ensures_ok!(client.pure_once_rewrite(th, tm), std::ptr::null());
+    thm.into_gc()
+}
+
+/// Uses an instance of a given equation to rewrite a theorem only once.
+/// 
+/// # Parameter 
+/// - `th`: The theorem to use for rewriting.
+/// - `t`: The theorem to rewrite.
+///
+/// # Returns
+/// A theorem on success, `NULL` on failure.
+#[no_mangle]
+pub unsafe extern "C" fn pure_once_rewrite_rule(
+    th: *const Gc<Theorem>,
+    t: *const Gc<Theorem>,
+) -> *const Gc<Theorem> {
+    clear_last_error();
+    ensures!(!th.is_null(), "`th` is null", std::ptr::null());
+    ensures!(!t.is_null(), "`t` is null", std::ptr::null());
+
+    let client = ensures_ok!(get_client(), std::ptr::null());
+    let th = unsafe { &*th }.as_ref();
+    let t = unsafe { &*t }.as_ref();
+    let thm = ensures_ok!(client.pure_once_rewrite_rule(th, t), std::ptr::null());
+    thm.into_gc()
+}
+
 
 /// Instantiation of induction principle.
 ///
@@ -880,6 +1043,22 @@ pub unsafe extern "C" fn subst(
     let tm = unsafe { &*tm }.as_ref();
     let tm = ensures_ok!(client.subst(tm1, tm2, tm), std::ptr::null());
     tm.into_gc()
+}
+
+/// Tests whether a variable (or constant) occurs free in a term. 
+#[no_mangle]
+pub unsafe extern "C" fn free_in(
+    v: *const Gc<Term>,
+    tm: *const Gc<Term>,
+) -> bool {
+    clear_last_error();
+    ensures!(!v.is_null(), "`v` is null", false);
+    ensures!(!tm.is_null(), "`tm` is null", false);
+
+    let client = ensures_ok!(get_client(), false);
+    let v = unsafe { &*v }.as_ref();
+    let tm = unsafe { &*tm }.as_ref();
+    ensures_ok!(client.free_in(v, tm), false)
 }
 
 /// Check if a term is an application.

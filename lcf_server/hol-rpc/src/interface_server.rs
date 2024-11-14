@@ -408,6 +408,40 @@ impl Interface for Session {
       Ok(self.theorems_mut().insert(thm))
     }
 
+    /// Proves equality of alpha-equivalent terms. 
+    async fn alpha(mut self, _ctx: Context, t1: TermKey, t2: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(ALPHA as alpha);
+      let thm = {
+        let terms = self.terms();
+        let t1 = terms.get(t1).ok_or("invalid term key")?;
+        let t2 = terms.get(t2).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(alpha, args!(t1, t2))}?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Performs a simple beta-conversion. 
+    async fn beta_conv(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(BETA_CONV as beta_conv);
+      let thm = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(beta_conv, args!(tm))}?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Beta-reduces all the beta-redexes in the conclusion of a theorem. 
+    async fn beta_rule(mut self, _ctx: Context, th: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(BETA_RULE as beta_rule);
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(beta_rule, args!(th))}?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
     /// Define an inductive type.
     async fn define_type(
         mut self,
@@ -434,6 +468,20 @@ impl Interface for Session {
             unsafe { self.dyn_call(define, args!(term)) }?
         };
         Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Produce cases theorem for an inductive type. 
+    async fn cases(mut self, _ctx: Context, s: String) -> Result<TheoremKey> {
+      load_dyn_function!(cases);
+      let thm = unsafe { self.dyn_call(cases, args!(&s)) }?;
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Produce distinctness theorem for an inductive type. 
+    async fn distinctness(mut self, _ctx: Context, s: String) -> Result<TheoremKey> {
+      load_dyn_function!(distinctness);
+      let thm = unsafe { self.dyn_call(distinctness, args!(&s)) }?;
+      Ok(self.theorems_mut().insert(thm))
     }
 
     /// Uses an instance of a given equation to rewrite a term.
@@ -483,6 +531,31 @@ impl Interface for Session {
         let th = theorems.get(th).ok_or("invalid theorem key")?;
         let t = theorems.get(t).ok_or("invalid theorem key")?;
         unsafe { self.dyn_call(rewrite_rule, args!(th, t)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Uses an instance of a given equation to rewrite a term only once.
+    async fn pure_once_rewrite(mut self, _ctx: Context, th: TheoremKey, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(SPURE_ONCE_REWRITE_CONV as pure_once_rewrite); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let terms = self.terms();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(pure_once_rewrite, args!(th, tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    async fn pure_once_rewrite_rule(mut self, _ctx: Context, th: TheoremKey, t: TheoremKey) -> Result<TheoremKey> {
+      load_dyn_function!(SPURE_ONCE_REWRITE_RULE as pure_once_rewrite_rule); // see helpers.ml
+      let thm = {
+        let theorems = self.theorems();
+        let th = theorems.get(th).ok_or("invalid theorem key")?;
+        let t = theorems.get(t).ok_or("invalid theorem key")?;
+        unsafe { self.dyn_call(pure_once_rewrite_rule, args!(th, t)) }?
       };
       Ok(self.theorems_mut().insert(thm))
     }
@@ -549,6 +622,18 @@ impl Interface for Session {
         unsafe { self.dyn_call(subst, args!(tm1, tm2, tm)) }?
       };
       Ok(self.terms_mut().insert(tm))
+    }
+
+    /// Tests whether a variable (or constant) occurs free in a term. 
+    async fn free_in(self, _ctx: Context, v: TermKey, tm: TermKey) -> Result<bool> {
+      load_dyn_function!(vfree_in as free_in);
+      let free_in = {
+        let terms = self.terms();
+        let v = terms.get(v).ok_or("invalid term key")?;
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(free_in, args!(v, tm)) }?
+      };
+      Ok(unsafe { free_in.get_bool()? })
     }
 
     /// Check if a term is a variable.

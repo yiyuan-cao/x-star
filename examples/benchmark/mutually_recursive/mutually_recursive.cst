@@ -82,7 +82,11 @@ int is_even(int x)
   [[cstar::assert(`fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
 
   if (x == 0) {
-    [[cstar::assert(`fact(x_pre == &0) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+    [[cstar::assert(`
+      fact(x_pre == &0) ** 
+      fact(x_pre >= &0) ** 
+      data_at(&"x", Tint, x_pre)
+    `)]];
 
     return 1;
 
@@ -106,7 +110,11 @@ int is_even(int x)
       }
     )]];
   } else {
-    [[cstar::assert(`fact(~(x_pre == &0)) ** fact(x_pre >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+    [[cstar::assert(`
+      fact(~(x_pre == &0)) ** 
+      fact(x_pre >= &0) ** 
+      data_at(&"x", Tint, x_pre)
+    `)]];
 
     [[cstar::proof(
       {
@@ -115,7 +123,10 @@ int is_even(int x)
       }
     )]]
 
-    [[cstar::assert(`fact(x_pre - &1 >= &0) ** data_at(&"x", Tint, x_pre)`)]];
+    [[cstar::assert(`
+      fact(x_pre - &1 >= &0) ** 
+      data_at(&"x", Tint, x_pre)
+    `)]];
 
     return is_odd(x - 1);
 

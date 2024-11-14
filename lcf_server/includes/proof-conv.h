@@ -24,6 +24,7 @@ thm sep_lift(term lft, term septerm);
 thm sep_reorder(term lft, term septerm);
 thm create_trans_auto(term[], term[], thm[], thm[]);
 thm which_implies(term state, thm trans);
+thm which_implies_dev(term state, thm trans);
 thm hfact_auto(term pres[], term posts[], thm helpers[]);
 thm hexists_intro_auto(thm, term);
 bool compare_hprop(term, term);

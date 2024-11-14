@@ -374,6 +374,9 @@ add_to_database "htrue_hemp" htrue_hemp;;
 let hfalse_elim = new_axiom `!hp. hfalse |-- hp`;;
 add_to_database "hfalse_elim" hfalse_elim;;
 
+let hfact_false_elim = new_axiom `!hp. (hfact F) |-- hp`;;
+add_to_database "hfact_false_elim" hfact_false_elim;;
+
 let htrue_elim_left = new_axiom `!hp. (hfact T) ** hp -|- hp`;;
 add_to_database "htrue_elim_left" htrue_elim_left;;
 
@@ -800,7 +803,7 @@ let firstn_nth_merge = new_axiom `!n (l:int list).
 add_to_database "firstn_nth_merge" firstn_nth_merge;;
 
 (* globals *)
-let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;5
+let signed_last_nbits_def = define `!(x:addr) (n:int). signed_last_nbits(x, n) = x`;;
 
 (* reverse *)
 let intlist_INDUCT, intlist_RECURSIVE = define_type("intlist = nil | cons int intlist");;
@@ -811,7 +814,7 @@ let tail = define(parse_term("!(head_var:int) (tail_var:intlist). tail(cons head
 new_constant("app", parse_type("intlist#intlist->intlist"));;
 let app = new_axiom(parse_term("!(l1:intlist) (l2:intlist). app(l1,l2) = (if(is_nil(l1))then(l2)else(cons(head(l1))(app(tail(l1),l2))))"));;
 new_constant("rev", parse_type("intlist->intlist"));;
-let rev = new_axiom(parse_term("!(l:intlist). rev(l) = (if(is_nil(l))then((l))else((let (h:int)=head(l) in (let (rev_t:intlist)=rev(tail(l)) in (append(rev_t,cons(h)(nil)))))))"));;
+let rev = new_axiom(parse_term("!(l:intlist). rev(l) = (if(is_nil(l))then((l))else((let (h:int)=head(l) in (let (rev_t:intlist)=rev(tail(l)) in (app(rev_t,cons(h)(nil)))))))"));;
 new_constant("listrep", parse_type("int#intlist->hprop"));;
 let listrep = new_axiom(parse_term("!(pt:int) (l:intlist). listrep(pt,l) = (if(is_nil(l))then((fact((pt)==((&0)))))else((let (h:int)=head(l) in (let (t:intlist)=tail(l) in (exists (value:int). (data_at(pt+(&0),Tint,value)) ** (exists (next:int). (data_at(pt+(&4),Tptr,next)) ** ((fact((value)==(h)))**(listrep(next,t)))))))))"));;
 
@@ -831,3 +834,8 @@ extend_basic_convs("elimination on condition 2",
     (`if F then c1:A else c2:A`, CONDS_ELIM_CONV));;
 extend_basic_convs("elimination on let bindings",
     (`let x = e in t`, let_CONV));;
+
+let data_at_zero = new_axiom
+  `!ty v. data_at(&0, ty, v) -|- fact F`
+;;
+add_to_database "data_at_zero" data_at_zero;;

@@ -279,10 +279,40 @@ impl Client {
         })
     }
 
+    /// Proves equality of alpha-equivalent terms. 
+    pub fn alpha(&self, t1: &Term, t2: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().alpha(context::current(), t1.key, t2.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Performs a simple beta-conversion. 
+    pub fn beta_conv(&self, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().beta_conv(context::current(), tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Beta-reduces all the beta-redexes in the conclusion of a theorem. 
+    pub fn beta_rule(&self, th: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().beta_rule(context::current(), th.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
     /// Define a new constant or function.
     pub fn define(&self, term: &Term) -> Result<Theorem> {
         let key = self.execute(self.interface().define(context::current(), term.key))??;
         Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Produce cases theorem for an inductive type. 
+    pub fn cases(&self, s: String) -> Result<Theorem> {
+      let key = self.execute(self.interface().cases(context::current(), s))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Produce distinctness theorem for an inductive type. 
+    pub fn distinctness(&self, s: String) -> Result<Theorem> {
+      let key = self.execute(self.interface().distinctness(context::current(), s))??;
+      Ok(Theorem::new(key, self.clone()))
     }
 
     /// Uses an instance of a given equation to rewrite a term.
@@ -321,6 +351,18 @@ impl Client {
       Ok(Theorem::new(key, self.clone()))
     }
 
+    /// Uses an instance of a given equation to rewrite a term only once.
+    pub fn pure_once_rewrite(&self, th: &Theorem, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().pure_once_rewrite(context::current(), th.key, tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    pub fn pure_once_rewrite_rule(&self, th: &Theorem, t: &Theorem) -> Result<Theorem> {
+      let key = self.execute(self.interface().pure_once_rewrite_rule(context::current(), th.key, t.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
+
     /// Instantiation of induction principle.
     pub fn induction_aux(&self, th: &Theorem, tm1: &Term, tm2: &Term) -> Result<Theorem> {
         let key = self.execute(self.interface().induction_aux(
@@ -336,6 +378,11 @@ impl Client {
     pub fn subst(&self, tm1: &Term, tm2: &Term, tm: &Term) -> Result<Term> {
       let tm = self.execute(self.interface().subst(context::current(), tm1.key, tm2.key, tm.key))??;
       Ok(Term::new(tm, self.clone()))
+    }
+
+    /// Tests whether a variable (or constant) occurs free in a term. 
+    pub fn free_in(&self, v: &Term, tm: &Term) -> Result<bool> {
+      self.execute(self.interface().free_in(context::current(), v.key, tm.key))? 
     }
 
     /// Check if a term is a variable.

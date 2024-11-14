@@ -2,61 +2,49 @@ typedef const struct Gc_Term *term;
 typedef const struct Gc_Theorem *thm;
 
 [[cstar::function(
-thm hfact_auto(term pres[], term posts[]) {
-  thm result = spec(`emp`, get_theorem("hentail_refl")); // emp |-- emp
-  term hyps[N];
-  int hyp_cnt = 0;
-
-  int i = 0;
-  while (1) {
-    if (pres[i] == NULL) break;
-    term pre = pres[i];
-    bool in_post = false; 
-    bool in_match = false;
-
-    int j = 0;
-    while (1) {
-      if (posts[j] == NULL) break;
-      term post = posts[j];
-
-      if (equals_term(pre, post)) {
-        in_post = true; 
-        posts[j] = `F:bool`; // (1) avoid intro twice
-        continue;
-      }
-      term t = `${pre:bool} ==> ${post:bool}`;
-      thm arith = arith_rule(t);
-      if (equals_term(conclusion(arith), t)) {
-        in_match = true;
-        result = mp(mp(get_theorem("hfact_intro"), mp(arith, assume(pre))), result);
-        posts[j] = `F:bool`; // (1)
-      }
-
-      j = j + 1;
-    }
-    if (in_post) {
-      hyps[hyp_cnt] = pre;
-      hyp_cnt = hyp_cnt + 1;
-    } else if (in_match) {      
-      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
-    } else {
-      result = add_assum(pre, result);
-      result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
-    }
-
-    i = i + 1;
-  }
-  
-  i = 0;
-  while (i < hyp_cnt) {
-    result = add_assum(hyps[i], result);
-    i = i + 1;
-  }
-
-  return sep_normalize_rule(result);
+thm array_at_zero_length(term t1, term t2, term t3) { 
+  thm array_at_zero_length = symm(get_theorem("array_at_replicate_zero_length"));
+  return spec(t3, spec(t2, spec(t1, array_at_zero_length)));
 }
 )]];
 
+[[cstar::function(
+thm add_emp_equiv_right(thm th, term state) {
+  thm hentail_sym_left = get_theorem("hentail_sym_left");
+  thm hsep_hemp_right = spec(state, symm(get_theorem("hsep_hemp_right")));
+  thm result = mp(hentail_sym_left, hsep_hemp_right);
+  result = sep_normalize_rule(rewrite_rule(th, result));
+  return result;
+}
+)]];
+
+[[cstar::function(
+thm array_at_last_split(term t1, term t2, term t3, term t4) {
+  return spec(t4, spec(t3, spec(t2, spec(t1, get_theorem("array_at_last_split")))));
+}
+)]];
+
+[[cstar::function(
+thm undef_array_at_select_first(term t1, term t2, term t3) {
+  thm undef_array_at_rec_def = get_theorem("undef_array_at_rec_def");
+  thm result = spec(t3, spec(t2, spec(t1, undef_array_at_rec_def)));
+  result = mp(get_theorem("hentail_sym_left"), undisch(result));
+  return disch(result, hypth(result));
+}
+)]];
+
+[[cstar::function(
+thm hsep_monotone(thm th1, thm th2) {
+  return sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), th1), th2));
+}
+)]];
+
+[[cstar::function(
+thm undef_array_at_zero_length(term t1, term t2) {
+  return mp(get_theorem("hentail_sym_left"), 
+      spec(t2, spec(t1, get_theorem("undef_array_at_zero_length"))));
+}
+)]];
 
 [[cstar::function(
 thm hfact_manual(term pre1, term pre2, term post) {
@@ -117,7 +105,7 @@ void clear(void *to, int len)
     {
       term pre_state = get_symbolic_state();
       thm hfact_thm = hfact_auto((term[]) {`n >= &0`, NULL},
-                                 (term[]) {`n >= &0`, `&0 <= &0`, `&0 <= n`, NULL});
+                                 (term[]) {`n >= &0`, `&0 <= &0`, `&0 <= n`, NULL}, (thm[]){NULL});
       /* |- n >= &0 ==> (emp |-- fact(&0 <= &0) ** fact(&0 <= n)) */
       thm undef_array_simpl = 
         mp(get_theorem("hentail_sym_left"), symm(
@@ -129,7 +117,7 @@ void clear(void *to, int len)
       thm final_thm = which_implies(pre_state, hsep_mono);
       set_symbolic_state(final_thm);
     }
-  )]]
+  )]];
 
   [[cstar::assert(`
     fact(&0 <= &0) ** fact(&0 <= n) **
@@ -163,17 +151,28 @@ void clear(void *to, int len)
 
     [[cstar::proof(
       {
-        term pre_state = get_symbolic_state();
-        thm dest_undef_array = undef_array_at_select_first(`(to_pre:addr) + i_v * sizeof(Tchar)`, `Tchar`, `(n:int) - i_v`);
-        thm arith1 = arith_rule(`(n - i_v > &0) <=> (i_v < n)`);
-        thm arith2 = arith_rule(`n - i_v - &1 == n - (i_v + &1)`);
-        thm arith3 = arith_rule(`(to_pre + i_v * sizeof(Tchar)) + sizeof(Tchar) == to_pre + (i_v + &1) * sizeof(Tchar)`); 
-        // `+` is right-associated in HOL-light !!!
-        dest_undef_array = rewrite_rule_list((thm[]){arith1, arith2, arith3, NULL}, dest_undef_array);
-        thm final_thm = which_implies(pre_state, dest_undef_array);
+        thm dest_undef_array =
+        undef_array_at_select_first(`to + i * sizeof(Tchar)`, `Tchar`, `len - i`);
+        /* len - i > 0 ==>
+           undef_array_at(to + i * sizeof(Tchar), Tchar, len - i) 
+           |--
+           undef_data_at(to + i * sizeof(Tchar), Tchar) **
+           undef_array_at((to + i * sizeof(Tchar)) + sizeof(Tchar), Tchar, len - i - 1) */
+        thm* arith_facts = (thm[]){
+            arith_rule(`len - i > &0 <=> i < len`),
+            arith_rule(`len - i - 1 == len - (i + &1)`),
+            arith_rule(`(to + i * sizeof(Tchar)) + sizeof(Tchar) ==
+                        to + (i + &1) * sizeof(Tchar)`),
+            NULL
+        };
+        dest_undef_array = rewrite_rule_list(arith_facts, dest_undef_array);
+        /* rewrite using linear arithmetic facts */
+        thm final_thm = which_implies(get_symbolic_state(), dest_undef_array);
+        /* perform local transformation with frame inferred from the symbolic state */
         set_symbolic_state(final_thm);
+        /* update the symbolic state */
       }
-    )]]
+    )]];
 
     [[cstar::assert(`
         exists (i_v:int).
@@ -240,11 +239,12 @@ void clear(void *to, int len)
       {
         term pre_state = get_symbolic_state();
         thm hfact_thm = hfact_auto((term[]){`n >= &0`, `i_v < n`, `&0 <= i_v`, `i_v <= n`, NULL},
-                                   (term[]){`n >= &0`, `i_v + &1 <= n`, `&0 <= i_v + &1`, NULL});
+                                   (term[]){`n >= &0`, `i_v + &1 <= n`, `&0 <= i_v + &1`, NULL},
+                                   (thm[]){NULL});
         thm final_thm = which_implies(pre_state, hfact_thm);
         set_symbolic_state(final_thm);
       }
-    )]]
+    )]];
 
     [[cstar::assert(`
         exists (i_v:int).
@@ -286,7 +286,7 @@ void clear(void *to, int len)
       subst_i_v = mp(get_theorem("hfact_elim"), disch(subst_i_v, hypth(subst_i_v)));
 
       thm hfact2 = hfact_auto((term[]){`n >= &0`, `&0 <= n`, NULL},
-                              (term[]){`n >= &0`});
+                              (term[]){`n >= &0`, NULL}, (thm[]){NULL});
       hfact2 = which_implies(consequent(conclusion(subst_i_v)), hfact2);
 
       thm without_exists = hentail_trans_auto_list((thm[]){hfact1, subst_i_v, hfact2, NULL});

@@ -198,15 +198,15 @@ thm sep_lift_(term lft, term septerm) {
   if (is_binop(parse_term("hsep"), septerm)) {
     term l = fst_binop(parse_term("hsep"), septerm), r = snd_binop(parse_term("hsep"), septerm);
     if (equals_term(l, lft)) {
-      return once_rewrite(lem1, septerm);
+      return pure_once_rewrite(lem1, septerm);
     } else {
       if (is_binop(parse_term("hsep"), r)) {
-        thm th1 = once_rewrite(sep_lift_(lft, r), septerm);
+        thm th1 = pure_once_rewrite(sep_lift_(lft, r), septerm);
         septerm = consequent(conclusion(th1));
-        thm th2 = once_rewrite(lem1, septerm);
+        thm th2 = pure_once_rewrite(lem1, septerm);
         return trans(th1, th2);
       } else {
-        return once_rewrite(symm(get_theorem("hsep_comm")), septerm);
+        return pure_once_rewrite(symm(get_theorem("hsep_comm")), septerm);
       }
     }
   } else {
@@ -221,7 +221,7 @@ thm sep_lift(term lft, term septerm) {
     septerm = consequent(conclusion(th1));
     thm th2 = sep_lift_(l, septerm);
     septerm = consequent(conclusion(th2));
-    thm th3 = once_rewrite(symm(get_theorem("hsep_assoc")), septerm);
+    thm th3 = pure_once_rewrite(symm(get_theorem("hsep_assoc")), septerm);
     return trans_list((thm[]){th1, th2, th3, NULL});
   } else {
     return sep_lift_(lft, septerm);
@@ -232,9 +232,9 @@ thm sep_reorder(term lft, term septerm) {
   if (is_binop(parse_term("hsep"), lft)) {
     term l = fst_binop(parse_term("hsep"), lft);
     term r = snd_binop(parse_term("hsep"), lft);
-    thm th1 = once_rewrite(sep_lift_(l, septerm), septerm);
+    thm th1 = pure_once_rewrite(sep_lift_(l, septerm), septerm);
     septerm = consequent(conclusion(th1));
-    thm th2 = once_rewrite(sep_reorder(r, snd_comb(septerm)), septerm);
+    thm th2 = pure_once_rewrite(sep_reorder(r, snd_comb(septerm)), septerm);
     return trans(th1, th2);
   } else {
     return refl(lft);
@@ -333,6 +333,64 @@ thm which_implies(term state, thm th) {
     entail = mp(get_theorem("hexists_monotone"), entail);
   }
 
+  return entail;
+}
+
+// Development version of `which_implies`
+// Hope to support `th` both sides with `exists`
+// We now support `exists` on the right side, adding to consequent of result
+// We can support `exists` on the left side (and detailed handling of free variables) 
+//   by 1. `gen_all` antecedent of `th`, repeat apply `hexists_elim` (handling free variables).
+//      2. when repeat applying `hexists_monotone`, check if the var is free in antecedent
+thm which_implies_dev(term state, thm th) {
+  term state_exists_list[N];
+  int state_exists_count = 0;
+  while (is_binder("hexists", state)) {
+    state_exists_list[++state_exists_count] = binder_var("hexists", state);
+    state = binder_body("hexists", state);
+  }
+  
+  while (has_typ(th)) {
+    term hyp = hypth(th);
+    if (hyp == NULL) break;
+    th = disch(th, hyp);
+    th = mp(get_theorem("hfact_elim_dup"), th);
+  }
+
+  term th_pre = fst_binop(parse_term("hentail"), conclusion(th));
+  term th_post = snd_binop(parse_term("hentail"), conclusion(th));
+
+  term old_state = state;
+  thm th1 = sep_normalize(state);
+  state = consequent(conclusion(th1));
+  thm th2 = sep_lift(th_pre, state);
+  state = consequent(conclusion(th2));
+  
+  thm entail = spec(snd_binop(parse_term("hsep"), state), mp(get_theorem("hsep_cancel_right"), th));
+  entail = sep_normalize_rule(entail);
+
+  thm th_pre_norm = sep_reorder(old_state, fst_binop(parse_term("hentail"), conclusion(entail)));
+  entail = once_rewrite_rule(th_pre_norm, entail);
+
+  for (int i = state_exists_count; i > 0; --i) {
+    term conseq = snd_binop(parse_term("(|--)"), conclusion(entail));
+    if (free_in(state_exists_list[i], conseq)) {
+      entail = gen(state_exists_list[i], entail);
+      entail = mp(get_theorem("hexists_monotone"), entail);
+    } else {
+      entail = gen(state_exists_list[i], entail);
+      entail = mp(get_theorem("hexists_elim"), entail);
+    }
+  }
+
+  entail = rewrite_rule_list(
+    (thm[]){get_theorem("hsep_hexists_left"),
+            get_theorem("hsep_hexists_right"),
+            NULL},
+    entail
+  );
+  entail = sep_normalize_rule(entail);
+  
   return entail;
 }
 

@@ -439,6 +439,21 @@ const struct Gc_Theorem *deduct_antisym(const struct Gc_Theorem *th1, const stru
 const struct Gc_Theorem *choose(const struct Gc_Term *tm, const struct Gc_Theorem *th);
 
 /**
+ * Proves equality of alpha-equivalent terms.
+ */
+const struct Gc_Theorem *alpha(const struct Gc_Term *t1, const struct Gc_Term *t2);
+
+/**
+ * Performs a simple beta-conversion.
+ */
+const struct Gc_Theorem *beta_conv(const struct Gc_Term *tm);
+
+/**
+ * Beta-reduces all the beta-redexes in the conclusion of a theorem.
+ */
+const struct Gc_Theorem *beta_rule(const struct Gc_Theorem *th);
+
+/**
  * Define an inductive type.
  *
  * # Parameters
@@ -463,6 +478,16 @@ const struct IndType *define_type(const char *tm);
 const struct Gc_Theorem *define(const struct Gc_Term *tm);
 
 /**
+ * Produce cases theorem for an inductive type.
+ */
+const struct Gc_Theorem *cases(const char *s);
+
+/**
+ * Produce distinctness theorem for an inductive type.
+ */
+const struct Gc_Theorem *distinctness(const char *s);
+
+/**
  * Uses an instance of a given equation to rewrite a term.
  *
  * # Parameters
@@ -475,6 +500,18 @@ const struct Gc_Theorem *define(const struct Gc_Term *tm);
 const struct Gc_Theorem *rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
 
 /**
+ * Uses an instance of a given equation to rewrite a term.
+ *
+ * # Parameters
+ * - `th`: The theorem to use for rewriting.
+ * - `tm`: The term to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *pure_rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
+
+/**
  * Uses an instance of a given equation to rewrite a theorem.
  *
  * # Parameter
@@ -485,6 +522,18 @@ const struct Gc_Theorem *rewrite(const struct Gc_Theorem *th, const struct Gc_Te
  * A theorem on success, `NULL` on failure.
  */
 const struct Gc_Theorem *rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
+
+/**
+ * Uses an instance of a given equation to rewrite a theorem.
+ *
+ * # Parameter
+ * - `th`: The theorem to use for rewriting.
+ * - `t`: The theorem to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *pure_rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
 
 /**
  * Uses an instance of a given equation to rewrite a term only once.
@@ -509,6 +558,31 @@ const struct Gc_Theorem *once_rewrite(const struct Gc_Theorem *th, const struct 
  * A theorem on success, `NULL` on failure.
  */
 const struct Gc_Theorem *once_rewrite_rule(const struct Gc_Theorem *th, const struct Gc_Theorem *t);
+
+/**
+ * Uses an instance of a given equation to rewrite a term only once.
+ *
+ * # Parameters
+ * - `th`: The theorem to use for rewriting.
+ * - `tm`: The term to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *pure_once_rewrite(const struct Gc_Theorem *th, const struct Gc_Term *tm);
+
+/**
+ * Uses an instance of a given equation to rewrite a theorem only once.
+ *
+ * # Parameter
+ * - `th`: The theorem to use for rewriting.
+ * - `t`: The theorem to rewrite.
+ *
+ * # Returns
+ * A theorem on success, `NULL` on failure.
+ */
+const struct Gc_Theorem *pure_once_rewrite_rule(const struct Gc_Theorem *th,
+                                                const struct Gc_Theorem *t);
 
 /**
  * Instantiation of induction principle.
@@ -539,6 +613,11 @@ const struct Gc_Theorem *induction_aux(const struct Gc_Theorem *th,
 const struct Gc_Term *subst(const struct Gc_Term *tm1,
                             const struct Gc_Term *tm2,
                             const struct Gc_Term *tm);
+
+/**
+ * Tests whether a variable (or constant) occurs free in a term.
+ */
+bool free_in(const struct Gc_Term *v, const struct Gc_Term *tm);
 
 /**
  * Check if a term is an application.

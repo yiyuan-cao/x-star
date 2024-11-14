@@ -196,11 +196,26 @@ pub trait Interface {
     /// ```
     async fn choose(tm: TermKey, th: TheoremKey) -> Result<TheoremKey>;
 
+    /// Proves equality of alpha-equivalent terms. 
+    async fn alpha(t1: TermKey, t2: TermKey) -> Result<TheoremKey>;
+
+    /// Performs a simple beta-conversion. 
+    async fn beta_conv(tm: TermKey) -> Result<TheoremKey>;
+
+    /// Beta-reduces all the beta-redexes in the conclusion of a theorem. 
+    async fn beta_rule(th: TheoremKey) -> Result<TheoremKey>;
+
     /// Define an inductive type.
     async fn define_type(tm: String) -> Result<IndTypeKey>;
 
     /// Define a new constant or function.
     async fn define(tm: TermKey) -> Result<TheoremKey>;
+
+    /// Produce cases theorem for an inductive type. 
+    async fn cases(s: String) -> Result<TheoremKey>;
+
+    /// Produce distinctness theorem for an inductive type. 
+    async fn distinctness(s: String) -> Result<TheoremKey>;
 
     /// Uses an instance of a given equation to rewrite a term.
     async fn pure_rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
@@ -215,6 +230,12 @@ pub trait Interface {
     async fn rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
 
     /// Uses an instance of a given equation to rewrite a term only once.
+    async fn pure_once_rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a give equation to rewrite a theorem only once.
+    async fn pure_once_rewrite_rule(th: TheoremKey, t: TheoremKey) -> Result<TheoremKey>;
+
+    /// Uses an instance of a given equation to rewrite a term only once.
     async fn once_rewrite(th: TheoremKey, tm: TermKey) -> Result<TheoremKey>;
 
     /// Uses an instance of a give equation to rewrite a theorem only once.
@@ -225,6 +246,9 @@ pub trait Interface {
 
     /// Substitute terms for other terms inside a term.
     async fn subst(tm1: TermKey, tm2: TermKey, tm: TermKey) -> Result<TermKey>;
+
+    /// Tests whether a variable (or constant) occurs free in a term. 
+    async fn free_in(v: TermKey, tm: TermKey) -> Result<bool>;
 
     /// Check if a term is a variable.
     async fn is_var(th: TermKey) -> Result<bool>;
