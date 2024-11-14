@@ -49,7 +49,7 @@ void point_mirror(struct point *p)
     data_at(&"p", Tptr, p_pre)
   `)]];
   
-  [[cstar::parameter(`x:int`, `y:int`)]] swap(&p->x, &p->y);
+  [[cstar::argument(`x:int`, `y:int`)]] swap(&p->x, &p->y);
 
   [[cstar::assert(`
     data_at(&"p_pre->x", Tint, y) **
