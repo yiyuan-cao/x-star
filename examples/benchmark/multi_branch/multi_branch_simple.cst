@@ -1,0 +1,74 @@
+int sum10_while()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`__return == &55`)]]
+{
+  [[cstar::assert(`emp`)]];
+
+  int ret = 0;
+  
+  [[cstar::assert(`data_at(&"ret", Tint, &0)`)]];
+
+  int i = 1;
+
+  [[cstar::assert(`
+    data_at(&"ret", Tint, &0) **
+    data_at(&"i", Tint, &1)
+  `)]];
+  // sum10_while_entail_wit_4
+  /*@ Assert
+    1 <= 1 && 1 <= 11 &&
+    data_at(&ret, int, sum(1 - 1)) *
+    data_at(&i, int, 1)
+  */
+  /*@ Assert Inv
+    exists i_v,
+    1 <= i_v && i_v <= 11 &&
+    data_at(&ret, int, sum(i_v - 1)) *
+    data_at(&i, int, i_v)
+  */
+  while (i <= 10) {
+    /*@ Assert
+      exists i_v,
+      i_v <= 10 &&
+      1 <= i_v && i_v <= 11 &&
+      data_at(&ret, int, sum(i_v - 1)) *
+      data_at(&i, int, i_v)
+    */
+    ret += i;
+    /*@ Assert
+      exists i_v,
+      i_v <= 10 &&
+      1 <= i_v && i_v <= 11 &&
+      data_at(&ret, int, sum(i_v - 1) + i_v) *
+      data_at(&i, int, i_v)
+    */
+    i += 1;
+    /*@ Assert
+      exists i_v,
+      i_v <= 10 &&
+      1 <= i_v && i_v <= 11 &&
+      data_at(&ret, int, sum(i_v - 1) + i_v) *
+      data_at(&i, int, i_v + 1)
+    */
+    // sum10_while_entail_wit_9
+    /*@ Assert
+      exists i_v,
+      1 <= i_v && i_v <= 11 &&
+      data_at(&ret, int, sum(i_v - 1)) *
+      data_at(&i, int, i_v)
+    */
+  }
+  /*@ Assert
+    exists i_v,
+    i_v > 10 &&
+    1 <= i_v && i_v <= 11 &&
+    data_at(&ret, int, sum(i_v - 1)) *
+    data_at(&i, int, i_v)
+  */
+  // sum10_while_entail_wit_12
+  /*@ Assert
+    data_at(&ret, int, 55) *
+    data_at(&i, int, 11)
+  */
+  return ret;
+}
