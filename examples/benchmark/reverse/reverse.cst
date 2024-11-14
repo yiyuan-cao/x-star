@@ -1,0 +1,753 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+typedef const struct IndType *indtype;
+typedef const struct Gc_Conversion *conv;
+
+struct List {
+  int head;
+  struct List *tail;
+};
+
+[[cstar::datatype(
+  intlist,
+  nil(),
+  cons(int head, intlist tail),
+)]];
+
+[[cstar::representation(
+intlist app(intlist l1, intlist l2) {
+  return is_nil(l1) ? l2 : cons(head(l1), app(tail(l1), l2));
+}
+)]];
+
+[[cstar::representation(
+intlist rev(intlist l) {
+  if (is_nil(l)) {
+    return l;
+  } else {
+    int h = head(l);
+    intlist rev_t = rev(tail(l));
+    return app(rev_t, cons(h, nil()));
+  }
+}
+)]];
+
+[[cstar::representation(
+HPROP listrep(struct List * pt, intlist l) {
+  if (is_nil(l)) {
+    return fact(pt == NULL);
+  } else {
+    int h = head(l);
+    intlist t = tail(l);
+    LET_DATA_AT(&pt->head, int value);
+    LET_DATA_AT(&pt->tail, struct List* next);
+    return fact(value == h) SEP listrep(next, t);
+  }
+}
+)]];
+
+[[cstar::proof(
+thm empty; // for automatic rewrites
+)]];
+
+[[cstar::function(
+thm intlist_induct_inst(term p, thm induct) {
+  thm result = spec(p, induct);
+  result = rewrite_rule(empty, result);
+  return result;
+}
+)]];
+
+[[cstar::function(
+thm app_nil_r(term l) {
+  thm app_nil_r_nil = once_rewrite_list(
+    (thm[]){app, empty, empty, NULL}, `app(nil, nil)`
+  );
+  thm app_nil_r_cons = once_rewrite_list(
+    (thm[]){app, empty, empty,
+            assume(`app(a1, nil) == a1`), NULL},
+    `app(cons a0 a1, nil)`
+  );
+  app_nil_r_cons = gen(`a0:int`, gen(`a1:intlist`, 
+    disch(app_nil_r_cons, `app(a1, nil) = a1`)));
+  thm induct = intlist_induct_inst(`\l. app(l, nil) == l`, intlist->ind);
+  thm result = mp(induct, conjunct(app_nil_r_nil, app_nil_r_cons));
+  return spec(l, result);
+}
+)]];
+
+[[cstar::function(
+thm app_assoc(term l, term m, term n) {
+  thm aux1 = once_rewrite_list(
+    (thm[]){app, empty, empty, NULL},
+    `app(nil, m)`
+  );
+  thm app_assoc_nil_1 = once_rewrite_list(
+    (thm[]){app, aux1, symm(app), NULL},
+    `app(app(nil, m), n)`
+  );
+  thm app_assoc_nil_2 = once_rewrite_list(
+    (thm[]){app, empty, empty},
+    `app(nil, app(m, n))`
+  );
+  thm app_assoc_nil = trans(app_assoc_nil_1, symm(app_assoc_nil_2));
+  app_assoc_nil = gen(`m:intlist`, gen(`n:intlist`, app_assoc_nil));
+
+  thm aux2 = once_rewrite_list(
+    (thm[]){app, empty, NULL},
+    `app(cons a0 a1, m)`
+  );
+  thm app_assoc_cons_1 = once_rewrite_list(
+    (thm[]){aux2, empty, aux2, empty, 
+            assume(`!m n. app(app(a1,m),n) = app(a1,app(m,n))`), NULL},
+    `app(app(cons a0 a1, m),n)`
+  );
+  thm app_assoc_cons_2 = once_rewrite_list(
+    (thm[]){app, empty, empty, empty, NULL},
+    `app(cons a0 a1, app(m, n))`
+  );
+  thm app_assoc_cons = gen(`a0:int`, gen(`a1:intlist`, 
+    disch(gen(`m:intlist`, gen(`n:intlist`, 
+      trans(app_assoc_cons_1, symm(app_assoc_cons_2))
+    )), `!m n. app(app(a1,m),n) = app(a1,app(m,n))`)));
+  
+  thm result = mp(intlist->ind, conjunct(app_assoc_nil, app_assoc_cons));
+  return spec(n, spec(m, spec(l, result)));
+}
+)]];
+
+[[cstar::function(
+thm rev_app_distr(term m, term n) {
+  thm rev_app_distr_nil_1 = once_rewrite_list(
+    (thm[]){app, empty, empty, NULL},
+    `rev(app(nil, n))`
+  );
+  thm rev_app_distr_nil_2 = once_rewrite_list(
+    (thm[]){rev, empty, symm(rev), app_nil_r(`rev(n)`), NULL},
+    `app(rev(n), rev(nil))`
+  );
+  thm rev_app_distr_nil = gen(`n:intlist`, trans(
+    rev_app_distr_nil_1, symm(rev_app_distr_nil_2)
+  ));
+
+  thm aux = once_rewrite_list(
+    (thm[]){rev, empty, empty, NULL},
+    `rev(cons a0 a1)`
+  );
+  thm rev_app_distr_cons = gen(`n:intlist`, once_rewrite_list(
+    (thm[]){app, empty, empty,
+            rev, empty, empty, 
+            assume(`!n. rev(app(a1,n)) = app(rev(n),rev(a1))`),
+            app_assoc(`rev n`, `rev a1`, `cons a0 nil`), 
+            symm(aux), NULL},
+    `rev(app(cons a0 a1, n))`
+  ));
+  rev_app_distr_cons = gen(`a0:int`, gen(`a1:intlist`, 
+    disch(rev_app_distr_cons, `!n. rev(app(a1,n)) = app(rev(n),rev(a1))`)));
+  
+  thm result = mp(intlist->ind, conjunct(rev_app_distr_nil, rev_app_distr_cons));
+  return spec(n, spec(m, result));
+}
+)]];
+
+[[cstar::function(
+thm rev_involutive(term l) {
+  thm rev_inv_nil = once_rewrite_list(
+    (thm[]){rev, rev, empty, empty, empty, empty, NULL},
+    `rev(rev(nil))`
+  );
+  
+  thm aux1 = once_rewrite_list(
+    (thm[]){rev, empty, empty, NULL},
+    `rev(cons a0 a1)`
+  );
+  thm aux2 = once_rewrite_list(
+    (thm[]){app, empty, empty, NULL},
+    `app(nil, cons a0 nil)`
+  );
+  thm rev_inv_cons = once_rewrite_list(
+    (thm[]){aux1, 
+            rev_app_distr(`rev a1`, `cons a0 nil`),
+            assume(`rev(rev(a1)) == a1`),
+            rev, rev, empty, empty, empty, empty,
+            aux2, app, empty, empty, app, empty, empty,
+            NULL},
+    `rev(rev(cons a0 a1))`
+  );
+  rev_inv_cons = gen(`a0:int`, gen(`a1:intlist`, 
+    disch(rev_inv_cons, `rev(rev(a1)) == a1`)));
+  
+  thm result = mp(intlist->ind, conjunct(rev_inv_nil, rev_inv_cons));
+  return spec(l, result);
+}
+)]];
+
+[[cstar::function(
+thm listrep_null(term l) {
+  thm nil_case1 = once_rewrite_list(
+    (thm[]){assume(`l == nil`), 
+            listrep, empty, empty, NULL},
+    `listrep(&0, l)`
+  );
+  thm nil_case2 = rewrite(assume(`l == nil`), `fact(l == nil)`);
+  thm nil_case = trans(nil_case1, symm(nil_case2));
+
+  thm cons_case1 = once_rewrite_list(
+    (thm[]){assume(`l == cons a0 a1`), 
+            listrep, empty, empty,
+            arith_rule(`&0 + &0 == &0`),
+            get_theorem("data_at_zero"),
+            get_theorem("hfalse_absorb_left"), NULL},
+    `listrep(&0, l)`
+  );
+  thm cons_case2_0 = mp(get_theorem("hexists_elim"), 
+    gen(`value:int`, spec(`fact F`, get_theorem("hentail_refl"))));
+  thm cons_case2_1 = spec(`exists (value:int). fact false`, get_theorem("hfact_false_elim"));
+  thm cons_case2 = mp(mp(get_theorem("hentail_antisym"), cons_case2_0), cons_case2_1);
+  thm cons_case3 = once_rewrite_list(
+    (thm[]){assume(`l == cons a0 a1`),
+            distinctness("intlist"), NULL},
+    `fact(l == nil)`
+  );
+
+  thm cons_case = choose(`a0:int`, choose(`a1:intlist`, 
+    trans_list((thm[]){cons_case1, cons_case2, symm(cons_case3), NULL})));
+  
+  thm result = gen(`l:intlist`, 
+    disj_cases(spec(`l:intlist`, cases("intlist")), nil_case, cons_case));
+  return spec(l, result);
+}
+)]];
+
+[[cstar::function(
+thm hexists_intro_helper(term tm, term s) {
+  return beta_rule(
+    mp(get_theorem("hexists_intro"), 
+      mp(get_theorem("hentail_sym_left"),
+        symm(beta_conv(mk_comb(tm, s))))));
+}
+)]];
+
+[[cstar::function(
+thm listrep_valid(term v, term l) {
+  tmp_goal = 
+    `~(v == &0) ==> 
+      ( listrep(v, l) |--
+        ( exists (x:int) (xs:intlist) (t:addr). 
+          fact(l == cons x xs) ** data_at(v + &0, Tint, x) ** data_at(v + &4, Tptr, t) ** listrep(t, xs) ) )`;
+  
+  thm nil1 = mp(get_theorem("hentail_sym_left"),
+    once_rewrite_list(
+      (thm[]){assume(`l == nil`),
+              listrep, empty, empty, 
+              assume(`~(v == &0)`), NULL},
+      `listrep(v, l)`
+    ));
+  thm nil2 = spec(
+    `exists (x:int) (xs:intlist) (t:addr). 
+      fact(l == cons x xs) ** data_at(v + &0, Tint, x) ** data_at(v + &4, Tptr, t) ** listrep(t, xs)`,
+    get_theorem("hfact_false_elim"));
+  thm nil_case = disch(hentail_trans_list((thm[]){nil1, nil2, NULL}), `~(v == &0)`);
+  
+  thm cons1 = mp(get_theorem("hentail_sym_left"),
+    once_rewrite_list(
+      (thm[]){listrep, empty, empty,
+              get_theorem("hsep_hexists_right"),
+              NULL},
+      `listrep(v, cons a0 a1)`
+    ));
+  cons1 = rewrite_rule(get_theorem("hsep_hexists_right"), cons1);
+  thm cons2 = mp(get_theorem("hentail_sym_left"),
+    rewrite_list(
+      (thm[]){assume(`(value:int) == a0`),
+              arith_rule(`v == v + &0`), NULL},
+      `data_at(v + &0, Tint, value)`));
+  cons2 = mp(get_theorem("hfact_elim"), disch(cons2, hypth(cons2)));
+  cons2 = which_implies_dev(consequent(conclusion(cons1)), cons2);
+
+  thm cons = hentail_trans_list((thm[]){cons1, cons2, NULL});
+  cons = rewrite_rule(symm(assume(`l == cons a0 a1`)), cons);
+  cons = mp(mp(get_theorem("hfact_intro"), assume(`l == cons a0 a1`)), cons);
+  cons = rewrite_rule(get_theorem("hsep_hexists_right"), cons);
+  
+  tmp_term = 
+  `\(a1:intlist). exists (next:int).
+      fact (l == cons a0 a1) **
+      data_at (v + &0, Tint, a0) ** 
+      data_at (v + &4,Tptr, next) ** 
+      listrep (next, a1)`;
+  thm cons3 = hexists_intro_helper(tmp_term, `a1:intlist`);
+
+  tmp_term = 
+  `\(a0:int). exists (a1:intlist) (next:int).
+      fact (l == cons a0 a1) **
+      data_at (v + &0, Tint, a0) ** 
+      data_at (v + &4,Tptr, next) ** 
+      listrep (next, a1)`;
+  cons3 = hentail_trans_list((thm[]){cons3, hexists_intro_helper(tmp_term, `a0:int`), NULL});
+
+  cons = hentail_trans_list((thm[]){cons, cons3, NULL});
+  cons = disch(choose(`a0:int`, choose(`a1:intlist`, cons)), `~(v == &0)`);
+  cons = rewrite_rule(alpha(conclusion(cons), tmp_goal), cons);
+
+  thm result = gen(`v:int`, gen(`l:intlist`, 
+    disj_cases(spec(`l:intlist`, cases("intlist")), nil_case, cons)));
+  return spec(l, spec(v, result));
+}
+)]];
+
+[[cstar::function(
+thm hfact_manual1(term pre1, term pre2, term post) {
+  thm arith = rewrite_list(
+    (thm[]){assume(pre2), assume(pre1), NULL}, post
+  );
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), arith), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return sep_normalize_rule(result);
+}
+)]];
+
+[[cstar::function(
+thm hfact_manual2(term pre) {
+  thm arith = rewrite_list(
+    (thm[]){assume(pre), app_nil_r(`rev(l1)`), 
+            rev_involutive(`l:intlist`), NULL}, 
+    `rev(l)`
+  );
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), symm(arith)), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return sep_normalize_rule(result);
+}
+)]];
+
+[[cstar::function(
+thm hfact_manual3() {
+  thm rewr = once_rewrite_list(
+    (thm[]){app, empty, empty, app, empty, empty, NULL},
+    `app(cons x nil, xs)`
+  );
+  thm arith = once_rewrite_list(
+    (thm[]){rev, empty, empty, 
+            app_assoc(`rev(l1)`, `cons x nil`, `xs:intlist`), 
+            rewr, symm(assume(`l == app(rev(l1), cons x xs)`)), NULL},
+    `app(rev(cons x l1), xs)`
+  );
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), symm(arith)), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return result;
+}
+)]];
+
+struct List *reverse(struct List *p)
+  [[cstar::parameter(`l:intlist`)]]
+  [[cstar::require(`listrep(p, l)`)]]
+  [[cstar::ensure(`listrep(__return, rev(l))`)]]
+{
+  [[cstar::proof(
+    empty = get_theorem("TRUTH");
+    thm ax_head = new_axiom(`&"v->head" == v_v + &0`);
+    thm ax_tail = new_axiom(`&"v->tail" == v_v + &4`);
+  )]];
+
+  [[cstar::assert(`
+    listrep(p_pre, l) **
+    data_at(&"p", Tptr, p_pre)
+  `)]];
+
+  struct List *w = NULL;
+
+  [[cstar::assert(`
+    listrep(p_pre, l) **
+    data_at(&"p", Tptr, p_pre) **
+    data_at(&"w", Tptr, &0)
+  `)]];
+
+  struct List *v = p;
+
+  [[cstar::assert(`
+    listrep(p_pre, l) **
+    data_at(&"p", Tptr, p_pre) **
+    data_at(&"w", Tptr, &0) **
+    data_at(&"v", Tptr, p_pre)
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm hfact_thm = mp(get_theorem("hentail_sym_left"), symm(
+        once_rewrite_list(
+          (thm[]){rev, is_nil, empty, 
+                  app, is_nil, empty,
+                  arith_rule(`((l:intlist) == l) <=> T`), 
+                  get_theorem("htrue_hemp"), NULL}, 
+          `fact(l == app(rev(nil), l))`)));
+
+      thm listrep_emp = mp(get_theorem("hentail_sym_left"), symm(
+        once_rewrite_list(
+          (thm[]){listrep, empty, empty, get_theorem("htrue_hemp"), NULL},
+          `listrep(&0, nil)`)));
+      
+      thm local = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), listrep_emp));
+      thm final_thm = spec(get_symbolic_state(), mp(get_theorem("hsep_cancel_right"), local));
+      set_symbolic_state(sep_normalize_rule(final_thm));
+    }
+  )]];
+
+  [[cstar::assert(`
+    fact(l == app(rev(nil), l)) **
+    listrep(&0, nil) **
+    listrep(p_pre, l) **
+    data_at(&"p", Tptr, p_pre) **
+    data_at(&"w", Tptr, &0) **
+    data_at(&"v", Tptr, p_pre)
+  `)]];
+
+  [[cstar::proof(
+    {
+      tmp_term = 
+        `\(l2:intlist). 
+          fact(l == app(rev(nil), l2)) **
+          listrep(&0, nil) **
+          listrep(p_pre, l2) **
+          data_at(&"p", Tptr, p_pre) **
+          data_at(&"w", Tptr, &0) **
+          data_at(&"v", Tptr, p_pre)`;
+      thm result = hexists_intro_helper(tmp_term, `l:intlist`);
+            
+      tmp_term = 
+        `\(l1:intlist). exists (l2:intlist).
+          fact(l == app(rev(l1), l2)) **
+          listrep(&0, l1) **
+          listrep(p_pre, l2) **
+          data_at(&"p", Tptr, p_pre) **
+          data_at(&"w", Tptr, &0) **
+          data_at(&"v", Tptr, p_pre)`;
+      result = hentail_trans_list((thm[]){result, hexists_intro_helper(tmp_term, `nil:intlist`), NULL});
+      
+      tmp_term = 
+        `\(v_v:int). exists (l1:intlist) (l2:intlist).
+          fact(l == app(rev(l1), l2)) **
+          listrep(&0, l1) **
+          listrep(v_v, l2) **
+          data_at(&"p", Tptr, p_pre) **
+          data_at(&"w", Tptr, &0) **
+          data_at(&"v", Tptr, v_v)`;
+      result = hentail_trans_list((thm[]){result, hexists_intro_helper(tmp_term, `p_pre:int`), NULL});
+
+      tmp_term = 
+        `\(w_v:int). exists (v_v:int) (l1:intlist) (l2:intlist).
+          fact(l == app(rev(l1), l2)) **
+          listrep(w_v, l1) **
+          listrep(v_v, l2) **
+          data_at(&"p", Tptr, p_pre) **
+          data_at(&"w", Tptr, w_v) **
+          data_at(&"v", Tptr, v_v)`;
+      result = hentail_trans_list((thm[]){result, hexists_intro_helper(tmp_term, `&0`), NULL});
+
+      set_symbolic_state(result);
+    }
+  )]];
+
+  while (v != NULL) 
+    [[cstar::invariant(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (l2:intlist).
+        fact(l == app(rev(l1), l2)) **
+        listrep(w_v, l1) ** 
+        listrep(v_v, l2) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v)
+    `)]]
+  {
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (l2:intlist).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), l2)) **
+        listrep(w_v, l1) ** 
+        listrep(v_v, l2) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v)
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm local = undisch(listrep_valid(`v_v:addr`, `l2:intlist`)); 
+        thm final_thm = which_implies_dev(pre_state, local);
+        final_thm = rewrite_rule_list(
+          (thm[]){symm(ax_head), symm(ax_tail), NULL},
+          final_thm
+        );
+        set_symbolic_state(final_thm);
+      }
+    )]];
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (l2:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l2 == cons x xs) ** 
+        fact(l == app(rev(l1), l2)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, t_v) 
+    `)]];
+
+    [[cstar::proof(
+      {
+        thm hfact_thm = 
+          hfact_manual1(`l2 == cons x xs`, `l == app(rev(l1), l2)`,
+                        `l == app(rev(l1), cons x xs)`);
+        set_symbolic_state(which_implies_dev(get_symbolic_state(), hfact_thm));
+      }
+    )]];
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), cons x xs)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, t_v) 
+    `)]];
+
+    struct List *t = v->tail;
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), cons x xs)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, t_v) **
+        data_at(&"t", Tptr, t_v)
+    `)]];
+
+    v->tail = w;
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), cons x xs)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, w_v) **
+        data_at(&"t", Tptr, t_v)
+    `)]];
+
+    w = v;
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), cons x xs)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, v_v) **
+        data_at(&"v", Tptr, v_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, w_v) **
+        data_at(&"t", Tptr, t_v)
+    `)]];
+
+    v = t;
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (x:int) (xs:intlist) (t_v:int).
+        fact(~(v_v == &0)) ** 
+        fact(l == app(rev(l1), cons x xs)) **
+        listrep(w_v, l1) **
+        listrep(t_v, xs) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, v_v) **
+        data_at(&"v", Tptr, t_v) **
+        data_at(&"v->head", Tint, x) **
+        data_at(&"v->tail", Tptr, w_v) ** 
+        data_at(&"t", Tptr, t_v)
+    `)]];
+    // &"v->tail" == v_v + &4 === v_v->tail (in VST-IDE), actually is &"w->tail".
+
+    /* proof obligation */
+    [[cstar::proof(
+      tmp_goal = 
+        ` fact(l == app(rev(l1), cons x xs)) **
+          listrep(w_v, l1) **
+          data_at(&"v->head", Tint, x) **
+          data_at(&"v->tail", Tptr, w_v) **
+          listrep(t_v, xs) **
+          data_at(&"t", Tptr, t_v)
+        |--
+          exists (l1x:intlist) (l2:intlist). 
+            fact(l == app(rev(l1x), l2)) **
+            listrep(v_v, l1x) **
+            listrep(t_v, l2) **
+            undef_data_at(&"t", Tptr) `;;
+      {
+        thm list_def = mp(get_theorem("hentail_sym_left"),
+          symm(once_rewrite_list(
+            (thm[]){listrep, empty, empty, 
+                    get_theorem("hsep_hexists_right"), 
+                    NULL},
+            `listrep(v_v, cons x l1)`
+          )));
+
+        tmp_term = 
+         `listrep(w_v, l1) **
+          data_at(&"v->head", Tint, x) **
+          data_at(&"v->tail", Tptr, w_v)`;
+        thm th1 = mp(mp(get_theorem("hfact_intro"),
+          arith_rule(`(x:int) == x`)), 
+          spec(tmp_term, get_theorem("hentail_refl")));
+        
+        tmp_term = 
+         `data_at (&"v->head", Tint, x) **
+          data_at (&"v->tail", Tptr, w_v) **
+          fact(x == x) **
+          listrep(w_v, l1)`;
+        thm th2 = mp(get_theorem("hentail_sym_left"),
+          sep_reorder(tmp_term, consequent(conclusion(th1))));
+
+        tmp_term = 
+        `\(next:int).
+          data_at (&"v->head", Tint, x) **
+          data_at (&"v->tail", Tptr, next) **
+          fact(x == x) **
+          listrep(next, l1)`;
+        th2 = hentail_trans_list((thm[]){th2, hexists_intro_helper(tmp_term, `w_v:int`), NULL});
+        
+        tmp_term = 
+        `\(value:int). exists (next:int).
+          data_at (&"v->head", Tint, value) **
+          data_at (&"v->tail", Tptr, next) **
+          fact(value == x) **
+          listrep(next, l1)`;
+        th2 = hentail_trans_list((thm[]){th2, hexists_intro_helper(tmp_term, `x:int`), NULL});
+        
+        list_def = rewrite_rule_list((thm[]){symm(ax_head), symm(ax_tail), NULL}, list_def);
+        thm alpha_conv = mp(get_theorem("hentail_sym_left"),
+          alpha(consequent(conclusion(th2)), antecedent(conclusion(list_def))));
+        thm result = hentail_trans_list((thm[]){th1, th2, alpha_conv, list_def, NULL});
+        
+        thm hfact_thm = hfact_manual3();
+        result = mp(mp(get_theorem("hsep_monotone"), hfact_thm), result);
+        result = mp(mp(get_theorem("hsep_monotone"), result), 
+          spec(`listrep(t_v, xs)`, get_theorem("hentail_refl")));
+        result = mp(mp(get_theorem("hsep_monotone"), result), 
+          spec(`t_v:int`, spec(`Tptr`, spec(`&"t"`, get_theorem("data_at_to_undef_data_at")))));
+        result = sep_normalize_rule(result);
+
+        tmp_term = 
+        `\(l2:intlist).
+          fact (l == app(rev(cons x l1), l2)) **
+          listrep (v_v, cons x l1) **
+          listrep (t_v, l2) **
+          undef_data_at(&"t", Tptr)`;
+        result = hentail_trans_list((thm[]){result, hexists_intro_helper(tmp_term, `xs:intlist`), NULL});
+
+        tmp_term = 
+        `\(l1x:intlist). exists (l2:intlist).
+          fact (l == app(rev(l1x), l2)) **
+          listrep (v_v, l1x) **
+          listrep (t_v, l2) ** 
+          undef_data_at(&"t", Tptr)`;
+        result = hentail_trans_list((thm[]){result, hexists_intro_helper(tmp_term, `(cons x l1):intlist`), NULL});
+      }
+    )]]
+
+    [[cstar::assert(`
+      exists (w_v:int) (v_v:int) (l1:intlist) (l2:intlist).
+        fact(l == app(rev(l1), l2)) **
+        listrep(w_v, l1) **
+        listrep(v_v, l2) **
+        data_at(&"p", Tptr, p_pre) **
+        data_at(&"w", Tptr, w_v) **
+        data_at(&"v", Tptr, v_v) **
+        undef_data_at(&"t", Tptr)
+    `)]];
+  }
+
+  [[cstar::assert(`
+    exists (w_v:int) (v_v:int) (l1:intlist) (l2:intlist).
+      fact(v_v == &0) ** 
+      fact(l == app(rev(l1), l2)) **
+      listrep(w_v, l1) **
+      listrep(v_v, l2) **
+      data_at(&"p", Tptr, p_pre) **
+      data_at(&"w", Tptr, w_v) **
+      data_at(&"v", Tptr, v_v) 
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm list_null = mp(get_theorem("hentail_sym_left"),
+        once_rewrite_list(
+          (thm[]){assume(`v_v == &0`),
+                  listrep_null(`l2:intlist`), NULL},
+          `listrep(v_v, l2)`
+        ));
+      list_null = spec(`fact(l == app(rev(l1), l2))`,
+        mp(get_theorem("hsep_cancel_right"), list_null));
+      thm local = hentail_trans_list(
+        (thm[]){list_null, 
+                sep_normalize_rule(
+                  hfact_manual1(`l2 == nil`, `l == app(rev(l1), l2)`,
+                                `l == app(rev(l1), nil)`)), 
+                NULL});
+      local = mp(get_theorem("hfact_elim"), disch(local, hypth(local)));
+      set_symbolic_state(which_implies_dev(get_symbolic_state(), local));
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (w_v:int) (v_v:int) (l1:intlist).
+      fact(l == app(rev(l1), nil)) **
+      listrep(w_v, l1) **
+      data_at(&"p", Tptr, p_pre) **
+      data_at(&"w", Tptr, w_v) **
+      data_at(&"v", Tptr, v_v) 
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm hfact_thm = hfact_manual2(`l == app(rev(l1), nil)`);
+      thm list_rewr = mp(get_theorem("hentail_sym_left"),
+        rewrite(assume(`l1 == rev(l)`), `listrep(w_v, l1)`));
+
+      thm local = hentail_trans_list(
+        (thm[]){spec(`listrep(w_v, l1)`, 
+                  mp(get_theorem("hsep_cancel_right"), hfact_thm)), 
+                mp(get_theorem("hfact_elim"), 
+                  disch(list_rewr, hypth(list_rewr))), 
+                NULL});
+      set_symbolic_state(which_implies_dev(get_symbolic_state(), local));
+    }
+  )]]
+
+  [[cstar::assert(`
+    exists (w_v:int).
+      listrep(w_v, rev(l)) **
+      data_at(&"p", Tptr, p_pre) **
+      data_at(&"w", Tptr, w_v) **
+      data_at(&"v", Tptr, &0) 
+  `)]];
+}
