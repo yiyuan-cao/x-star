@@ -961,4 +961,15 @@ impl Interface for Session {
       };
       Ok(self.theorems_mut().insert(thm))
     }
+
+    /// find a rule about modulo arithmetic.
+    async fn modulo_rule(mut self, _ctx: Context, tm: TermKey) -> Result<TheoremKey> {
+      load_dyn_function!(MODULO_RULE as modulo_rule);
+      let thm = {
+        let terms = self.terms();
+        let tm = terms.get(tm).ok_or("invalid term key")?;
+        unsafe { self.dyn_call(modulo_rule, args!(tm)) }?
+      };
+      Ok(self.theorems_mut().insert(thm))
+    }
 }

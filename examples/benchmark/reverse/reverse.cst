@@ -1,7 +1,6 @@
 typedef const struct Gc_Term *term;
 typedef const struct Gc_Theorem *thm;
 typedef const struct IndType *indtype;
-typedef const struct Gc_Conversion *conv;
 
 struct List {
   int head;
@@ -587,7 +586,18 @@ struct List *reverse(struct List *p)
     `)]];
     // &"v->tail" == v_v + &4 === v_v->tail (in VST-IDE), actually is &"w->tail".
 
-    /* proof obligation */
+    // proof obligation:
+    //   fact(l == app(rev(l1), cons x xs)) **
+    //   listrep(w_v, l1) **
+    //   data_at(&"v->head", Tint, x) **
+    //   data_at(&"v->tail", Tptr, w_v) **
+    //   listrep(t_v, xs) **
+    //   data_at(&"t", Tptr, t_v) |--
+    //     exists (l1x:intlist) (l2:intlist). 
+    //       fact(l == app(rev(l1x), l2)) **
+    //       listrep(v_v, l1x) **
+    //       listrep(t_v, l2) **
+    //       undef_data_at(&"t", Tptr)
     [[cstar::proof(
       tmp_goal = 
         ` fact(l == app(rev(l1), cons x xs)) **

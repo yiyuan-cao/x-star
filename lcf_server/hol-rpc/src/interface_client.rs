@@ -552,4 +552,10 @@ impl Client {
       let key = self.execute(self.interface().apply_conv(context::current(), conv.key, tm.key))??;
       Ok(Theorem::new(key, self.clone()))
     }
+
+    /// find a rule about modulo arithmetic.
+    pub fn modulo_rule(&self, tm: &Term) -> Result<Theorem> {
+      let key = self.execute(self.interface().modulo_rule(context::current(), tm.key))??;
+      Ok(Theorem::new(key, self.clone()))
+    }
 }

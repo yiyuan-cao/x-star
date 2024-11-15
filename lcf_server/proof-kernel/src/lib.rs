@@ -1512,3 +1512,18 @@ pub unsafe extern "C" fn apply_conv(
   let thm = ensures_ok!(client.apply_conv(conv, tm), std::ptr::null());
   thm.into_gc()
 }
+
+/// find a rule about modulo arithmetic.
+#[no_mangle]
+pub unsafe extern "C" fn modulo_rule(
+  tm: *const Gc<Term>
+) -> *const Gc<Theorem> {
+  clear_last_error();
+  ensures!(!tm.is_null(), "`tm` is null", std::ptr::null());
+
+  let client = ensures_ok!(get_client(), std::ptr::null());
+  let tm = unsafe { &*tm }.as_ref();
+
+  let thm = ensures_ok!(client.modulo_rule(tm), std::ptr::null());
+  thm.into_gc()
+}

@@ -333,6 +333,9 @@ pub trait Interface {
 
     /// Applies a conversion.
     async fn apply_conv(conv: ConversionKey, tm: TermKey) -> Result<TheoremKey>;
+
+    /// find a rule about modulo arithmetic.
+    async fn modulo_rule(tm: TermKey) -> Result<TheoremKey>;
 }
 
 slotmap::new_key_type! {

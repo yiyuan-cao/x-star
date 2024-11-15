@@ -862,6 +862,11 @@ const struct Gc_Conversion *rand_conv(const struct Gc_Conversion *conv);
 const struct Gc_Theorem *apply_conv(const struct Gc_Conversion *conv, const struct Gc_Term *tm);
 
 /**
+ * find a rule about modulo arithmetic.
+ */
+const struct Gc_Theorem *modulo_rule(const struct Gc_Term *tm);
+
+/**
  * Get the last error message.
  *
  * If no error has been set, this function returns `NULL`.

@@ -14,7 +14,7 @@ thm hfact_manual1(term pre1, term pre2, term post) {
 
 [[cstar::function(
 thm hfact_manual2(term pre, term post) {
-  thm arith = new_axiom(`(${pre:bool}) ==> (${post:bool})`);
+  thm arith = modulo_rule(`(${pre:bool}) ==> (${post:bool})`);
   thm result = spec(`emp`, get_theorem("hentail_refl"));
   result = mp(mp(get_theorem("hfact_intro"), undisch(arith)), result);
   result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
@@ -92,9 +92,9 @@ int is_even(int x)
 
     [[cstar::proof( 
       {
-        // proof obligation : [| x@pre = 0 |]  |--
-        //                    [| x@pre % 2 = 0 |] ** [| 1 = 1 |] ||
-        //                    [| x@pre % 2 <> 0 |] ** [| 1 = 0 |] 
+        // proof obligation : fact(x_pre == &0)  |--
+        //                    (fact(x_pre % (&2) == &0) ** fact(&1 == &1)) ||
+        //                    (fact(~(x_pre % (&2) == &0)) ** fact(~(&1 == &0)))
         thm hfact_thm = hfact_auto_int(
           (term[]){`x_pre == &0`, NULL},
           (term[]){`x_pre % &2 == &0`, `&1 == &1`, NULL}
@@ -105,7 +105,7 @@ int is_even(int x)
           spec(`fact(~(x_pre % &2 == &0)) ** fact(&1 == &0)`, 
             spec(`fact (x_pre % &2 == &0) ** fact (&1 == &1)`, get_theorem("hor_intro1")))
         );
-        result = rewrite_rule(spec(`fact(x_pre % &2 == &0)`, spec(`fact(&1 == &1)`, get_theorem("hsep_comm"))), result);
+        result = pure_rewrite_rule(spec(`fact(x_pre % &2 == &0)`, spec(`fact(&1 == &1)`, get_theorem("hsep_comm"))), result);
         puts(string_of_thm(result)); puts("");
       }
     )]];
@@ -132,10 +132,10 @@ int is_even(int x)
 
     [[cstar::proof(
       {
-        // proof obligation 1 : forall retval,
-        //                      [| (x@pre - 1) % 2 == 0 |] ** [| retval == 0 |] ** [| x@pre - 1 >= 0 |]  |--
-        //                      [| x@pre % 2 = 0 |] ** [| retval == 1 |] ||
-        //                      [| x@pre % 2 <> 0 |] ** [| retval == 0 |]
+        // proof obligation 1 : forall retval.
+        //                      fact((x_pre - &1) % (&2) == &0) ** fact(retval == &0) ** fact(x_pre - &1 >= &0)  |--
+        //                      fact(x_pre % (&2) == &0) ** fact(retval == &1) ||
+        //                      fact(~(x_pre % (&2) == &0)) ** fact(retval == &0)
         thm hfact_thm1 = hfact_manual2(`(x_pre - &1) % &2 == &0`, `~(x_pre % &2 == &0)`);
         thm hfact_thm2 = hfact_auto_int(
           (term[]){`retval == &0`, `x_pre - &1 >= &0`, NULL},
@@ -154,10 +154,10 @@ int is_even(int x)
 
     [[cstar::proof(
       {
-        // proof obligation 2 : forall retval,
-        //                      [| (x@pre - 1) % 2 <> 0 |] ** [| retval == 1 |] ** [| x@pre - 1 >= 0 |]  |--
-        //                      [| x@pre % 2 = 0 |] ** [| retval == 1 |] ||
-        //                      [| x@pre % 2 <> 0 |] ** [| retval == 0 |]
+        // proof obligation 2 : forall retval.
+        //                      fact(~((x_pre - &1) % (&2) == &0)) ** fact(retval == &1) ** fact(x_pre - &1 >= &0)  |--
+        //                      fact(x_pre % (&2) == &0) ** fact(retval == &1) ||
+        //                      fact(~(x_pre % (&2) == &0)) ** fact(retval == &0)
         thm hfact_thm1 = hfact_manual2( `~((x_pre - &1) % &2 == &0)`, `x_pre % &2 == &0`);
         thm hfact_thm2 = hfact_auto_int(
           (term[]){`retval == &1`, `x_pre - &1 >= &0`, NULL},
@@ -191,9 +191,9 @@ int is_odd(int x)
 
     [[cstar::proof(
       {
-        // proof obligation : [| x@pre = 0 |]  |--
-        //                    [| x@pre % 2 <> 0 |] ** [| 0 = 1 |] ||
-        //                    [| x@pre % 2 = 0 |] ** [| 1 = 1 |] .
+        // proof obligation : fact(x_pre == &0)  |--
+        //                    (fact(~(x_pre % (&2) == &0)) ** fact(~(&0 == &1))) ||
+        //                    (fact(x_pre % (&2) == &0) ** fact(&1 == &1))
         thm hfact_thm = hfact_auto_int(
           (term[]){`x_pre == &0`, NULL},
           (term[]){`x_pre % &2 == &0`, `&1 == &1`, NULL}
@@ -224,10 +224,10 @@ int is_odd(int x)
 
     [[cstar::proof(
       {
-        // proof obligation 1 : forall retval,
-        //                      [| (x@pre - &1) % 2 <> &0) |] ** [| retval == 0 |] ** [| x_pre - 1 >= 0 |]  |--
-        //                      [| x@pre % 2 <> &0 |] ** [| retval == 1 |] ||
-        //                      [| x@pre % 2 = &0 |] ** [| retval == 0 |]
+        // proof obligation 1 : forall retval.
+        //                      fact(~((x_pre - &1) % (&2) == &0)) ** fact(retval == &0) ** fact(x_pre - &1 >= &0)  |--
+        //                      fact(~(x_pre % (&2) == &0)) ** fact(retval == &1) ||
+        //                      fact(x_pre % (&2) == &0) ** fact(retval == &0)
         thm hfact_thm1 = hfact_manual2( `~((x_pre - &1) % &2 == &0)`, `x_pre % &2 == &0`);
         thm hfact_thm2 = hfact_auto_int(
           (term[]){`retval == &0`, `x_pre - &1 >= &0`, NULL},
@@ -247,10 +247,10 @@ int is_odd(int x)
 
     [[cstar::proof(
       {
-        // proof obligation 2 : forall retval,
-        //                      [| (x@pre - 1) % 2 == 0 |] ** [| retval == 1 |] ** [| x@pre - 1 >= 0 |]  |--
-        //                      [| x@pre % 2 <> 0 |] ** [| retval == 1 |] ||
-        //                      [| x@pre % 2 = 0 |] ** [| retval == 0 |]
+        // proof obligation 2 : forall retval.
+        //                      fact((x_pre - &1) % (&2) == &0) ** fact(retval == &1) ** fact(x_pre - &1 >= &0)  |--
+        //                      fact(~(x_pre % (&2) == &0)) ** fact(retval == &1) ||
+        //                      fact(x_pre % (&2) == &0) ** fact(retval == &0)
         thm hfact_thm1 = hfact_manual2( `(x_pre - &1) % &2 == &0`, `~(x_pre % &2 == &0)`);
         thm hfact_thm2 = hfact_auto_int(
           (term[]){`retval == &1`, `x_pre - &1 >= &0`, NULL},
