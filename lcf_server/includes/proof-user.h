@@ -26,41 +26,6 @@ typedef struct rewrites_item {
   thm th;
 } rewrites_item;
 
-static indtype slval;
-static thm himpl_refl_axiom;
-static thm himpl_trans_axiom;
-static thm himpl_antisym_axiom;
-static thm star_assoc_axiom;
-static thm star_comm_axiom;
-static thm star_monotone_axiom;
-static thm star_neutral_l_axiom;
-static thm star_exists_axiom;
-static thm star_forall_axiom;
-static thm frame_rule_l_axiom;
-static thm single_not_null_axiom;
-static thm single_conflict_axiom;
-static thm field_not_null_axiom;
-static thm field_conflict_axiom;
-static thm undefpointsto_def_axiom;
-static thm pure_l_axiom;
-static thm pure_r_axiom;
-static thm pure_distri_axiom;
-static thm exists_l_axiom;
-static thm exists_r_axiom;
-static thm exists_monotone_axiom;
-static thm forall_l_axiom;
-static thm forall_r_axiom;
-static thm forall_monotone_axiom;
-static thm false_explosion_axiom;
-static thm false_elim_l_axiom;
-static thm false_def_axiom;
-static thm himpl_sym_l_axiom;
-static thm pure_contradiction_axiom;
-
-// Added temporarily
-static thm disj_split_axiom;
-static thm int_le_axiom;
-
 /** Term destructor/constructor. */
 
 bool is_bin_op(term);
