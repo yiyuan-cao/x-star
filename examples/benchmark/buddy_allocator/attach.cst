@@ -36,22 +36,6 @@ struct hyp_page
 	u8 flags;
 };
 
-#define hyp_vmemmap ((struct hyp_page *)__hyp_vmemmap)
-
-#define __hyp_pa(virt)	((phys_addr_t)(virt) + hyp_physvirt_offset)
-#define __hyp_va(phys)	((phys_addr_t)(phys) - hyp_physvirt_offset)
-void *hyp_phys_to_virt(phys_addr_t phys) { return __hyp_va(phys); }
-phys_addr_t hyp_virt_to_phys(void *addr) { return __hyp_pa(addr); }
-
-#define hyp_phys_to_pfn(phys)	((phys) / HYP_PAGE_SIZE)
-#define hyp_pfn_to_phys(pfn)	((phys_addr_t)((pfn) * HYP_PAGE_SIZE))
-#define hyp_phys_to_page(phys)	(&hyp_vmemmap[hyp_phys_to_pfn(phys)])
-#define hyp_virt_to_page(virt)	hyp_phys_to_page(__hyp_pa(virt))
-#define hyp_virt_to_pfn(virt)	hyp_phys_to_pfn(__hyp_pa(virt))
-#define hyp_page_to_pfn(page)	((struct hyp_page *)(page) - hyp_vmemmap)
-#define hyp_page_to_phys(page)  hyp_pfn_to_phys((hyp_page_to_pfn(page)))
-#define hyp_page_to_virt(page)	__hyp_va(hyp_page_to_phys(page))
-
 [[cstar::require(`emp`)]]
 [[cstar::ensure(`hfact (__result = min a_pre b_pre)`)]]
 int min(int a, int b);
@@ -87,12 +71,12 @@ void memset_page_zero(struct hyp_page *pg, u8 order);
 	(pool_const pool) **
 	store_pageinfo_array vmemmap start end l **
 	hfact (LENGTH l = len) **
-	hfact (pg = vmemmap + &(i * 4)) **
+	hfact (pg = vmemmap + &(pi * 4)) **
 	hfact (pi < len) **
 	hfact ((2 EXP order_v) divides (i2id pi))
 `)]]
 [[cstar::ensure(`
-exists buddy bi.
+exists bi.
 	data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 	hfact (order_v = num_of_int order_pre) **
 	hfact ((__result = &0) ||
@@ -345,7 +329,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				get data_at &"pool -> max_order";
 				get data_at &"pg -> order";
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term fact = `pg_pre = vmemmap + &(pi * 4)`;
 			thm data_at_pg_pre2order = use_fact_symm_rewrite(
@@ -358,7 +342,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			trans = point_to_handler(trans, pool2max_order_axiom, `pool_pre : addr`, `&(max_order : num)`);
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::assert(`
 		data_at(&"buddy", Tptr, &0) **
@@ -426,7 +410,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-	pg -> order = HYP_NO_ORDER;
+	pg -> order = (u8)HYP_NO_ORDER;
     [[cstar::assert(`
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
@@ -460,7 +444,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-	u8 max_order = pool -> max_order;
+	u8 max_order_ = pool -> max_order;
     [[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
@@ -500,7 +484,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				fold pool_const;
 				rewrite back;
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term fact = `pg_pre = vmemmap + &(pi * 4)`;
 			thm data_at_pg_pre2order = use_fact_rewrite(
@@ -514,7 +498,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			trans = point_to_handler(trans, pool2max_order_axiom, `pool_pre : addr`, `&(max_order : num)`);
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
@@ -549,7 +533,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::argument(
-		`pi = i : num`,
+		`i = pi : num`,
 		`order_v = porder : num`,
 		`vmemmap = vmemmap : addr`,
 		`PAGE_SIZE = PAGE_SIZE : num`
@@ -594,7 +578,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 					dlist_node / dlist_head / LENGTH / ORD / REF
 					free_area_repr / free_area_head_repr;
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term v = `(0, NO_ORDER) : num#num`;
 			term l = `l : (num#num)list`;
@@ -682,7 +666,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			);
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
@@ -712,7 +696,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::argument(
-		`pi = i : num`,
+		`pi = pi : num`,
 		`order_v = porder : num`,
 		`vmemmap = vmemmap : addr`,
 		`l = (modified l pi (0, NO_ORDER)) : (num#num)list`,
@@ -761,7 +745,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		/*	proof4 : 
 				existentialization;
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			thm trans = spec(__state, hentail_refl);
 			trans = hexists_intro_auto(trans, `modified l pi (0,NO_ORDER) = inv_l`);
@@ -772,7 +756,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			trans = hexists_intro_auto(trans, `pg_pre = pg_v : addr`);
 			__transform = trans;
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
     [[cstar::invariant(`
 	exists buddy_v bi inv_l inv_dl inv_hl i ord pg_v.
@@ -854,7 +838,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 					use buddy != 0 get facts;
 					split store_pageinfo_array at bi;
 			*/
-			// __state = get_symbolic_state();
+			__state = get_symbolic_state();
 			{
 				term fact_inv = `&(ord : num) + &1 < &max_order && ~(buddy_v = &0)`;
 				term fact_buddy = `
@@ -893,7 +877,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				trans = point_to_handler(trans, buddy2order_axiom, `buddy_v : addr`, `&(ord : num)`);
 				__transform = local_apply(__state, trans);
 			}
-			// set_symbolic_state(__transform);
+			set_symbolic_state(__transform);
 		)]];
 		[[cstar::assert(`
 		exists buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
@@ -1159,7 +1143,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 					derive facts of new_i;
 					existentialization new_i new_ord;
 			*/
-			// __state = get_symbolic_state();
+			__state = get_symbolic_state();
 			{
 				term v = `(0, NO_ORDER) : num#num`;
 				term invl = `inv_l : (num#num)list`;
@@ -1323,7 +1307,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				trans = hexists_intro_auto(trans, `SUC ord = new_ord : num`);
 				__transform = trans;
 			}
-			// set_symbolic_state(__transform);
+			set_symbolic_state(__transform);
 		)]];
 		[[cstar::assert(`
 		exists new_pg new_l new_dl new_hl (buddy_v : addr) (bi : num) (inv_l : (num#num)list) (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) (i : num) (ord : num) (pg_v : addr) new_i new_ord.
@@ -1441,7 +1425,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		/*	proof7 : 
 				split store_pageinfo_array at i;
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term fact_i_l_len = `i < len`;
 			term fact_pg_v = `(pg_v : addr) = vmemmap + &(i * 4)`;
@@ -1472,7 +1456,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
 	exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
@@ -1563,7 +1547,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				break store_zero_array;
 				update free_area_head_repr;
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term fact_ilen = `i < len`;
 			term fact_invl_len = `LENGTH (inv_l : (num#num)list) = len`;
@@ -1636,7 +1620,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			trans = point_to_handler(trans, pg2order_axiom, `pg_v : addr`, `&(ord : num)`);
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
 	exists pg_v ord i inv_l inv_dl inv_hl buddy_v bi.
@@ -1735,7 +1719,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		/*	proof9 : 
 				rewrite with new_l = modified inv_l i (0, ord);
 		*/
-		// __state = get_symbolic_state();
+		__state = get_symbolic_state();
 		{
 			term fact = `new_l = modified inv_l i (0, (ord : num))`;
 			term far = `free_area_repr (is_free_1st (modified inv_l i (0, (ord : num)))) start end (modified inv_l i (0, (ord : num)))`;
@@ -1747,7 +1731,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			thm trans = create_trans_auto((term[]){NULL}, (term[]){fact, NULL}, (thm[]){NULL}, (thm[]){far_ent, spa_ent, NULL});
 			__transform = local_apply(__state, trans);
 		}
-		// set_symbolic_state(__transform);
+		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
 	exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
