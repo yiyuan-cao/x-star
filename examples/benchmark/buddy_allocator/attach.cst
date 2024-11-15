@@ -824,7 +824,13 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(dlist_head_repr pool_pre 0 max_order new_hl) **
 			(free_area_repr (ifilter inv_l) start end inv_l) **
 			(free_area_head_repr (ifilter new_l) start end new_dl) **
-			(store_pageinfo_array vmemmap start end inv_l) **
+			(store_pageinfo_array vmemmap start (i2id bi) (take inv_l bi)) **
+				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
+				hfact (0 < REF_LIM) **
+				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
+				(data_at (&"buddy -> order", Tuchar, &ord)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
+			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
 		buddy -> order = HYP_NO_ORDER;
