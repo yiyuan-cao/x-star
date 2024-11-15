@@ -1,9 +1,6 @@
-// #include "cstar.h"
-// #include "def.h"
-// #include "lemma.h"
-
-typedef void *term;
-typedef void *thm;
+#include "cstar.h"
+#include "def.h"
+#include "lemma.h"
 
 #define HYP_MAX_ORDER 11
 #define HYP_NO_ORDER 255
@@ -73,6 +70,9 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::parameter(`NO_ORDER : num`)]]
 	[[cstar::parameter(`REF_LIM : num`)]]
 	[[cstar::parameter(`PAGE_SIZE : num`)]]
+	[[cstar::parameter(`PTR_SIZE : num`)]]
+	[[cstar::parameter(`LIST_HEAD_SIZE : num`)]]
+	[[cstar::parameter(`MAX_ORDER : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pg = vmemmap + &(pi * 4)) ** hfact (pi < len) **
@@ -421,10 +421,10 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
 	[[cstar::proof(
-		/*	proof3 : 
+		/*	proof3 : RESIDUAL PROOF 
 				fold store_pageinfo_array;
 				conversion : l -> inv_l := modified l pi (0, NO_ORDER)
-					dlist_node / dlist_head / LENGTH / OED/ REF
+					dlist_node / dlist_head / LENGTH / ORD / REF
 					free_area_repr / free_area_head_repr;
 		*/
 		// __state = get_symbolic_state();
@@ -548,7 +548,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		`pi = i : num`,
 		`order_v = porder : num`,
 		`vmemmap = vmemmap : addr`,
-		`l = l : (num#num)list`,
+		`l = (modified l pi (0, NO_ORDER)) : (num#num)list`,
 		`start = start : num`,
 		`end = end : num`,
 		`len = len : num`
@@ -781,7 +781,8 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			`end = end : num`,
 			`len = len : num`,
 			`max_order = max_order : num`,
-			`NO_ORDER = NO_ORDER : num`
+			`NO_ORDER = NO_ORDER : num`,
+			`PTR_SIZE = PTR_SIZE : num`
 		)]]
 		page_remove_from_list_pool(pool, buddy);
 		[[cstar::assert(`
@@ -826,7 +827,6 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(store_pageinfo_array vmemmap start end inv_l) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
-		
 		buddy -> order = HYP_NO_ORDER;
 		[[cstar::assert(`
 		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
@@ -977,7 +977,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
 		[[cstar::proof(
-			/*	proof6 : 
+			/*	proof6 : RESIDUAL PROOF 
 					merge store_pageinfo_array;
 					update free_area_head_repr;
 					merge store_zero_array;
@@ -1385,7 +1385,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
     `)]];
 	[[cstar::proof(
-		/*	proof8 : 
+		/*	proof8 : RESIDUAL PROOF 
 				merge store_pageinfo_array;
 				break store_zero_array;
 				update free_area_head_repr;
@@ -1514,7 +1514,8 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		`end = end : num`,
 		`len = len : num`,
 		`max_order = max_order : num`,
-		`NO_ORDER = NO_ORDER : num`
+		`NO_ORDER = NO_ORDER : num`,
+		`PTR_SIZE = PTR_SIZE : num`
 	)]]
 	page_add_to_list_pool(pool, pg, order);
 	[[cstar::assert(`
@@ -1646,7 +1647,7 @@ static struct hyp_page *__find_buddy_avail(struct hyp_pool *pool, struct hyp_pag
 	[[cstar::parameter(`len : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-		hfact(order_v = num_of_int order) **
+		hfact (order_v = num_of_int order) **
 		(pool_const pool) **
 		store_pageinfo_array vmemmap start end l **
 		hfact (LENGTH l = len) **
@@ -1687,6 +1688,7 @@ void page_remove_from_list_pool(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::parameter(`len : num`)]]
 	[[cstar::parameter(`max_order : num`)]]
 	[[cstar::parameter(`NO_ORDER : num`)]]
+	[[cstar::parameter(`PTR_SIZE : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pure_const) **
@@ -1740,9 +1742,10 @@ void page_add_to_list_pool(struct hyp_pool *pool, struct hyp_page *pg, u8 order)
 	[[cstar::parameter(`len : num`)]]
 	[[cstar::parameter(`max_order : num`)]]
 	[[cstar::parameter(`NO_ORDER : num`)]]	
+	[[cstar::parameter(`PTR_SIZE : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-		hfact(order_v = num_of_int order) **
+		hfact (order_v = num_of_int order) **
 		hfact (pure_const) **
 		hfact (LENGTH l = len) **
 		hfact (LENGTH dl = len) **
@@ -1764,7 +1767,7 @@ void page_add_to_list_pool(struct hyp_pool *pool, struct hyp_page *pg, u8 order)
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pool == pool_pre) **
 		hfact (pg == pg_pre) **
-		hfact(order_v = num_of_int order_pre) **
+		hfact (order_v = num_of_int order_pre) **
 		hfact (new_l = modified l pi (0, order_v)) **
 		hfact (pure_const) **
 		hfact (LENGTH l = len) **

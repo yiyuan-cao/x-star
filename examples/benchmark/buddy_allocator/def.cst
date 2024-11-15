@@ -146,13 +146,11 @@ void definitions()
     RANGE_LIM_DEF = define(`RANGE_LIM : num = 4503599627370496`);
     REF_LIM_DEF = define(`REF_LIM : num = 65536`);
     PTR_LIM_DEF = define(`PTR_LIM : num = 18446744073709551616`);
-    
     START_DEF = define(`start = @x : num. T`);;
     END_DEF = define(`end = @x : num. T`);;
     LEN_DEF = define(`len : num = end - start`);;
     MAX_ORDER__DEF = define(`max_order = @x : num. T`);;
     OFF_SET_DEF = define(`offset = @x : num. T`);;
-    
     PH2VI_DEF = define(`ph2vi (ph : addr) = ph - &offset`);
     VI2PH_DEF = define(`vi2ph (vi : addr) = vi + &offset`);
     PH2ID_DEF = define(`ph2id (ph : addr) = num_of_int (ph div &PAGE_SIZE)`);
@@ -210,9 +208,6 @@ void definitions()
         data_at ((addr + &(LIST_HEAD_SIZE * order)) + &PTR_SIZE, Tptr, PRV h) 
     ) ** dlist_head_repr addr (SUC order) maxorder t))`);
     NTH_DEF = get_theorem("nth_def");
-    // NTH_DEF = define(` 
-    // (! (h : A) (t : (A)list). nth (CONS h t) (0 : num) = h) &&
-    // (! (h : A) (t : (A)list) (n : num). nth (CONS h t) (SUC n) = nth t n)`);
     MODIFIED_DEF = define(` 
     (! (n : num) (v : A). modified (NIL : (A)list) n v = NIL) &&
     (! (h : A) (t : (A)list) (v : A). modified (CONS h t) (0 : num) v = CONS v t) &&
