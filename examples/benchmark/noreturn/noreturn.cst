@@ -38,7 +38,7 @@ void endless_while()
 
   [[cstar::proof(
     {
-      thm final_thm = hfact_auto((term[]){`~(&1 == &1)`, NULL}, (term[]){`~(&1 == &1)`, NULL}, (thm[]){NULL})
+      thm final_thm = hfact_auto((term[]){`~(&1 == &1)`, NULL}, (term[]){`~(&1 == &1)`, NULL}, (thm[]){NULL});
       set_symbolic_state(final_thm);
     }
   )]]

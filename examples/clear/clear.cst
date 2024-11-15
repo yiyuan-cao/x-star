@@ -114,7 +114,7 @@ void clear(void *to, int len)
                                 NULL },
                       `undef_array_at(to_pre + &0 * sizeof(Tchar), Tchar, n - &0)`)));
       thm hsep_mono = hsep_monotone(hfact_thm, undef_array_simpl);
-      thm final_thm = which_implies(pre_state, hsep_mono);
+      thm final_thm = local_apply(pre_state, hsep_mono);
       set_symbolic_state(final_thm);
     }
   )]];
@@ -167,7 +167,7 @@ void clear(void *to, int len)
         };
         dest_undef_array = rewrite_rule_list(arith_facts, dest_undef_array);
         /* rewrite using linear arithmetic facts */
-        thm final_thm = which_implies(get_symbolic_state(), dest_undef_array);
+        thm final_thm = local_apply(get_symbolic_state(), dest_undef_array);
         /* perform local transformation with frame inferred from the symbolic state */
         set_symbolic_state(final_thm);
         /* update the symbolic state */
@@ -219,7 +219,7 @@ void clear(void *to, int len)
         term pre_state = get_symbolic_state();
         thm array_at_last = array_at_last_split(`to_pre:int`, `Tchar`, `&0`, `i_v:int`);
         array_at_last = rewrite_rule(arith_rule(`(i_v >= &0) <=> (&0 <= i_v)`), array_at_last);
-        thm final_thm = which_implies(pre_state, array_at_last);
+        thm final_thm = local_apply(pre_state, array_at_last);
         set_symbolic_state(final_thm);
       }
     )]];
@@ -241,7 +241,7 @@ void clear(void *to, int len)
         thm hfact_thm = hfact_auto((term[]){`n >= &0`, `i_v < n`, `&0 <= i_v`, `i_v <= n`, NULL},
                                    (term[]){`n >= &0`, `i_v + &1 <= n`, `&0 <= i_v + &1`, NULL},
                                    (thm[]){NULL});
-        thm final_thm = which_implies(pre_state, hfact_thm);
+        thm final_thm = local_apply(pre_state, hfact_thm);
         set_symbolic_state(final_thm);
       }
     )]];
@@ -279,7 +279,7 @@ void clear(void *to, int len)
     {
       term pre_state = get_symbolic_state();
       thm hfact1 = hfact_manual(`(i_v:int) >= n`, `(i_v:int) <= n`, `(i_v:int) == n`);
-      hfact1 = which_implies(normalize(binder_body("hexists", pre_state)), hfact1);
+      hfact1 = local_apply(normalize(binder_body("hexists", pre_state)), hfact1);
 
       thm subst_i_v = mp(get_theorem("hentail_sym_left"), 
         rewrite(assume(`(i_v:int) = n`), tmp_term));
@@ -287,7 +287,7 @@ void clear(void *to, int len)
 
       thm hfact2 = hfact_auto((term[]){`n >= &0`, `&0 <= n`, NULL},
                               (term[]){`n >= &0`, NULL}, (thm[]){NULL});
-      hfact2 = which_implies(consequent(conclusion(subst_i_v)), hfact2);
+      hfact2 = local_apply(consequent(conclusion(subst_i_v)), hfact2);
 
       thm without_exists = hentail_trans_auto_list((thm[]){hfact1, subst_i_v, hfact2, NULL});
       thm final_thm = mp(get_theorem("hexists_elim"), gen(`i_v:int`, without_exists));
@@ -308,7 +308,7 @@ void clear(void *to, int len)
       term pre_state = get_symbolic_state();
       thm undef_array_elim = undef_array_at_zero_length(`to_pre + n * sizeof(Tchar)`, `Tchar`);
       undef_array_elim = rewrite_rule(arith_rule(`&0 = (n:int) - n`), undef_array_elim);
-      thm final_thm = which_implies(pre_state, undef_array_elim);
+      thm final_thm = local_apply(pre_state, undef_array_elim);
       set_symbolic_state(final_thm);
     }
   )]];

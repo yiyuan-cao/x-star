@@ -55,7 +55,7 @@ void m(struct counter *cnt)
         rewrite(int_arith(`v - v == &0`), consequent(conclusion(data_to_undef))),
         data_to_undef
       );
-      set_symbolic_state(which_implies(get_symbolic_state(), data_to_undef));
+      set_symbolic_state(local_apply(get_symbolic_state(), data_to_undef));
     }
   )]];
 
@@ -125,7 +125,7 @@ int main()
   [[cstar::proof(
     {
       thm data_to_undef = data_at_to_undef_data_at(`&"c"`, `Tptr`, `&"cnt"`);
-      set_symbolic_state(which_implies(get_symbolic_state(), data_to_undef));
+      set_symbolic_state(local_apply(get_symbolic_state(), data_to_undef));
     }
   )]];
 

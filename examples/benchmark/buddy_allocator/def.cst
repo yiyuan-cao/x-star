@@ -79,8 +79,8 @@
     thm MODIFIED_DEF;
     thm TAKE_DEF;
     thm REST_DEF;
-    thm FREE_HEAD_DEF;
-    thm IFILTER_DEF;
+    thm FREE_1ST_DEF;
+    thm IS_FREE_1ST_DEF;
     thm FREE_AREA_REPR_DEF;
     thm FREE_AREA_HEAD_REPR_DEF;
     thm DLIST_NODE_ONE_DEF;
@@ -91,7 +91,7 @@
     thm TOTAL_REPR_DEF;
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 void get_theorems()
 {
     LENGTH = get_theorem("LENGTH");
@@ -135,7 +135,7 @@ void get_theorems()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 void definitions()
 {
     PTR_SIZE_DEF = define(`PTR_SIZE : num = num_of_int word_size`);
@@ -146,13 +146,11 @@ void definitions()
     RANGE_LIM_DEF = define(`RANGE_LIM : num = 4503599627370496`);
     REF_LIM_DEF = define(`REF_LIM : num = 65536`);
     PTR_LIM_DEF = define(`PTR_LIM : num = 18446744073709551616`);
-    
     START_DEF = define(`start = @x : num. T`);;
     END_DEF = define(`end = @x : num. T`);;
     LEN_DEF = define(`len : num = end - start`);;
     MAX_ORDER__DEF = define(`max_order = @x : num. T`);;
     OFF_SET_DEF = define(`offset = @x : num. T`);;
-    
     PH2VI_DEF = define(`ph2vi (ph : addr) = ph - &offset`);
     VI2PH_DEF = define(`vi2ph (vi : addr) = vi + &offset`);
     PH2ID_DEF = define(`ph2id (ph : addr) = num_of_int (ph div &PAGE_SIZE)`);
@@ -210,9 +208,6 @@ void definitions()
         data_at ((addr + &(LIST_HEAD_SIZE * order)) + &PTR_SIZE, Tptr, PRV h) 
     ) ** dlist_head_repr addr (SUC order) maxorder t))`);
     NTH_DEF = get_theorem("nth_def");
-    // NTH_DEF = define(` 
-    // (! (h : A) (t : (A)list). nth (CONS h t) (0 : num) = h) &&
-    // (! (h : A) (t : (A)list) (n : num). nth (CONS h t) (SUC n) = nth t n)`);
     MODIFIED_DEF = define(` 
     (! (n : num) (v : A). modified (NIL : (A)list) n v = NIL) &&
     (! (h : A) (t : (A)list) (v : A). modified (CONS h t) (0 : num) v = CONS v t) &&
@@ -224,8 +219,8 @@ void definitions()
     REST_DEF = define(` 
     (! (l : (A)list). rest (l) (0 : num) = l) &&
     (! (h : A) (t : (A)list) (n : num). rest (CONS h t) (SUC n) = rest t n)`);
-    FREE_HEAD_DEF = define(`free_head (v : num#num) = ((REF v = 0) && ~(ORD v = NO_ORDER))`);
-    IFILTER_DEF = define(`ifilter (l : (num#num)list) (id : num) = free_head (nth l (id2i id))`);
+    FREE_1ST_DEF = define(`free_1st (v : num#num) = ((REF v = 0) && ~(ORD v = NO_ORDER))`);
+    IS_FREE_1ST_DEF = define(`is_free_1st (l : (num#num)list) (id : num) = free_1st (nth l (id2i id))`);
     FREE_AREA_REPR_DEF = define(` 
     (! (f : num -> bool) (lo : num) (hi : num). 
     free_area_repr f lo hi (NIL : (num#num)list) = (hfact (lo = hi))) &&
@@ -252,7 +247,7 @@ void definitions()
         || 
         ((vi2i (F1 h) < len) && ~(vi2id (F1 h) = lo) &&
         (F2 (nth dl (vi2i (F1 h))) = id2vi lo) &&
-        free_head (nth l (vi2i (F1 h))) &&
+        free_1st (nth l (vi2i (F1 h))) &&
         (ORD (nth l (vi2i (F1 h))) = (ORD (nth l (id2i lo))))))`);
     DLIST_NODE_DEF = define(` 
     (! (addr : addr) (f : num -> bool) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) (lo : num) (hi : num). 
@@ -268,7 +263,7 @@ void definitions()
     dlist_head_half (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (h : addr#addr) (F1 : (addr#addr) -> addr) (F2 : (addr#addr) -> addr) = (
         (vi2i (F1 h) < len) &&
         (F2 (nth dl (vi2i (F1 h))) = addr + &(LIST_HEAD_SIZE * order)) &&
-        free_head (nth l (vi2i (F1 h))) &&
+        free_1st (nth l (vi2i (F1 h))) &&
         (ORD (nth l (vi2i (F1 h))) = order))`);
     DLIST_HEAD_ONE_DEF = define(` 
     dlist_head_one (addr : addr) (l : (num#num)list) (dl : (addr#addr)list) (order : num) (h : addr#addr) = 
@@ -288,10 +283,10 @@ void definitions()
     total_repr (pool_ptr : addr) (vmemmap_ptr : addr) (l : (num#num)list) (dl : (addr#addr)list) (hl : (addr#addr)list) = ( 
         pool_const pool_ptr ** 
         dlist_head_repr pool_ptr 0 max_order hl ** 
-        free_area_repr (ifilter l) start end l ** 
-        free_area_head_repr (ifilter l) start end dl ** 
+        free_area_repr (is_free_1st l) start end l ** 
+        free_area_head_repr (is_free_1st l) start end dl ** 
         store_pageinfo_array vmemmap_ptr start end l **
-        hfact (dlist_node pool_ptr (ifilter l) l dl hl start end dl) ** 
+        hfact (dlist_node pool_ptr (is_free_1st l) l dl hl start end dl) ** 
         hfact (dlist_head pool_ptr l dl 0 max_order hl) ** 
         hfact (LENGTH l = len) ** 
         hfact (LENGTH dl = len) ** 

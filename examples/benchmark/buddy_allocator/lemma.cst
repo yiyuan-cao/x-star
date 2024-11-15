@@ -9,7 +9,7 @@
 )]];
 
 // axiomatize field_offset and padding layout
-[[cstar::proof(
+[[cstar::function(
 void point_to_axioms()
 {
     pg2order_axiom = new_axiom(`! pg_v v. data_at(&"pg", Tptr, pg_v) ** data_at(pg_v + &2, Tuchar, v) 
@@ -22,7 +22,7 @@ void point_to_axioms()
 )]];
 
 // data_at(&"p", Tptr, pv)
-[[cstar::proof(
+[[cstar::function(
 thm point_to_handler(thm ent, thm axiom, term p, term pv)
 {
     axiom = spec(pv, spec(p, axiom));
@@ -46,7 +46,7 @@ thm point_to_handler(thm ent, thm axiom, term p, term pv)
         (n <= len) ==> (len <= hi) ==> (len = LENGTH l) ==>
         P arg1 (hi - len) hi l = (P arg1 (hi - len) (hi - len + n) (take l n) ** P arg1 (hi - len + n) hi (rest l n)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm break_list_sepconj()
 {
     term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
@@ -146,7 +146,7 @@ thm break_list_sepconj()
     n < LENGTH l
 ==> rest l n = CONS (nth l n) (rest l (SUC n))
 */
-[[cstar::proof(
+[[cstar::function(
 thm rest_nth()
 {
     thm tmpth;
@@ -200,7 +200,7 @@ thm rest_nth()
         ONE arg1 (nth l n) (hi - len + n) **
         P arg1 (hi - len + SUC n) hi (rest l (SUC n))))
 */
-[[cstar::proof(
+[[cstar::function(
 thm breaknth_list_sepconj()
 {
     term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
@@ -244,7 +244,7 @@ thm breaknth_list_sepconj()
         (i <= n) ==> (n <= hi) ==> 
         P arg1 (hi - n) hi n = (P arg1 (hi - n) (hi - n + i) i ** P arg1 (hi - n + i) hi (n - i)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm break_array_sepconj()
 {
     // similar to break_list_sepconj
@@ -325,7 +325,7 @@ thm break_array_sepconj()
     n < LENGTH l
 ==> (nth (modified l n v) n) = v
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_nth()
 {
     term l = `l : (A)list`;
@@ -387,7 +387,7 @@ thm modified_nth()
 ==> ~(m = n)
 ==> (nth (modified l n v) m) = nth l m
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_mth()
 {
     term l = `l : (A)list`;
@@ -468,7 +468,7 @@ thm modified_mth()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm modified_taken_restn_lemma(term goal, term subgoal, thm DEF)
 {
     term l = `l : (A)list`;
@@ -519,7 +519,7 @@ thm modified_taken_restn_lemma(term goal, term subgoal, thm DEF)
     n < LENGTH l
 ==> (take (modified l n v) n) = (take l n)
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_taken()
 {
     term goal = `! (n : num) (v : A). 
@@ -533,7 +533,7 @@ thm modified_taken()
     n < LENGTH l
 ==> (rest (modified l n v) (SUC n)) = (rest l (SUC n))
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_restn()
 {
     term goal = `! (n : num) (v : A). 
@@ -546,7 +546,7 @@ thm modified_restn()
 /*
     LENGTH (modified l n v) = LENGTH l
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_len()
 {
     term l = `l : (A)list`;
@@ -585,22 +585,22 @@ thm modified_len()
 
 /*
     i < LENGTH l
-==> free_head v = free_head (nth l i)
-==> ifilter l = ifilter (modified l i v)
+==> free_1st v = free_1st (nth l i)
+==> is_free_1st l = is_free_1st (modified l i v)
 */
-[[cstar::proof(
+[[cstar::function(
 thm filter_inv()
 {
     term j = `j : num`;
     term asmp1_tm = `(i : num) < LENGTH (l : (num#num)list)`;
-    term asmp2_tm = `free_head v = free_head (nth l i)`;
-    term goal = `ifilter l = ifilter (modified l i v)`;
+    term asmp2_tm = `free_1st v = free_1st (nth l i)`;
+    term goal = `is_free_1st l = is_free_1st (modified l i v)`;
     thm asmp1 = assume(asmp1_tm);
     thm asmp2 = assume(asmp2_tm);
-    term tm1 = `(ifilter (modified l i v)) j`;
-    term tm2 = `(ifilter l) j`;
-    thm th1 = rewrite(IFILTER_DEF, tm1);
-    thm th2 = rewrite(IFILTER_DEF, tm2);
+    term tm1 = `(is_free_1st (modified l i v)) j`;
+    term tm2 = `(is_free_1st l) j`;
+    thm th1 = rewrite(IS_FREE_1ST_DEF, tm1);
+    thm th2 = rewrite(IS_FREE_1ST_DEF, tm2);
 
     term casep = `id2i j = (i : num)`;
     term casen = mk_comb(`~`, casep);
@@ -619,8 +619,8 @@ thm filter_inv()
 
     thm th9 = merge_disj_cases(casep, thp, thn);
     thm EQ_EXT = get_theorem("EQ_EXT");
-    term tm3 = `ifilter l`;
-    term tm4 = `ifilter (modified l i v)`;
+    term tm3 = `is_free_1st l`;
+    term tm4 = `is_free_1st (modified l i v)`;
     thm th10 = spec(tm4, spec(tm3, EQ_EXT));
     thm th11 = mp(th10, gen(j, th9));
     thm th = disch(disch(th11, asmp2_tm), asmp1_tm);
@@ -638,7 +638,7 @@ thm filter_inv()
 ==> free_area_repr filter start end l =
     free_area_repr filter start end (modified l i v)
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_inv()
 {
     term asmp0_tm = `(start : num) <= end`;
@@ -684,7 +684,7 @@ thm far_inv()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm dn_inv_lemma(term goal, thm asmp1, thm asmp2, thm asmp3, term casep_tm, term casen_tm)
 {
     thm disconj1 = taut(`! A B. A ==> A || B`);
@@ -705,19 +705,19 @@ thm dn_inv_lemma(term goal, thm asmp1, thm asmp2, thm asmp3, term casep_tm, term
 
 /*
     i < LENGTH l
-==> ~free_head (nth l i)
-==> dlist_node addr (ifilter l) l dl hl lo hi dl'
-==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi dl'
+==> ~free_1st (nth l i)
+==> dlist_node addr (is_free_1st l) l dl hl lo hi dl'
+==> dlist_node addr (is_free_1st l) (modified l i v) dl hl lo hi dl'
 */
-[[cstar::proof(
+[[cstar::function(
 thm dn_inv()
 {
     term dl_ = `dl1 : (addr#addr)list`;
     term goal = `! l hl dl i v addr lo hi. 
         i < LENGTH l 
-        ==> ~free_head (nth l i) 
-        ==> dlist_node addr (ifilter l) l dl hl lo hi dl1 
-        ==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi dl1`;
+        ==> ~free_1st (nth l i) 
+        ==> dlist_node addr (is_free_1st l) l dl hl lo hi dl1 
+        ==> dlist_node addr (is_free_1st l) (modified l i v) dl hl lo hi dl1`;
     // show_induct_goal(dl_, goal, list_INDUCT);
 
     term tm1 = `(dl1 : (addr#addr)list) = []`;
@@ -726,18 +726,18 @@ thm dn_inv()
     thm basis = rewrite_rule(refl(dl_), th1);
 
     term asmp1_tm = `i < LENGTH (l : (num#num)list)`;
-    term asmp2_tm = `~free_head (nth l i)`;
-    term asmp3_tm = `dlist_node addr (ifilter l) l dl hl lo hi dl1`;
+    term asmp2_tm = `~free_1st (nth l i)`;
+    term asmp3_tm = `dlist_node addr (is_free_1st l) l dl hl lo hi dl1`;
     thm asmp1 = assume(asmp1_tm);
     thm asmp2 = assume(asmp2_tm);
     thm asmp3 = assume(asmp3_tm);
 
     thm ind_asmp = assume(goal);
     term ind_goal = ` 
-        dlist_node addr (ifilter l) l dl hl lo hi (CONS h dl1) 
-    ==> dlist_node addr (ifilter l) (modified l i v) dl hl lo hi (CONS h dl1)`;
+        dlist_node addr (is_free_1st l) l dl hl lo hi (CONS h dl1) 
+    ==> dlist_node addr (is_free_1st l) (modified l i v) dl hl lo hi (CONS h dl1)`;
     thm th2 = rewrite(DLIST_NODE_DEF, ind_goal);
-    thm th3 = rewrite_rule(IFILTER_DEF, th2);
+    thm th3 = rewrite_rule(IS_FREE_1ST_DEF, th2);
 
     term casep = `id2i lo = i`;
     term casen = mk_comb(`~`, casep);
@@ -763,13 +763,13 @@ thm dn_inv()
     term case2n_tm = mk_comb(`~`, case2p_tm);
     thm solve2 = dn_inv_lemma(goal2, asmp1, asmp2, th9, case2p_tm, case2n_tm);
 
-    term cond = `free_head (nth l (id2i lo))`;
+    term cond = `free_1st (nth l (id2i lo))`;
     thm th10 = impl_conj_mono(solve1, solve2);
     thm th11 = disch(assume(`T`), `T`);
     thm th12 = impl_if_mono(cond, th10, th11);
 
-    term goal3 = `dlist_node addr (ifilter l) l dl hl (SUC lo) hi dl1 
-                        ==> dlist_node addr (ifilter l) (modified l i v) dl hl (SUC lo) hi dl1`;
+    term goal3 = `dlist_node addr (is_free_1st l) l dl hl (SUC lo) hi dl1 
+                        ==> dlist_node addr (is_free_1st l) (modified l i v) dl hl (SUC lo) hi dl1`;
     thm solve3 = rewrite_rule(refl(dl_), rewrite(th7, goal3));
     
     thm th13 = impl_conj_mono(th12, solve3);
@@ -793,17 +793,17 @@ thm dn_inv()
 
 /*
     i < LENGTH l
-==> ~free_head (nth l i)
+==> ~free_1st (nth l i)
 ==> dlist_head addr l dl order maxorder hl
 ==> dlist_head addr (modified l i v) dl order maxorder hl
 */
-[[cstar::proof(
+[[cstar::function(
 thm dh_inv()
 {
     term hl = `hl : (addr#addr)list`;
     term goal = `! l dl i v addr order maxorder. 
         i < LENGTH l 
-        ==> ~free_head (nth l i) 
+        ==> ~free_1st (nth l i) 
         ==> dlist_head addr l dl order maxorder hl 
         ==> dlist_head addr (modified l i v) dl order maxorder hl`;
     // show_induct_goal(hl, goal, list_INDUCT);
@@ -820,7 +820,7 @@ thm dh_inv()
     thm th2 = rewrite(DLIST_HEAD_DEF, ind_goal);
 
     term asmp1_tm = `i < LENGTH (l : (num#num)list)`;
-    term asmp2_tm = `~free_head (nth l i)`;
+    term asmp2_tm = `~free_1st (nth l i)`;
     thm asmp1 = assume(asmp1_tm);
     thm asmp2 = assume(asmp2_tm);
 
@@ -871,17 +871,17 @@ thm dh_inv()
 
 /*
     (i2id i < lo) ==> (i < LENGTH l)
-==> (free_area_repr (ifilter l) lo hi l' =
-    free_area_repr (ifilter (modified l i (0, order))) lo hi l')
+==> (free_area_repr (is_free_1st l) lo hi l' =
+    free_area_repr (is_free_1st (modified l i (0, order))) lo hi l')
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_lemma()
 {   
     term l_ = `l1 : (num#num)list`;
     term goal = `! l i lo hi order. 
         (i2id i < lo) ==> (i < LENGTH l) 
-        ==> (free_area_repr (ifilter l) lo hi l1 -|- 
-            free_area_repr (ifilter (modified l i (0, order))) lo hi l1)`;
+        ==> (free_area_repr (is_free_1st l) lo hi l1 -|- 
+            free_area_repr (is_free_1st (modified l i (0, order))) lo hi l1)`;
     // show_induct_goal(l_, goal, list_INDUCT);
 
     term asmp1_tm = `i2id i < (lo : num)`;
@@ -896,9 +896,9 @@ thm far_lemma()
 
     // step
     thm ind_asmp = assume(goal);
-    term ind_goal = `free_area_repr (ifilter l) lo hi (CONS h l1) -|- 
-            free_area_repr (ifilter (modified l i (0, order))) lo hi (CONS h l1)`;
-    thm th4 = rewrite_list((thm[]){FREE_AREA_REPR_DEF, IFILTER_DEF, ID2I_DEF, NULL}, ind_goal);
+    term ind_goal = `free_area_repr (is_free_1st l) lo hi (CONS h l1) -|- 
+            free_area_repr (is_free_1st (modified l i (0, order))) lo hi (CONS h l1)`;
+    thm th4 = rewrite_list((thm[]){FREE_AREA_REPR_DEF, IS_FREE_1ST_DEF, ID2I_DEF, NULL}, ind_goal);
     term tm1 = `start + i < (lo : num) ==> ~(lo - start = i)`;
     thm th5 = arith_rule(tm1);
     thm th6 = mp(mp(modified_mth(), asmp2), mp(th5, asmp1));
@@ -924,23 +924,23 @@ thm far_lemma()
 /*
     start <= lo ==> lo <= i2id i ==> i2id i < hi
 ==> i < LENGTH l
-==> ifilter l (i2id i)
+==> is_free_1st l (i2id i)
 ==> nth l i = nth l' ((i2id i) - lo)
-==> free_area_repr (ifilter l) lo hi l' = (
-    free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l' **
+==> free_area_repr (is_free_1st l) lo hi l' = (
+    free_area_repr (is_free_1st (modified l i (0, NO_ORDER))) lo hi l' **
     store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2))
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_split()
 {
     term l_ = `l1 : (num#num)list`;
     term goal = `! (l : (num#num)list) lo hi i. 
         (start : num) <= lo ==> lo <= i2id i ==> i2id i < hi 
     ==> i < LENGTH l 
-    ==> ifilter l (i2id i) 
+    ==> is_free_1st l (i2id i) 
     ==> nth l i = nth l1 ((i2id i) - lo) 
-    ==> free_area_repr (ifilter l) lo hi l1 = ( 
-        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l1) ** 
+    ==> free_area_repr (is_free_1st l) lo hi l1 = ( 
+        (free_area_repr (is_free_1st (modified l i (0, NO_ORDER))) lo hi l1) ** 
         (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
     // show_induct_goal(l_, goal, list_INDUCT);
 
@@ -948,7 +948,7 @@ thm far_split()
     term asmp2_tm = `(lo : num) <= i2id i`;
     term asmp3_tm = `i2id i < (hi : num)`;
     term asmp4_tm = `i < LENGTH (l : (num#num)list)`;
-    term asmp5_tm = `ifilter l (i2id i)`;
+    term asmp5_tm = `is_free_1st l (i2id i)`;
     thm asmp1 = assume(asmp1_tm);
     thm asmp2 = assume(asmp2_tm);
     thm asmp3 = assume(asmp3_tm);
@@ -957,8 +957,8 @@ thm far_split()
 
     // basis
     term tm1 = `nth (l : (num#num)list) i = nth l1 ((i2id i) - lo) 
-    ==> free_area_repr (ifilter l) lo hi l1 = ( 
-        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi l1) ** 
+    ==> free_area_repr (is_free_1st l) lo hi l1 = ( 
+        (free_area_repr (is_free_1st (modified l i (0, NO_ORDER))) lo hi l1) ** 
         (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
     term tm2 = rewrite_term(`(l1 : (num#num)list) = []`, tm1);
     term tm3 = `(lo : num) <= i2id i && i2id i < hi ==> ~(lo = hi)`;
@@ -972,8 +972,8 @@ thm far_split()
     
     // step
     term goal2 = `nth (l : (num#num)list) i == nth (CONS h l1) ((i2id i) - lo) 
-    ==> free_area_repr (ifilter l) lo hi (CONS h l1) = ( 
-        (free_area_repr (ifilter (modified l i (0, NO_ORDER))) lo hi (CONS h l1)) ** 
+    ==> free_area_repr (is_free_1st l) lo hi (CONS h l1) = ( 
+        (free_area_repr (is_free_1st (modified l i (0, NO_ORDER))) lo hi (CONS h l1)) ** 
         (store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2)))`;
     thm th9 = rewrite(FREE_AREA_REPR_DEF, goal2);
     
@@ -985,8 +985,8 @@ thm far_split()
     // casep
     term tm4 = `(i2id i) - (i2id i) = 0`;
     thm th17 = arith_rule(tm4);
-    thm th20 = rewrite_list_rhs((thm[]){casep, asmp5, IFILTER_DEF, i2id2i(), mp(modified_nth(), asmp4),
-        FREE_HEAD_DEF, ORD_DEF, th17, NTH_DEF, hsep_hemp_left, NULL}, th9);
+    thm th20 = rewrite_list_rhs((thm[]){casep, asmp5, IS_FREE_1ST_DEF, i2id2i(), mp(modified_nth(), asmp4),
+        FREE_1ST_DEF, ORD_DEF, th17, NTH_DEF, hsep_hemp_left, NULL}, th9);
     // break into subgoals
     term tm5 = `nth l i = (h : num#num)`;
     thm th21 = assume(tm5);
@@ -997,7 +997,7 @@ thm far_split()
     term tm7 = `i2id i < SUC (i2id i)`;
     thm th23 = arith_rule(tm7);
     thm th24 = mp(mp(far_lemma(), th23), asmp4);
-    term tm8 = `free_area_repr (ifilter l) (SUC (i2id i)) hi l1`;
+    term tm8 = `free_area_repr (is_free_1st l) (SUC (i2id i)) hi l1`;
     thm th25 = rewrite(th24, tm8);
     term tm9 = mk_comb(mk_comb(`**`, tm6), tm8);
     thm th28 = rewrite_list((thm[]){th22, th25, hsep_comm, NULL}, tm9);
@@ -1006,7 +1006,7 @@ thm far_split()
     thm thp = simp(th30);
 
     // casen
-    thm th32 = rewrite_rhs(IFILTER_DEF, th9);
+    thm th32 = rewrite_rhs(IS_FREE_1ST_DEF, th9);
     thm th33 = rewrite_rhs(ID2I_DEF, th32);
     term tm10 = `(start : num) <= lo ==> ~(lo = start + i) ==> ~((lo - start) = i)`;
     thm th34 = rewrite_rule(symm(I2ID_DEF), arith_rule(tm10));
@@ -1051,33 +1051,33 @@ thm far_split()
 /*
     start <= lo ==> lo <= i2id i ==> i2id i < hi
 ==> i < LENGTH l
-==> ~(ifilter l (i2id i))
+==> ~(is_free_1st l (i2id i))
 ==> ~(order = NO_ORDER)
 ==> (nth l i = nth l' ((i2id i) - lo))
-==> (free_area_repr (ifilter l) lo hi l' **
+==> (free_area_repr (is_free_1st l) lo hi l' **
     store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
-    free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l' ((i2id i) - lo) (0, order)))
+    free_area_repr (is_free_1st (modified l i (0, order))) lo hi (modified l' ((i2id i) - lo) (0, order)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_merge()
 {
     term l_ = `l1 : (num#num)list`;
     term goal = `! (l : (num#num)list) lo hi i. 
         (start : num) <= lo ==> lo <= i2id i ==> i2id i < hi 
     ==> i < LENGTH l 
-    ==> ~(ifilter l (i2id i)) 
+    ==> ~(is_free_1st l (i2id i)) 
     ==> ~(order = NO_ORDER) 
     ==> nth l i = nth l1 ((i2id i) - lo) 
-    ==> (free_area_repr (ifilter l) lo hi l1 ** 
+    ==> (free_area_repr (is_free_1st l) lo hi l1 ** 
         store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
-        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
+        free_area_repr (is_free_1st (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
     // show_induct_goal(l_, goal, list_INDUCT);
 
     term asmp1_tm = `(start : num) <= lo`;
     term asmp2_tm = `(lo : num) <= i2id i`;
     term asmp3_tm = `i2id i < (hi : num)`;
     term asmp4_tm = `i < LENGTH (l : (num#num)list)`;
-    term asmp5_tm = `~(ifilter l (i2id i))`;
+    term asmp5_tm = `~(is_free_1st l (i2id i))`;
     term asmp6_tm = `~((order : num) = NO_ORDER)`;
     thm asmp1 = assume(asmp1_tm);
     thm asmp2 = assume(asmp2_tm);
@@ -1088,9 +1088,9 @@ thm far_merge()
 
     // basis
     term tm1 = `nth l i = nth l1 ((i2id i) - lo) 
-    ==> (free_area_repr (ifilter l) lo hi l1 ** 
+    ==> (free_area_repr (is_free_1st l) lo hi l1 ** 
         store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
-        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
+        free_area_repr (is_free_1st (modified l i (0, order))) lo hi (modified l1 ((i2id i) - lo) (0, order))`;
     term tm2 = rewrite_term(`(l1 : (num#num)list) = []`, tm1);
     term tm3 = `(lo : num) <= i2id i && i2id i < hi ==> ~(lo = hi)`;
     thm th2 = arith_rule(tm3);
@@ -1104,9 +1104,9 @@ thm far_merge()
     
     // step
     term goal2 = `nth l i = nth (CONS h l1) ((i2id i) - lo) 
-    ==> (free_area_repr (ifilter l) lo hi (CONS h l1) ** 
+    ==> (free_area_repr (is_free_1st l) lo hi (CONS h l1) ** 
         store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
-        free_area_repr (ifilter (modified l i (0, order))) lo hi (modified (CONS h l1) ((i2id i) - lo) (0, order))`;
+        free_area_repr (is_free_1st (modified l i (0, order))) lo hi (modified (CONS h l1) ((i2id i) - lo) (0, order))`;
     
     term casep_tm = `(lo : num) = i2id i`;
     term casen_tm = mk_comb(`~`, casep_tm);
@@ -1117,7 +1117,7 @@ thm far_merge()
     term tm4 = `(i2id i) - (i2id i) = 0`;
     thm th10 = arith_rule(tm4);
     thm th25 = rewrite_list((thm[]){casep, th10, MODIFIED_DEF, FREE_AREA_REPR_DEF, 
-        asmp5, IFILTER_DEF, i2id2i(), mp(modified_nth(), asmp4), FREE_HEAD_DEF, REF_DEF,
+        asmp5, IS_FREE_1ST_DEF, i2id2i(), mp(modified_nth(), asmp4), FREE_1ST_DEF, REF_DEF,
         ORD_DEF, asmp6, NTH_DEF, hsep_hemp_left, NULL}, goal2);
     // break into subgoals
     term tm6 = `store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) 
@@ -1126,7 +1126,7 @@ thm far_merge()
     term tm7 = `i2id i < SUC (i2id i)`;
     thm th26 = arith_rule(tm7);
     thm th27 = mp(mp(far_lemma(), th26), asmp4);
-    term tm8 = `free_area_repr (ifilter l) (SUC (i2id i)) hi l1`;
+    term tm8 = `free_area_repr (is_free_1st l) (SUC (i2id i)) hi l1`;
     thm th28 = rewrite(th27, tm8);
     term tm9 = mk_comb(mk_comb(`**`, tm8), tm6);
     thm th29 = rewrite(spec(tm8, hsep_comm), tm9);
@@ -1148,7 +1148,7 @@ thm far_merge()
     thm th36 = arith_rule(tm13);
     thm th37 = mp(th36, asmp2_);
     thm th43 = mp(mp(modified_mth(), asmp4), th33);
-    thm th45 = rewrite_list((thm[]){th37, MODIFIED_DEF, FREE_AREA_REPR_DEF, IFILTER_DEF, 
+    thm th45 = rewrite_list((thm[]){th37, MODIFIED_DEF, FREE_AREA_REPR_DEF, IS_FREE_1ST_DEF, 
         ID2I_DEF, th43, NTH_DEF, NULL}, goal2);
     thm th46 = mp(mp(mp(mp(mp(mp(assume(goal), asmp1_), asmp2_), asmp3), asmp4), asmp5), asmp6);
     term tm14 = dest_bin_fst_comb(dest_bin_snd_comb(dest_bin_snd_comb(conclusion(th45))));
@@ -1176,7 +1176,7 @@ thm far_merge()
     store_zero_array (addr + &i) lo hi n =
     store_zero_array addr (lo + i) (hi + i) n
 */
-[[cstar::proof(
+[[cstar::function(
 thm store_array_addr()
 {
     term n = `n : num`;
@@ -1218,7 +1218,7 @@ thm store_array_addr()
 /*
     id2vi (pid + n) == id2vi pid + &(PAGE_SIZE * n)
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge_lemma()
 {
     term tm1 = `id2vi (pid + n)`;
@@ -1242,7 +1242,7 @@ thm sza_merge_lemma()
     store_zero_array (id2vi (pid + n)) 0 (PAGE_SIZE * n) (PAGE_SIZE * n)) =
     store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge_lemma2()
 {
     term rhs = `store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))`;
@@ -1282,7 +1282,7 @@ thm sza_merge_lemma2()
     store_zero_array (i2vi j) 0 (PAGE_SIZE * 2 EXP ord) (PAGE_SIZE * 2 EXP ord)
 -|- store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge()
 {
     term goal = `store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))`;
@@ -1313,7 +1313,7 @@ thm sza_merge()
 /*
     id2i (i2id i) = i
 */
-[[cstar::proof(
+[[cstar::function(
 thm i2id2i()
 {
     term tm = `id2i (i2id i)`;
@@ -1323,7 +1323,7 @@ thm i2id2i()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm merge_head_body_axiom()
 {
     return new_axiom(` 
@@ -1341,7 +1341,7 @@ thm merge_head_body_axiom()
 // i_l_len : i < len
 // len : len = LENGTH l
 // st_ed : start < end
-[[cstar::proof(
+[[cstar::function(
 thm break_spa_at_i(term spa, thm i_l_len, thm len, thm st_ed)
 {
     thm ar1 = rewrite_rule(symm(LEN_DEF), arith_rule(`end - start <= end`));

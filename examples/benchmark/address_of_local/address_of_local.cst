@@ -85,7 +85,7 @@ void address_of_param(int x)
       [[cstar::proof(
         thm hfact_false = mp(get_theorem("hentail_sym_left"), 
           (rewrite(arith_rule(`~(&6 == &6) <=> F`), `fact(~(&6 == &6))`)));
-        thm final_thm = which_implies(get_symbolic_state(), hfact_false);
+        thm final_thm = local_apply(get_symbolic_state(), hfact_false);
         set_symbolic_state(final_thm);
       )]];
 
@@ -173,7 +173,7 @@ void address_of_local()
         [[cstar::proof(
           thm hfact_false = mp(get_theorem("hentail_sym_left"), 
             (rewrite(arith_rule(`~(&1 == &1) <=> F`), `fact(~(&1 == &1))`)));
-          thm final_thm = which_implies(get_symbolic_state(), hfact_false);
+          thm final_thm = local_apply(get_symbolic_state(), hfact_false);
           set_symbolic_state(final_thm);
         )]];
 

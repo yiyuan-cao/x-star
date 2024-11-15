@@ -270,7 +270,7 @@ thm create_trans_auto(term cfactl[], term kfactl[], thm pthl[], thm hthl[])
     return th;
 }
 
-thm which_implies(term state, thm th) {
+thm local_apply(term state, thm th) {
   /// `state` is in the form of `hexists x1..xn. Q1 ** ... ** Qx.
   /// `th` is in the form of `P1 ==> (.. (Pn ==> (Q1 ** ... ** Qm |-- R1 ** ... ** Rs)))`.
   /// suppose pre- and post-condition of `th` are not `emp`.
@@ -336,13 +336,13 @@ thm which_implies(term state, thm th) {
   return entail;
 }
 
-// Development version of `which_implies`
+// Development version of `local_apply`
 // Hope to support `th` both sides with `exists`
 // We now support `exists` on the right side, adding to consequent of result
 // We can support `exists` on the left side (and detailed handling of free variables) 
 //   by 1. `gen_all` antecedent of `th`, repeat apply `hexists_elim` (handling free variables).
 //      2. when repeat applying `hexists_monotone`, check if the var is free in antecedent
-thm which_implies_dev(term state, thm th) {
+thm local_apply_dev(term state, thm th) {
   term state_exists_list[N];
   int state_exists_count = 0;
   while (is_binder("hexists", state)) {
