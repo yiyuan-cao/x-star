@@ -9,7 +9,7 @@
 )]];
 
 // axiomatize field_offset and padding layout
-[[cstar::proof(
+[[cstar::function(
 void point_to_axioms()
 {
     pg2order_axiom = new_axiom(`! pg_v v. data_at(&"pg", Tptr, pg_v) ** data_at(pg_v + &2, Tuchar, v) 
@@ -22,7 +22,7 @@ void point_to_axioms()
 )]];
 
 // data_at(&"p", Tptr, pv)
-[[cstar::proof(
+[[cstar::function(
 thm point_to_handler(thm ent, thm axiom, term p, term pv)
 {
     axiom = spec(pv, spec(p, axiom));
@@ -46,7 +46,7 @@ thm point_to_handler(thm ent, thm axiom, term p, term pv)
         (n <= len) ==> (len <= hi) ==> (len = LENGTH l) ==>
         P arg1 (hi - len) hi l = (P arg1 (hi - len) (hi - len + n) (take l n) ** P arg1 (hi - len + n) hi (rest l n)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm break_list_sepconj()
 {
     term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
@@ -146,7 +146,7 @@ thm break_list_sepconj()
     n < LENGTH l
 ==> rest l n = CONS (nth l n) (rest l (SUC n))
 */
-[[cstar::proof(
+[[cstar::function(
 thm rest_nth()
 {
     thm tmpth;
@@ -200,7 +200,7 @@ thm rest_nth()
         ONE arg1 (nth l n) (hi - len + n) **
         P arg1 (hi - len + SUC n) hi (rest l (SUC n))))
 */
-[[cstar::proof(
+[[cstar::function(
 thm breaknth_list_sepconj()
 {
     term asmp_tm = `(! (arg1 : B) (lo : num) (hi : num). P arg1 lo hi NIL = (hfact (lo = hi))) &&
@@ -244,7 +244,7 @@ thm breaknth_list_sepconj()
         (i <= n) ==> (n <= hi) ==> 
         P arg1 (hi - n) hi n = (P arg1 (hi - n) (hi - n + i) i ** P arg1 (hi - n + i) hi (n - i)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm break_array_sepconj()
 {
     // similar to break_list_sepconj
@@ -325,7 +325,7 @@ thm break_array_sepconj()
     n < LENGTH l
 ==> (nth (modified l n v) n) = v
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_nth()
 {
     term l = `l : (A)list`;
@@ -387,7 +387,7 @@ thm modified_nth()
 ==> ~(m = n)
 ==> (nth (modified l n v) m) = nth l m
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_mth()
 {
     term l = `l : (A)list`;
@@ -468,7 +468,7 @@ thm modified_mth()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm modified_taken_restn_lemma(term goal, term subgoal, thm DEF)
 {
     term l = `l : (A)list`;
@@ -519,7 +519,7 @@ thm modified_taken_restn_lemma(term goal, term subgoal, thm DEF)
     n < LENGTH l
 ==> (take (modified l n v) n) = (take l n)
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_taken()
 {
     term goal = `! (n : num) (v : A). 
@@ -533,7 +533,7 @@ thm modified_taken()
     n < LENGTH l
 ==> (rest (modified l n v) (SUC n)) = (rest l (SUC n))
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_restn()
 {
     term goal = `! (n : num) (v : A). 
@@ -546,7 +546,7 @@ thm modified_restn()
 /*
     LENGTH (modified l n v) = LENGTH l
 */
-[[cstar::proof(
+[[cstar::function(
 thm modified_len()
 {
     term l = `l : (A)list`;
@@ -588,7 +588,7 @@ thm modified_len()
 ==> free_1st v = free_1st (nth l i)
 ==> is_free_1st l = is_free_1st (modified l i v)
 */
-[[cstar::proof(
+[[cstar::function(
 thm filter_inv()
 {
     term j = `j : num`;
@@ -638,7 +638,7 @@ thm filter_inv()
 ==> free_area_repr filter start end l =
     free_area_repr filter start end (modified l i v)
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_inv()
 {
     term asmp0_tm = `(start : num) <= end`;
@@ -684,7 +684,7 @@ thm far_inv()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm dn_inv_lemma(term goal, thm asmp1, thm asmp2, thm asmp3, term casep_tm, term casen_tm)
 {
     thm disconj1 = taut(`! A B. A ==> A || B`);
@@ -709,7 +709,7 @@ thm dn_inv_lemma(term goal, thm asmp1, thm asmp2, thm asmp3, term casep_tm, term
 ==> dlist_node addr (is_free_1st l) l dl hl lo hi dl'
 ==> dlist_node addr (is_free_1st l) (modified l i v) dl hl lo hi dl'
 */
-[[cstar::proof(
+[[cstar::function(
 thm dn_inv()
 {
     term dl_ = `dl1 : (addr#addr)list`;
@@ -797,7 +797,7 @@ thm dn_inv()
 ==> dlist_head addr l dl order maxorder hl
 ==> dlist_head addr (modified l i v) dl order maxorder hl
 */
-[[cstar::proof(
+[[cstar::function(
 thm dh_inv()
 {
     term hl = `hl : (addr#addr)list`;
@@ -874,7 +874,7 @@ thm dh_inv()
 ==> (free_area_repr (is_free_1st l) lo hi l' =
     free_area_repr (is_free_1st (modified l i (0, order))) lo hi l')
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_lemma()
 {   
     term l_ = `l1 : (num#num)list`;
@@ -930,7 +930,7 @@ thm far_lemma()
     free_area_repr (is_free_1st (modified l i (0, NO_ORDER))) lo hi l' **
     store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP (ORD (nth l i)))) (PAGE_SIZE * (2 EXP (ORD (nth l i))) - PTR_SIZE * 2))
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_split()
 {
     term l_ = `l1 : (num#num)list`;
@@ -1058,7 +1058,7 @@ thm far_split()
     store_zero_array (id2vi (i2id i)) (PTR_SIZE * 2) (PAGE_SIZE * (2 EXP order)) (PAGE_SIZE * (2 EXP order) - PTR_SIZE * 2)) = 
     free_area_repr (is_free_1st (modified l i (0, order))) lo hi (modified l' ((i2id i) - lo) (0, order)))
 */
-[[cstar::proof(
+[[cstar::function(
 thm far_merge()
 {
     term l_ = `l1 : (num#num)list`;
@@ -1176,7 +1176,7 @@ thm far_merge()
     store_zero_array (addr + &i) lo hi n =
     store_zero_array addr (lo + i) (hi + i) n
 */
-[[cstar::proof(
+[[cstar::function(
 thm store_array_addr()
 {
     term n = `n : num`;
@@ -1218,7 +1218,7 @@ thm store_array_addr()
 /*
     id2vi (pid + n) == id2vi pid + &(PAGE_SIZE * n)
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge_lemma()
 {
     term tm1 = `id2vi (pid + n)`;
@@ -1242,7 +1242,7 @@ thm sza_merge_lemma()
     store_zero_array (id2vi (pid + n)) 0 (PAGE_SIZE * n) (PAGE_SIZE * n)) =
     store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge_lemma2()
 {
     term rhs = `store_zero_array (id2vi pid) 0 (PAGE_SIZE * (n * 2)) (PAGE_SIZE * (n * 2))`;
@@ -1282,7 +1282,7 @@ thm sza_merge_lemma2()
     store_zero_array (i2vi j) 0 (PAGE_SIZE * 2 EXP ord) (PAGE_SIZE * 2 EXP ord)
 -|- store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))
 */
-[[cstar::proof(
+[[cstar::function(
 thm sza_merge()
 {
     term goal = `store_zero_array (i2vi (MIN j i)) 0 (PAGE_SIZE * 2 EXP (SUC ord)) (PAGE_SIZE * 2 EXP (SUC ord))`;
@@ -1313,7 +1313,7 @@ thm sza_merge()
 /*
     id2i (i2id i) = i
 */
-[[cstar::proof(
+[[cstar::function(
 thm i2id2i()
 {
     term tm = `id2i (i2id i)`;
@@ -1323,7 +1323,7 @@ thm i2id2i()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 thm merge_head_body_axiom()
 {
     return new_axiom(` 
@@ -1341,7 +1341,7 @@ thm merge_head_body_axiom()
 // i_l_len : i < len
 // len : len = LENGTH l
 // st_ed : start < end
-[[cstar::proof(
+[[cstar::function(
 thm break_spa_at_i(term spa, thm i_l_len, thm len, thm st_ed)
 {
     thm ar1 = rewrite_rule(symm(LEN_DEF), arith_rule(`end - start <= end`));

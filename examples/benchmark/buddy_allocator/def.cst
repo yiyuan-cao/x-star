@@ -91,7 +91,7 @@
     thm TOTAL_REPR_DEF;
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 void get_theorems()
 {
     LENGTH = get_theorem("LENGTH");
@@ -135,7 +135,7 @@ void get_theorems()
 }
 )]];
 
-[[cstar::proof(
+[[cstar::function(
 void definitions()
 {
     PTR_SIZE_DEF = define(`PTR_SIZE : num = num_of_int word_size`);

@@ -446,7 +446,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
     `)]];
 	u8 max_order_ = pool -> max_order;
     [[cstar::assert(`
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -501,7 +501,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		set_symbolic_state(__transform);
 	)]];
     [[cstar::assert(`
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -540,7 +540,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 	)]]
 	memset_page_zero(pg, order);
     [[cstar::assert(`
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -669,7 +669,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		set_symbolic_state(__transform);
 	)]];
 	[[cstar::assert(`
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -715,7 +715,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth (modified l pi (0, NO_ORDER)) bi) = porder) &&
 			((2 EXP (SUC porder)) divides (i2id (MIN pi bi))) &&
 			(abs (&pi - &bi) = &(2 EXP porder))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -768,7 +768,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -794,7 +794,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_pageinfo_array vmemmap start end inv_l) **
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
     `)]]
-	while ((order + 1) < max_order && buddy != 0)
+	while ((order + 1) < max_order_ && buddy != 0)
 	{
 		[[cstar::assert(`
 		exists buddy_v bi inv_l inv_dl inv_hl i ord pg_v.
@@ -807,7 +807,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				(ORD (nth inv_l bi) = ord) &&
 				((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 				(abs (&i - &bi) = &(2 EXP ord))) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -889,7 +889,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (ORD (nth inv_l bi) = ord) **
 			hfact ((2 EXP (SUC ord)) divides (i2id (MIN i bi))) **
 			hfact (abs (&i - &bi) = &(2 EXP ord)) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -952,7 +952,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (abs (&i - &bi) = &(2 EXP ord)) **
 			data_at(i2vi bi, Tptr, &0) **
 			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1001,7 +1001,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (abs (&i - &bi) = &(2 EXP ord)) **
 			data_at(i2vi bi, Tptr, &0) **
 			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1051,7 +1051,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (abs (&i - &bi) = &(2 EXP ord)) **
 			data_at(i2vi bi, Tptr, &0) **
 			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1101,7 +1101,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			hfact (abs (&i - &bi) = &(2 EXP ord)) **
 			data_at(i2vi bi, Tptr, &0) **
 			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &ord + &1) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1311,7 +1311,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		)]];
 		[[cstar::assert(`
 		exists new_pg new_l new_dl new_hl (buddy_v : addr) (bi : num) (inv_l : (num#num)list) (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) (i : num) (ord : num) (pg_v : addr) new_i new_ord.
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &new_ord) **
 			data_at(&"buddy", Tptr, buddy_v) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1357,7 +1357,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				(ORD (nth new_l new_bi) = new_ord) &&
 				((2 EXP (SUC new_ord)) divides (i2id (MIN new_i new_bi))) &&
 				(abs (&new_i - &new_bi) = &(2 EXP new_ord))) **
-			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"max_order_", Tuchar, &max_order) **
 			data_at(&"order", Tuchar, &new_ord) **
 			data_at(&"buddy", Tptr, new_buddy) **
 			data_at(&"pool", Tptr, pool_pre) **
@@ -1395,7 +1395,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -1469,7 +1469,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -1511,7 +1511,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -1633,7 +1633,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -1690,7 +1690,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -1748,7 +1748,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(ORD (nth inv_l bi) = ord) &&
 			((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
 			(abs (&i - &bi) = &(2 EXP ord))) **
-		data_at(&"max_order", Tuchar, &max_order) **
+		data_at(&"max_order_", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &ord) **
 		data_at(&"buddy", Tptr, buddy_v) **
 		data_at(&"pool", Tptr, pool_pre) **
