@@ -1,0 +1,359 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
+[[cstar::proof(
+thm summ;
+)]];
+
+[[cstar::function(
+thm hfact_manual(term pre1, term pre2, term post) {
+  thm arith = undisch(undisch(arith_rule(`${pre1:bool} ==> ${pre2:bool} ==> ${post:bool}`)));
+  thm result = spec(`emp`, get_theorem("hentail_refl"));
+  result = mp(mp(get_theorem("hfact_intro"), arith), result);
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  result = mp(get_theorem("hfact_elim"), disch(result, hypth(result)));
+  return sep_normalize_rule(result);
+}
+)]];
+
+int sum10_while()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`__result == &55`)]]
+{
+  [[cstar::proof(
+    summ = define(`!n:int. summ n = (n * (n + &1)) / &2`);
+  )]];
+
+  [[cstar::assert(`emp`)]];
+
+  int ret = 0;
+  
+  [[cstar::assert(`data_at(&"ret", Tint, &0)`)]];
+
+  int i = 1;
+
+  [[cstar::assert(`
+    data_at(&"ret", Tint, &0) **
+    data_at(&"i", Tint, &1)
+  `)]];
+  
+  [[cstar::proof(
+    {
+      thm hfact_thm = spec(`emp`, get_theorem("hentail_refl"));
+      hfact_thm = mp(mp(get_theorem("hfact_intro"), int_arith(`&1 <= &1`)), hfact_thm);
+      hfact_thm = mp(mp(get_theorem("hfact_intro"), int_arith(`&1 <= &11`)), hfact_thm);
+      thm data_at_rewr = mp(get_theorem("hentail_sym_left"),
+        symm(rewrite_list(
+          (thm[]){summ, int_arith(`((&1 - &1) * ((&1 - &1) + &1)) / &2 == &0`), NULL},
+          `data_at(&"ret", Tint, summ(&1 - &1))`
+        )));
+      thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
+      set_symbolic_state(which_implies(get_symbolic_state(), result));
+    }
+  )]];
+
+  [[cstar::assert(`
+    fact(&1 <= &1) ** fact(&1 <= &11) **
+    data_at(&"ret", Tint, summ(&1 - &1)) **
+    data_at(&"i", Tint, &1)
+  `)]];
+
+  while (i <= 10) 
+    [[cstar::invariant(`
+      exists (i_v:int).
+        fact(&1 <= i_v) ** fact(i_v <= &11) **
+        data_at(&"ret", Tint, summ(i_v - &1)) **
+        data_at(&"i", Tint, i_v)
+    `)]]
+  {
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(i_v <= &10) ** 
+        fact(&1 <= i_v) ** fact(i_v <= &11) **
+        data_at(&"ret", Tint, summ(i_v - &1)) **
+        data_at(&"i", Tint, i_v)
+    `)]]
+
+    ret = ret + i;
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(i_v <= &10) ** 
+        fact(&1 <= i_v) ** fact(i_v <= &11) **
+        data_at(&"ret", Tint, summ(i_v - &1) + i_v) **
+        data_at(&"i", Tint, i_v)
+    `)]];
+
+    i = i + 1;
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(i_v <= &10) ** 
+        fact(&1 <= i_v) ** fact(i_v <= &11) **
+        data_at(&"ret", Tint, summ(i_v - &1) + i_v) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm hfact_thm = hfact_auto(
+          (term[]){`i_v <= &10`, `&1 <= i_v`, `i_v <= &11`, NULL},
+          (term[]){`&1 <= i_v + &1`, `i_v + &1 <= &11`, NULL}, (thm[]){NULL}
+        );
+        thm data_at_rewr = mp(get_theorem("hentail_sym_left"),
+          symm(rewrite_list(
+            (thm[]){summ, 
+                    int_arith(`(((i_v + &1) - &1) * ((i_v + &1) - &1 + &1)) / &2 
+                            == ((i_v - &1) * (i_v - &1 + &1)) / &2 + i_v`), symm(summ), NULL},
+            `data_at(&"ret", Tint, summ((i_v + &1) - &1))`
+          )));
+        thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
+        set_symbolic_state(which_implies(get_symbolic_state(), result));
+      }
+    )]];
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&1 <= i_v + &1) ** fact(i_v + &1 <= &11) **
+        data_at(&"ret", Tint, summ((i_v + &1) - &1)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&1 <= i_v) ** fact(i_v <= &11) **
+        data_at(&"ret", Tint, summ(i_v - &1)) **
+        data_at(&"i", Tint, i_v)
+    `)]];
+  }
+
+  [[cstar::assert(`
+    exists (i_v:int).
+      fact(i_v > &10) **
+      fact(&1 <= i_v) ** fact(i_v <= &11) **
+      data_at(&"ret", Tint, summ(i_v - &1)) **
+      data_at(&"i", Tint, i_v)
+  `)]];
+  
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm hfact_thm = hfact_manual(`i_v > &10`, `i_v <= &11`, `i_v == &11`);
+      hfact_thm = add_assum(`i_v > &10`, hfact_thm);
+      hfact_thm = mp(get_theorem("hfact_elim"), disch(hfact_thm, `i_v > &10`));
+      set_symbolic_state(which_implies(pre_state, hfact_thm));
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (i_v:int).
+      fact (i_v == &11) **
+      data_at (& "i",Tint,i_v) **
+      data_at (& "ret",Tint,summ (i_v - &1))
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm result = mp(get_theorem("hentail_sym_left"), 
+        rewrite_list(
+          (thm[]){assume(`i_v == &11`), int_arith(`&11 - &1 == &10`),
+                  summ, int_arith(`(&10 * (&10 + &1)) / &2 == &55`), NULL},
+          `data_at (& "i",Tint,i_v) ** data_at (& "ret",Tint,summ (i_v - &1))`
+        ));
+      result = mp(get_theorem("hfact_elim"), disch(result, `i_v == &11`));
+      result = mp(get_theorem("hexists_elim"), gen(`i_v:int`, result));
+      set_symbolic_state(result);
+    }
+  )]];
+
+  [[cstar::assert(`
+    data_at(&ret, int, &55) **
+    data_at(&i, int, &11)  
+  `)]];
+
+  return ret;
+}
+
+int sum10_while_break()
+  [[cstar::require(`emp`)]]
+  [[cstar::ensure(`__result == &55`)]]
+{
+  [[cstar::assert(`emp`)]];
+
+  int ret = 0;
+  
+  [[cstar::assert(`data_at(&"ret", Tint, &0)`)]];
+
+  int i = 0;
+
+  [[cstar::assert(`
+    data_at(&"ret", Tint, &0) **
+    data_at(&"i", Tint, &0)
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm hfact_thm = spec(`emp`, get_theorem("hentail_refl"));
+      hfact_thm = mp(mp(get_theorem("hfact_intro"), int_arith(`&0 <= &0`)), hfact_thm);
+      hfact_thm = mp(mp(get_theorem("hfact_intro"), int_arith(`&0 < &10`)), hfact_thm);
+      thm data_at_rewr = mp(get_theorem("hentail_sym_left"),
+        symm(rewrite_list(
+          (thm[]){summ, int_arith(`((&0 - &1) * (&0 - &1 + &1)) / &2 == &0`), NULL},
+          `data_at(&"ret", Tint, summ(&0))`
+        )));
+      thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
+      set_symbolic_state(which_implies(get_symbolic_state(), result));
+    }
+  )]]
+
+  [[cstar::assert(`
+    fact(&0 <= &0) ** fact(&0 < &10) **
+    data_at(&"ret", Tint, summ(&0)) **
+    data_at(&"i", Tint, &1)
+  `)]];
+
+  while (1) 
+    [[cstar::invariant(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v)) **
+        data_at(&"i", Tint, i_v)
+    `)]]
+  {
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v)) **
+        data_at(&"i", Tint, i_v)
+    `)]]
+
+    i = i + 1;
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    ret = ret + i;
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v) + (i_v + &1)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm data_at_rewr = mp(get_theorem("hentail_sym_left"),
+          symm(rewrite_list(
+            (thm[]){summ, 
+                    int_arith(`((i_v + &1) * ((i_v + &1) + &1)) / &2 
+                            == (i_v * (i_v + &1)) / &2 + (i_v + &1)`), symm(summ), NULL},
+            `data_at(&"ret", Tint, summ(i_v + &1))`
+          )));
+        set_symbolic_state(which_implies(get_symbolic_state(), data_at_rewr));
+      }
+    )]];
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v + &1)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+    
+    if (i >= 10) {
+      [[cstar::assert(`
+        exists (i_v:int).
+          fact((i_v + &1) >= &10) ** 
+          fact(&0 <= i_v) ** fact(i_v < &10) **
+          data_at(&"ret", Tint, summ(i_v + &1)) **
+          data_at(&"i", Tint, i_v + &1)
+      `)]];
+      
+      break;
+    }
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact((i_v + &1) < &10) ** 
+        fact(&0 <= i_v) ** fact(i_v < &10) **
+        data_at(&"ret", Tint, summ(i_v + &1)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    [[cstar::proof(
+      {
+        term pre_state = get_symbolic_state();
+        thm hfact_thm = hfact_auto(
+          (term[]){`(i_v + &1) < &10`, `&0 <= i_v`, `i_v < &10`, NULL},
+          (term[]){`&0 <= (i_v + &1)`, `(i_v + &1) < &10`, NULL}, (thm[]){NULL}
+        );
+        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+      }
+    )]];
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= (i_v + &1)) ** fact((i_v + &1) < &10) ** 
+        data_at(&"ret", Tint, summ(i_v + &1)) **
+        data_at(&"i", Tint, i_v + &1)
+    `)]];
+
+    [[cstar::assert(`
+      exists (i_v:int).
+        fact(&0 <= i_v) ** fact(i_v < &10) ** 
+        data_at(&"ret", Tint, summ(i_v)) **
+        data_at(&"i", Tint, i_v)
+    `)]];
+  }
+
+  [[cstar::assert(`
+    exists (i_v:int).
+      fact((i_v + &1) >= &10) ** 
+      fact(&0 <= i_v) ** fact(i_v < &10) ** 
+      data_at(&"ret", Tint, summ(i_v + &1)) **
+      data_at(&"i", Tint, i_v + &1)
+  `)]];
+
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm hfact_thm = hfact_manual(`(i_v + &1) >= &10`, `i_v < &10`, `i_v == &9`);
+      hfact_thm = add_assum(`&0 <= i_v`, hfact_thm);
+      hfact_thm = mp(get_theorem("hfact_elim"), disch(hfact_thm, `&0 <= i_v`));
+      set_symbolic_state(which_implies(pre_state, hfact_thm));
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (i_v:int).
+      fact (i_v == &9) **
+      data_at (& "i",Tint,i_v + &1) **
+      data_at (& "ret",Tint,summ (i_v + &1))
+  `)]];
+
+  [[cstar::proof(
+    {
+      thm result = mp(get_theorem("hentail_sym_left"), 
+        rewrite_list(
+          (thm[]){assume(`i_v == &9`), int_arith(`&9 + &1 == &10`),
+                  summ, int_arith(`(&10 * (&10 + &1)) / &2 == &55`), NULL},
+          `data_at (& "i",Tint,i_v + &1) ** data_at (& "ret",Tint,summ (i_v + &1))`
+        ));
+      result = mp(get_theorem("hfact_elim"), disch(result, `i_v == &9`));
+      result = mp(get_theorem("hexists_elim"), gen(`i_v:int`, result));
+      set_symbolic_state(result);
+    }
+  )]];
+
+  [[cstar::assert(`
+    data_at(&ret, int, &55) **
+    data_at(&i, int, &10)  
+  `)]];
+  return ret;
+}
