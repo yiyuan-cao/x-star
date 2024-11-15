@@ -99,7 +99,7 @@ void increment_all(int* a, int N)
 {
   [[cstar::proof(
     sublist = define(`sublist lo hi l = skipn (num_of_int lo) (firstn (num_of_int hi) l)`);
-    znth = define(`znth n (l:int list) = nth (num_of_int n) l`);
+    znth = define(`znth n (l:int list) = nth l (num_of_int n)`);
   )]];
 
   [[cstar::assert(`
