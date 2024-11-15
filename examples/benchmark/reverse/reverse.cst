@@ -46,7 +46,7 @@ HPROP listrep(struct List * pt, intlist l) {
 )]];
 
 [[cstar::proof(
-thm empty; // for automatic rewrites
+thm empty; // automatic rewrites for let..in/if..then..else../discriminators/constructors
 )]];
 
 [[cstar::function(
@@ -584,7 +584,6 @@ struct List *reverse(struct List *p)
         data_at(&"v->tail", Tptr, w_v) ** 
         data_at(&"t", Tptr, t_v)
     `)]];
-    // &"v->tail" == v_v + &4 === v_v->tail (in VST-IDE), actually is &"w->tail".
 
     // proof obligation:
     //   fact(l == app(rev(l1), cons x xs)) **
