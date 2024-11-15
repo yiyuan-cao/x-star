@@ -129,7 +129,7 @@ void increment_all(int* a, int N)
       );
       thm ilength_sublist = ilength_sublist_id(`N_pre:int`, `l:int list`);
       array_at_split = rewrite_rule(rewrite(ilength_sublist, fst_binop(`(|--)`, conclusion(array_at_split))), array_at_split);
-      thm final_thm = which_implies(pre_state, array_at_split);
+      thm final_thm = local_apply(pre_state, array_at_split);
       set_symbolic_state(final_thm);
     }
   )]]
@@ -149,7 +149,7 @@ void increment_all(int* a, int N)
       thm hfact1 = arith_rule(`(ilength(l:int list) >= &0) ==> (N_pre == ilength(l)) ==> (&0 <= N_pre)`);
       hfact1 = mp(hfact1, spec(`l:int list`, get_theorem("ilength_ge_0")));
       thm hfact2 = hfact_auto((term[]){`N_pre == ilength(l:int list)`, NULL}, (term[]){`&0 <= &0`, `&0 <= N_pre`, NULL}, (thm[]){hfact1, NULL});
-      thm final_thm = which_implies(pre_state, hfact2);
+      thm final_thm = local_apply(pre_state, hfact2);
       set_symbolic_state(final_thm);
     }
   )]]
@@ -198,7 +198,7 @@ void increment_all(int* a, int N)
         array_at_split = rewrite_rule(
           arith_rule(`(a_pre + k_v * sizeof(Tint)) + sizeof(Tint) = a_pre + (k_v + &1) * sizeof(Tint)`), 
           array_at_split);
-        thm final_thm = which_implies(pre_state, array_at_split);
+        thm final_thm = local_apply(pre_state, array_at_split);
         set_symbolic_state(final_thm);
       }
     )]]
@@ -251,7 +251,7 @@ void increment_all(int* a, int N)
           array_split3(`a_pre:int`, `Tint`, 
                        `MAP ((+) (&1)) (sublist (&0) k_v (l:int list))`, 
                        `(znth k_v (l:int list)) + &1`);
-        set_symbolic_state(which_implies(get_symbolic_state(), array_at_split));
+        set_symbolic_state(local_apply(get_symbolic_state(), array_at_split));
       }
     )]];
 
@@ -260,7 +260,7 @@ void increment_all(int* a, int N)
         thm hfact_thm = 
           hfact_auto((term[]){`(k_v:int) < N_pre`, `&0 <= k_v`, `(k_v:int) <= N_pre`, NULL},
                      (term[]){`&0 <= k_v + &1`, `k_v + &1 <= N_pre`, NULL}, (thm[]){NULL});
-        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+        set_symbolic_state(local_apply(get_symbolic_state(), hfact_thm));
       }
     )]];
 
@@ -298,7 +298,7 @@ void increment_all(int* a, int N)
     {
       term pre_state = get_symbolic_state();
       thm hfact1 = hfact_manual(`(k_v:int) >= N_pre`, `(k_v:int) <= N_pre`, `(k_v:int) == N_pre`);
-      hfact1 = which_implies(normalize(binder_body("hexists", pre_state)), hfact1);
+      hfact1 = local_apply(normalize(binder_body("hexists", pre_state)), hfact1);
 
       thm subst_i_v = mp(get_theorem("hentail_sym_left"), 
         rewrite(assume(`(k_v:int) = N_pre`), tmp_term));
@@ -307,7 +307,7 @@ void increment_all(int* a, int N)
       thm hfact2 = hfact_auto((term[]){`&0 <= N_pre`, NULL},
                               (term[]){NULL}, (thm[]){NULL});
       
-      hfact2 = which_implies(consequent(conclusion(subst_i_v)), hfact2);
+      hfact2 = local_apply(consequent(conclusion(subst_i_v)), hfact2);
 
       thm without_exists = hentail_trans_auto_list((thm[]){hfact1, subst_i_v, hfact2, NULL});
       thm final_thm = mp(get_theorem("hexists_elim"), gen(`i_v:int`, without_exists));
@@ -330,7 +330,7 @@ void increment_all(int* a, int N)
       rewrite(ilength_sublist_id(`N_pre:int`, `l:int list`), 
       `array_at(a_pre, Tint, MAP ((+) (&1)) (sublist (&0) N_pre l))`));
     sublist_rewr = disch(sublist_rewr, hypth(sublist_rewr));
-    thm middle_thm = which_implies(pre_state, sublist_rewr);
+    thm middle_thm = local_apply(pre_state, sublist_rewr);
     
     thm array_emp = rewrite_list(
       (thm[]){sublist,
@@ -343,7 +343,7 @@ void increment_all(int* a, int N)
                 get_theorem("array_at_empty"),
                 NULL},
         `array_at(a_pre + N_pre * sizeof(Tint), Tint, sublist N_pre N_pre (l:int list))`));
-    thm final_thm = which_implies(consequent(conclusion(middle_thm)), array_emp);
+    thm final_thm = local_apply(consequent(conclusion(middle_thm)), array_emp);
     final_thm = hentail_trans_auto(middle_thm, final_thm);
     set_symbolic_state(final_thm);
   )]];

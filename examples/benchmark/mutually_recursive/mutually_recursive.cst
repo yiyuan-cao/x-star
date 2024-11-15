@@ -119,7 +119,7 @@ int is_even(int x)
     [[cstar::proof(
       {
         thm hfact_thm = hfact_manual1(`~(x_pre == &0)`, `x_pre >= &0`, `x_pre - &1 >= &0`);
-        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+        set_symbolic_state(local_apply(get_symbolic_state(), hfact_thm));
       }
     )]]
 
@@ -214,7 +214,7 @@ int is_odd(int x)
     [[cstar::proof(
       {
         thm hfact_thm = hfact_manual1(`~(x_pre == &0)`, `x_pre >= &0`, `x_pre - &1 >= &0`);
-        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+        set_symbolic_state(local_apply(get_symbolic_state(), hfact_thm));
       }
     )]];
 

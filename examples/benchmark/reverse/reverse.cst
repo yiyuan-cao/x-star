@@ -263,7 +263,7 @@ thm listrep_valid(term v, term l) {
               arith_rule(`v == v + &0`), NULL},
       `data_at(v + &0, Tint, value)`));
   cons2 = mp(get_theorem("hfact_elim"), disch(cons2, hypth(cons2)));
-  cons2 = which_implies_dev(consequent(conclusion(cons1)), cons2);
+  cons2 = local_apply_dev(consequent(conclusion(cons1)), cons2);
 
   thm cons = hentail_trans_list((thm[]){cons1, cons2, NULL});
   cons = rewrite_rule(symm(assume(`l == cons a0 a1`)), cons);
@@ -477,7 +477,7 @@ struct List *reverse(struct List *p)
       {
         term pre_state = get_symbolic_state();
         thm local = undisch(listrep_valid(`v_v:addr`, `l2:intlist`)); 
-        thm final_thm = which_implies_dev(pre_state, local);
+        thm final_thm = local_apply_dev(pre_state, local);
         final_thm = rewrite_rule_list(
           (thm[]){symm(ax_head), symm(ax_tail), NULL},
           final_thm
@@ -505,7 +505,7 @@ struct List *reverse(struct List *p)
         thm hfact_thm = 
           hfact_manual1(`l2 == cons x xs`, `l == app(rev(l1), l2)`,
                         `l == app(rev(l1), cons x xs)`);
-        set_symbolic_state(which_implies_dev(get_symbolic_state(), hfact_thm));
+        set_symbolic_state(local_apply_dev(get_symbolic_state(), hfact_thm));
       }
     )]];
 
@@ -714,7 +714,7 @@ struct List *reverse(struct List *p)
                                 `l == app(rev(l1), nil)`)), 
                 NULL});
       local = mp(get_theorem("hfact_elim"), disch(local, hypth(local)));
-      set_symbolic_state(which_implies_dev(get_symbolic_state(), local));
+      set_symbolic_state(local_apply_dev(get_symbolic_state(), local));
     }
   )]];
 
@@ -739,7 +739,7 @@ struct List *reverse(struct List *p)
                 mp(get_theorem("hfact_elim"), 
                   disch(list_rewr, hypth(list_rewr))), 
                 NULL});
-      set_symbolic_state(which_implies_dev(get_symbolic_state(), local));
+      set_symbolic_state(local_apply_dev(get_symbolic_state(), local));
     }
   )]]
 

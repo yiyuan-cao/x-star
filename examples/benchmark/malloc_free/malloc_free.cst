@@ -33,7 +33,7 @@ void foo()
         spec(`fact(arr_v > &0) ** malloc_at(arr_v, &2 * sizeof(Tint))`, get_theorem("hentail_refl")));
       rewr = mp(get_theorem("hfact_elim"), disch(rewr, hypth(rewr)));
       thm result = hentail_trans_auto_list((thm[]){malloc_inv, rewr, NULL});
-      set_symbolic_state(which_implies(pre_state, result));
+      set_symbolic_state(local_apply(pre_state, result));
     }
   )]];
 

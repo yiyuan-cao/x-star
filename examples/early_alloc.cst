@@ -167,7 +167,7 @@ void clear_page(void *to)
         // thm split_thm = axiom(tmp_goal);
         
         // apply the partial transformation to the symbolic state
-        // __transform = which_implies(__state, split_thm);
+        // __transform = local_apply(__state, split_thm);
         __transform = axiom(`
             ${__state:hprop}
             |--
@@ -309,7 +309,7 @@ void clear_page(void *to)
 
             // tmp_thm = axiom(tmp_goal);
             
-            // __transform = which_implies(__state, tmp_thm);
+            // __transform = local_apply(__state, tmp_thm);
             __transform = axiom(`
                 ${__state:hprop}
                 |--

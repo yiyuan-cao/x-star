@@ -48,7 +48,7 @@ int sum10_while()
           `data_at(&"ret", Tint, summ(&1 - &1))`
         )));
       thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
-      set_symbolic_state(which_implies(get_symbolic_state(), result));
+      set_symbolic_state(local_applyet_symbolic_state(), result));
     }
   )]];
 
@@ -109,7 +109,7 @@ int sum10_while()
             `data_at(&"ret", Tint, summ((i_v + &1) - &1))`
           )));
         thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
-        set_symbolic_state(which_implies(get_symbolic_state(), result));
+        set_symbolic_state(local_applyet_symbolic_state(), result));
       }
     )]];
 
@@ -142,7 +142,7 @@ int sum10_while()
       thm hfact_thm = hfact_manual(`i_v > &10`, `i_v <= &11`, `i_v == &11`);
       hfact_thm = add_assum(`i_v > &10`, hfact_thm);
       hfact_thm = mp(get_theorem("hfact_elim"), disch(hfact_thm, `i_v > &10`));
-      set_symbolic_state(which_implies(pre_state, hfact_thm));
+      set_symbolic_state(local_applyre_state, hfact_thm));
     }
   )]];
 
@@ -203,7 +203,7 @@ int sum10_while_break()
           `data_at(&"ret", Tint, summ(&0))`
         )));
       thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
-      set_symbolic_state(which_implies(get_symbolic_state(), result));
+      set_symbolic_state(local_applyet_symbolic_state(), result));
     }
   )]];
 
@@ -255,7 +255,7 @@ int sum10_while_break()
                             == (i_v * (i_v + &1)) / &2 + (i_v + &1)`), symm(summ), NULL},
             `data_at(&"ret", Tint, summ(i_v + &1))`
           )));
-        set_symbolic_state(which_implies(get_symbolic_state(), data_at_rewr));
+        set_symbolic_state(local_applyet_symbolic_state(), data_at_rewr));
       }
     )]];
 
@@ -293,7 +293,7 @@ int sum10_while_break()
           (term[]){`(i_v + &1) < &10`, `&0 <= i_v`, `i_v < &10`, NULL},
           (term[]){`&0 <= (i_v + &1)`, `(i_v + &1) < &10`, NULL}, (thm[]){NULL}
         );
-        set_symbolic_state(which_implies(get_symbolic_state(), hfact_thm));
+        set_symbolic_state(local_applyet_symbolic_state(), hfact_thm));
       }
     )]];
 
@@ -326,7 +326,7 @@ int sum10_while_break()
       thm hfact_thm = hfact_manual(`(i_v + &1) >= &10`, `i_v < &10`, `i_v == &9`);
       hfact_thm = add_assum(`&0 <= i_v`, hfact_thm);
       hfact_thm = mp(get_theorem("hfact_elim"), disch(hfact_thm, `&0 <= i_v`));
-      set_symbolic_state(which_implies(pre_state, hfact_thm));
+      set_symbolic_state(local_applyre_state, hfact_thm));
     }
   )]];
 

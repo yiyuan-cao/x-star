@@ -189,7 +189,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				(thm[]){pool_const_unfold, data_at_pg_pre2order, NULL});
 			trans = point_to_handler(trans, pg2order_axiom, `pg_pre : addr`, `&(porder : num)`);
 			trans = point_to_handler(trans, pool2max_order_axiom, `pool_pre : addr`, `&(max_order : num)`);
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
@@ -345,7 +345,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				(thm[]){pool_const_fold, data_at_pg_pre2order, NULL});
 			trans = point_to_handler(trans, pg2order_axiom, `pg_pre : addr`, `&(porder : num)`);
 			trans = point_to_handler(trans, pool2max_order_axiom, `pool_pre : addr`, `&(max_order : num)`);
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
@@ -513,7 +513,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				(thm[]){order_lim, order_align, invl_len, ref, ord, dn, dh, NULL},
 				(thm[]){far, fahr, spa, NULL}
 			);
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
@@ -724,7 +724,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 					(term[]){fact_invl_len, fact_pc, NULL},
 					bfact, (thm[]){spa, NULL});
 				trans = point_to_handler(trans, buddy2order_axiom, `buddy_v : addr`, `&(ord : num)`);
-				__transform = which_implies(__state, trans);
+				__transform = local_apply(__state, trans);
 			}
 			// set_symbolic_state(__transform);
 		)]];
@@ -1148,7 +1148,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 				thm *hthl = (thm[]){spa, far_sza, NULL};
 				thm trans = create_trans_auto(cfactl, kfactl, pthl, hthl);
 				trans = point_to_handler(trans, buddy2order_axiom, `buddy_v : addr`, `&(ord : num)`);
-				trans = which_implies(__state, trans);
+				trans = local_apply(__state, trans);
 
 				thm ar13 = arith_rule(`&(ord : num) + &1 = &(SUC ord)`);
 				trans = rewrite_after_ent(ar13, trans);
@@ -1303,7 +1303,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			thm trans = create_trans_auto((term[]){NULL}, kfactl, (thm[]){NULL}, (thm[]){spa, NULL});
 			trans = point_to_handler(trans, pg2order_axiom, `pg_v : addr`, `&NO_ORDER`);
 			
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
@@ -1467,7 +1467,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			thm *hthl = (thm[]){spa, far_sza, NULL};
 			thm trans = create_trans_auto((term[]){NULL}, kfactl, (thm[]){NULL}, hthl);
 			trans = point_to_handler(trans, pg2order_axiom, `pg_v : addr`, `&(ord : num)`);
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
@@ -1578,7 +1578,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			thm spa_ent = use_fact_symm_rewrite(fact, spa);
 
 			thm trans = create_trans_auto((term[]){NULL}, (term[]){fact, NULL}, (thm[]){NULL}, (thm[]){far_ent, spa_ent, NULL});
-			__transform = which_implies(__state, trans);
+			__transform = local_apply(__state, trans);
 		}
 		// set_symbolic_state(__transform);
 	)]];
