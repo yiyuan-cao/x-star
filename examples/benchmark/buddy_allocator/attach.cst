@@ -63,6 +63,13 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::parameter(`pref : num`)]]
 	[[cstar::parameter(`porder : num`)]]
 	[[cstar::parameter(`vmemmap : addr`)]]
+	[[cstar::parameter(`start : num`)]]
+	[[cstar::parameter(`end : num`)]]
+	[[cstar::parameter(`len : num`)]]
+	[[cstar::parameter(`max_order : num`)]]
+	[[cstar::parameter(`NO_ORDER : num`)]]
+	[[cstar::parameter(`REF_LIM : num`)]]
+	[[cstar::parameter(`PAGE_SIZE : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pg = vmemmap + &(pi * 4)) ** hfact (pi < len) **
@@ -89,15 +96,14 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 	`)]]
 	[[cstar::ensure(`
 		exists new_l new_dl new_hl.
-			hfact (pool = pool_pre) **
 			hfact (LENGTH new_l = len) **
 			hfact (LENGTH new_dl = len) **
 			hfact (LENGTH new_hl = max_order) **
 			hfact (pure_const) **
-			hfact (dlist_head pool new_l new_dl 0 max_order new_hl) **
-			hfact (dlist_node pool (ifilter new_l) new_l new_dl new_hl start end new_dl) **
-			(pool_const pool) **
-			(dlist_head_repr pool 0 max_order new_hl) **
+			hfact (dlist_head pool_pre new_l new_dl 0 max_order new_hl) **
+			hfact (dlist_node pool_pre (ifilter new_l) new_l new_dl new_hl start end new_dl) **
+			(pool_const pool_pre) **
+			(dlist_head_repr pool_pre 0 max_order new_hl) **
 			(free_area_repr (ifilter new_l) start end new_l) **
 			(free_area_head_repr (ifilter new_l) start end new_dl) **
 			(store_pageinfo_array vmemmap start end new_l)
@@ -132,7 +138,7 @@ static void __hyp_attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-struct hyp_page *buddy = NULL;
+	struct hyp_page *buddy = NULL;
     [[cstar::assert(`
 		data_at(&"buddy", Tptr, &0) **
 		data_at(&"pool", Tptr, pool_pre) **
@@ -216,7 +222,7 @@ struct hyp_page *buddy = NULL;
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-u8 order = pg -> order;
+	u8 order = pg -> order;
     [[cstar::assert(`
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
@@ -250,7 +256,7 @@ u8 order = pg -> order;
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-pg -> order = HYP_NO_ORDER;
+	pg -> order = HYP_NO_ORDER;
     [[cstar::assert(`
 		data_at(&"order", Tuchar, &porder) **
 		data_at(&"buddy", Tptr, &0) **
@@ -284,7 +290,7 @@ pg -> order = HYP_NO_ORDER;
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-u8 max_order = pool -> max_order;
+	u8 max_order = pool -> max_order;
     [[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
@@ -372,7 +378,13 @@ u8 max_order = pool -> max_order;
 		(store_pageinfo_array vmemmap (SUC (i2id pi)) end (rest l (SUC pi))) **
 		(store_undef_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-memset_page_zero(pg, order);
+	[[cstar::argument(
+		`pi = i : num`,
+		`order_v = porder : num`,
+		`vmemmap = vmemmap : addr`,
+		`PAGE_SIZE = PAGE_SIZE : num`
+	)]]
+	memset_page_zero(pg, order);
     [[cstar::assert(`
 		data_at(&"max_order", Tuchar, &max_order) **
 		data_at(&"order", Tuchar, &porder) **
@@ -529,7 +541,16 @@ memset_page_zero(pg, order);
 		(store_pageinfo_array vmemmap start end (modified l pi (0, NO_ORDER))) **
 		(store_zero_array (i2vi pi) 0 (PAGE_SIZE * (2 EXP porder)) (PAGE_SIZE * (2 EXP porder)))
     `)]];
-buddy = __find_buddy_avail(pool, pg, order);
+	[[cstar::argument(
+		`pi = i : num`,
+		`order_v = porder : num`,
+		`vmemmap = vmemmap : addr`,
+		`l = l : (num#num)list`,
+		`start = start : num`,
+		`end = end : num`,
+		`len = len : num`
+	)]]
+	buddy = __find_buddy_avail(pool, pg, order);
     [[cstar::assert(`
 	exists buddy_v bi.
 		hfact ((buddy_v = &0) ||
@@ -658,50 +679,6 @@ buddy = __find_buddy_avail(pool, pg, order);
 			(store_pageinfo_array vmemmap start end inv_l) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
-		page_remove_from_list_pool(pool, buddy);
-		[[cstar::assert(`
-		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
-			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
-			hfact (LENGTH new_l = len) **
-			hfact (LENGTH new_dl = len) **
-			hfact (LENGTH new_hl = max_order) **
-			hfact (&ord + &1 < &max_order && ~(buddy_v = &0)) **
-			hfact ((buddy_v = &0) ||
-				~(bi = i) &&
-				(buddy_v = vmemmap + &(bi * 4)) &&
-				(bi < len) &&
-				(REF (nth inv_l bi) = 0) &&
-				(ORD (nth inv_l bi) = ord) &&
-				((2 EXP (SUC ord)) divides (i2id (MIN i bi))) &&
-				(abs (&i - &bi) = &(2 EXP ord))) **
-			data_at(i2vi bi, Tptr, &0) **
-			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
-			data_at(&"max_order", Tuchar, &max_order) **
-			data_at(&"order", Tuchar, &ord) **
-			data_at(&"buddy", Tptr, buddy_v) **
-			data_at(&"pool", Tptr, pool_pre) **
-			data_at(&"pg", Tptr, pg_v) **
-			data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-			hfact (pure_const) **
-			hfact (dlist_node pool_pre (ifilter new_l) new_l new_dl new_hl start end new_dl) **
-			hfact (dlist_head pool_pre new_l new_dl 0 max_order new_hl) **
-			hfact (LENGTH inv_l = len) **
-			hfact (LENGTH inv_dl = len) **
-			hfact (LENGTH inv_hl = max_order) **
-			hfact (pg_v = vmemmap + &(i * 4)) **
-			hfact (i < len) **
-			hfact (~(ord = NO_ORDER)) **
-			hfact (ord < max_order) **
-			hfact ((2 EXP ord) divides (i2id i)) **
-			hfact (ORD (nth inv_l i) = NO_ORDER) **
-			hfact (REF (nth inv_l i) = 0) **
-			(pool_const pool_pre) **
-			(dlist_head_repr pool_pre 0 max_order new_hl) **
-			(free_area_repr (ifilter inv_l) start end inv_l) **
-			(free_area_head_repr (ifilter new_l) start end new_dl) **
-			(store_pageinfo_array vmemmap start end inv_l) **
-			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
-		`)]];
 		[[cstar::proof(
 			/*	proof5 : 
 					use buddy != 0 get facts;
@@ -749,6 +726,64 @@ buddy = __find_buddy_avail(pool, pg, order);
 			// set_symbolic_state(__transform);
 		)]];
 		[[cstar::assert(`
+		exists buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
+			hfact (&ord + &1 < &max_order) **
+			hfact (~(bi = i)) **
+			hfact (buddy_v = vmemmap + &(bi * 4)) **
+			hfact (bi < len) **
+			hfact (REF (nth inv_l bi) = 0) **
+			hfact (ORD (nth inv_l bi) = ord) **
+			hfact ((2 EXP (SUC ord)) divides (i2id (MIN i bi))) **
+			hfact (abs (&i - &bi) = &(2 EXP ord)) **
+			data_at(i2vi bi, Tptr, &0) **
+			data_at(i2vi bi + &PTR_SIZE, Tptr, &0) **
+			data_at(&"max_order", Tuchar, &max_order) **
+			data_at(&"order", Tuchar, &ord) **
+			data_at(&"buddy", Tptr, buddy_v) **
+			data_at(&"pool", Tptr, pool_pre) **
+			data_at(&"pg", Tptr, pg_v) **
+			data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
+			hfact (pure_const) **
+			hfact (dlist_node pool_pre (ifilter inv_l) inv_l inv_dl inv_hl start end inv_dl) **
+			hfact (dlist_head pool_pre inv_l inv_dl 0 max_order inv_hl) **
+			hfact (LENGTH inv_l = len) **
+			hfact (LENGTH inv_dl = len) **
+			hfact (LENGTH inv_hl = max_order) **
+			hfact (pg_v = vmemmap + &(i * 4)) **
+			hfact (i < len) **
+			hfact (~(ord = NO_ORDER)) **
+			hfact (ord < max_order) **
+			hfact ((2 EXP ord) divides (i2id i)) **
+			hfact (ORD (nth inv_l i) = NO_ORDER) **
+			hfact (REF (nth inv_l i) = 0) **
+			(pool_const pool_pre) **
+			(dlist_head_repr pool_pre 0 max_order inv_hl) **
+			(free_area_repr (ifilter inv_l) start end inv_l) **
+			(free_area_head_repr (ifilter inv_l) start end inv_dl) **
+			(store_pageinfo_array vmemmap start (i2id bi) (take inv_l bi)) **
+				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
+				hfact (0 < REF_LIM) **
+				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
+				(data_at (&"buddy -> order", Tuchar, &ord)) **
+				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
+			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
+			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
+		`)]];
+		[[cstar::argument(
+			`pi = bi : num`,
+			`order_v = ord : num`,
+			`vmemmap = vmemmap : addr`,
+			`l = inv_l : (num#num)list`,
+			`dl = inv_dl : (addr#addr)list`,
+			`hl = inv_hl : (addr#addr)list`,
+			`start = start : num`,
+			`end = end : num`,
+			`len = len : num`,
+			`max_order = max_order : num`,
+			`NO_ORDER = NO_ORDER : num`
+		)]]
+		page_remove_from_list_pool(pool, buddy);
+		[[cstar::assert(`
 		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
 			hfact (LENGTH new_l = len) **
@@ -787,15 +822,10 @@ buddy = __find_buddy_avail(pool, pg, order);
 			(dlist_head_repr pool_pre 0 max_order new_hl) **
 			(free_area_repr (ifilter inv_l) start end inv_l) **
 			(free_area_head_repr (ifilter new_l) start end new_dl) **
-			(store_pageinfo_array vmemmap start (i2id bi) (take inv_l bi)) **
-				hfact (~(ord = NO_ORDER) ==> (ord < max_order) && ((2 EXP ord) divides (i2id bi))) **
-				hfact (0 < REF_LIM) **
-				(data_at (vmemmap + &(bi * 4), Tushort, &0)) **
-				(data_at (&"buddy -> order", Tuchar, &ord)) **
-				(undef_data_at ((vmemmap + &(bi * 4)) + &3, Tuchar)) **
-			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
+			(store_pageinfo_array vmemmap start end inv_l) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
+		
 		buddy -> order = HYP_NO_ORDER;
 		[[cstar::assert(`
 		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
@@ -1149,6 +1179,15 @@ buddy = __find_buddy_avail(pool, pg, order);
 			(store_pageinfo_array vmemmap start end new_l) **
 			(store_zero_array (i2vi new_i) 0 (PAGE_SIZE * (2 EXP new_ord)) (PAGE_SIZE * (2 EXP new_ord)))
 		`)]];
+		[[cstar::argument(
+			`pi = new_i : num`,
+			`order_v = new_ord : num`,
+			`vmemmap = vmemmap : addr`,
+			`l = new_l : (num#num)list`,
+			`start = start : num`,
+			`end = end : num`,
+			`len = len : num`
+		)]]
 		buddy = __find_buddy_avail(pool, pg, order);
 		[[cstar::assert(`
 		exists new_buddy new_bi new_pg new_l new_dl new_hl (buddy_v : addr) (bi : num) (inv_l : (num#num)list) (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) (i : num) (ord : num) (pg_v : addr) new_i new_ord.
@@ -1463,6 +1502,19 @@ buddy = __find_buddy_avail(pool, pg, order);
 		data_at(i2vi i, Tptr, &0) **
 		data_at(i2vi i + &PTR_SIZE, Tptr, &0)
     `)]];
+	[[cstar::argument(
+		`pi = i : num`,
+		`order_v = ord : num`,
+		`vmemmap = vmemmap : addr`,
+		`l = inv_l : (num#num)list`,
+		`dl = inv_dl : (addr#addr)list`,
+		`hl = inv_hl : (addr#addr)list`,
+		`start = start : num`,
+		`end = end : num`,
+		`len = len : num`,
+		`max_order = max_order : num`,
+		`NO_ORDER = NO_ORDER : num`
+	)]]
 	page_add_to_list_pool(pool, pg, order);
 	[[cstar::assert(`
 	exists new_l new_dl new_hl pg_v ord i inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) buddy_v bi.
@@ -1567,7 +1619,8 @@ buddy = __find_buddy_avail(pool, pg, order);
 void memset_page_zero(struct hyp_page *pg, u8 order)
 	[[cstar::parameter(`i : num`)]]
 	[[cstar::parameter(`order_v : num`)]]
-	[[cstar::parameter(`vmemmap : num`)]]
+	[[cstar::parameter(`vmemmap : addr`)]]
+	[[cstar::parameter(`PAGE_SIZE : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact(order_v = num_of_int order) **
@@ -1576,20 +1629,20 @@ void memset_page_zero(struct hyp_page *pg, u8 order)
 	`)]]
 	[[cstar::ensure(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-		hfact (pg == pg_pre) **
-		hfact(order = order_pre) **
-		hfact(order_v = num_of_int order) **
-		hfact (pg = vmemmap + &(i * 4)) **
+		hfact(order_v = num_of_int order_pre) **
+		hfact (pg_pre = vmemmap + &(i * 4)) **
 		(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP order_v)) (PAGE_SIZE * (2 EXP order_v)))
 	`)]]
 {}
 
 static struct hyp_page *__find_buddy_avail(struct hyp_pool *pool, struct hyp_page *pg, unsigned int order)
 	[[cstar::parameter(`pi : num`)]]
-	[[cstar::parameter(`len : num`)]]
 	[[cstar::parameter(`order_v : num`)]]
-	[[cstar::parameter(`vmemmap : num`)]]
+	[[cstar::parameter(`vmemmap : addr`)]]
 	[[cstar::parameter(`l : (num#num)list`)]]
+	[[cstar::parameter(`start : num`)]]
+	[[cstar::parameter(`end : num`)]]
+	[[cstar::parameter(`len : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact(order_v = num_of_int order) **
@@ -1603,10 +1656,7 @@ static struct hyp_page *__find_buddy_avail(struct hyp_pool *pool, struct hyp_pag
 	[[cstar::ensure(`
 	exists buddy bi.
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-		hfact (pool == pool_pre) **
-		hfact (pg == pg_pre) **
-		hfact(order = order_pre) **
-		hfact(order_v = num_of_int order) **
+		hfact(order_v = num_of_int order_pre) **
 		hfact ((__result = &0) ||
 			~(bi = pi) &&
 			(__result = vmemmap + &(bi * 4)) &&
@@ -1615,10 +1665,10 @@ static struct hyp_page *__find_buddy_avail(struct hyp_pool *pool, struct hyp_pag
 			(ORD (nth l bi) = order_v) &&
 			((2 EXP (SUC order_v)) divides (i2id (MIN pi bi))) &&
 			(abs (&pi - &bi) = &(2 EXP order_v))) **
-		(pool_const pool) **
+		(pool_const pool_pre) **
 		store_pageinfo_array vmemmap start end l **
 		hfact (LENGTH l = len) **
-		hfact (pg = vmemmap + &(pi * 4)) **
+		hfact (pg_pre = vmemmap + &(pi * 4)) **
 		hfact (pi < len) **
 		hfact ((2 EXP order_v) divides (i2id pi))
 	`)]]
@@ -1626,12 +1676,16 @@ static struct hyp_page *__find_buddy_avail(struct hyp_pool *pool, struct hyp_pag
 
 void page_remove_from_list_pool(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::parameter(`pi : num`)]]
-	[[cstar::parameter(`len : num`)]]
 	[[cstar::parameter(`order : num`)]]	
-	[[cstar::parameter(`vmemmap : num`)]]
+	[[cstar::parameter(`vmemmap : addr`)]]
 	[[cstar::parameter(`l : (num#num)list`)]]	
 	[[cstar::parameter(`dl : (addr#addr)list`)]]	
-	[[cstar::parameter(`hl : (addr#addr)list`)]]	
+	[[cstar::parameter(`hl : (addr#addr)list`)]]
+	[[cstar::parameter(`start : num`)]]
+	[[cstar::parameter(`end : num`)]]
+	[[cstar::parameter(`len : num`)]]
+	[[cstar::parameter(`max_order : num`)]]
+	[[cstar::parameter(`NO_ORDER : num`)]]
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pure_const) **
@@ -1651,8 +1705,6 @@ void page_remove_from_list_pool(struct hyp_pool *pool, struct hyp_page *pg)
 	[[cstar::ensure(`
 	exists new_l new_dl new_hl.
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
-		hfact (pool == pool_pre) **
-		hfact (pg == pg_pre) **
 		hfact (new_l = modified l pi (0, NO_ORDER)) **
 		hfact (pure_const) **
 		hfact (LENGTH l = len) **
@@ -1661,14 +1713,14 @@ void page_remove_from_list_pool(struct hyp_pool *pool, struct hyp_page *pg)
 		hfact (LENGTH new_l = len) **
 		hfact (LENGTH new_dl = len) **
 		hfact (LENGTH new_hl = max_order) **
-		hfact (pg = vmemmap + &(pi * 4)) **
+		hfact (pg_pre = vmemmap + &(pi * 4)) **
 		hfact (pi < len) **
 		hfact (ORD (nth l pi) = order) **
 		hfact (REF (nth l pi) = 0) **
 		hfact (order < max_order) **
-		hfact (dlist_node pool (ifilter new_l) new_l new_dl new_hl start end new_dl) **
-		hfact (dlist_head pool new_l new_dl 0 max_order new_hl) **
-		(dlist_head_repr pool 0 max_order new_hl) **
+		hfact (dlist_node pool_pre (ifilter new_l) new_l new_dl new_hl start end new_dl) **
+		hfact (dlist_head pool_pre new_l new_dl 0 max_order new_hl) **
+		(dlist_head_repr pool_pre 0 max_order new_hl) **
 		(free_area_head_repr (ifilter new_l) start end new_dl) **
 		(data_at (i2vi pi, Tptr, &0)) **
 		(data_at (i2vi pi + &PTR_SIZE, Tptr, &0))
@@ -1677,12 +1729,16 @@ void page_remove_from_list_pool(struct hyp_pool *pool, struct hyp_page *pg)
 
 void page_add_to_list_pool(struct hyp_pool *pool, struct hyp_page *pg, u8 order)
 	[[cstar::parameter(`pi : num`)]]
-	[[cstar::parameter(`len : num`)]]
 	[[cstar::parameter(`order_v : num`)]]	
-	[[cstar::parameter(`vmemmap : num`)]]
+	[[cstar::parameter(`vmemmap : addr`)]]
 	[[cstar::parameter(`l : (num#num)list`)]]	
 	[[cstar::parameter(`dl : (addr#addr)list`)]]	
-	[[cstar::parameter(`hl : (addr#addr)list`)]]		
+	[[cstar::parameter(`hl : (addr#addr)list`)]]
+	[[cstar::parameter(`start : num`)]]
+	[[cstar::parameter(`end : num`)]]
+	[[cstar::parameter(`len : num`)]]
+	[[cstar::parameter(`max_order : num`)]]
+	[[cstar::parameter(`NO_ORDER : num`)]]	
 	[[cstar::require(`
 		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact(order_v = num_of_int order) **
@@ -1704,10 +1760,10 @@ void page_add_to_list_pool(struct hyp_pool *pool, struct hyp_page *pg, u8 order)
 	`)]]
 	[[cstar::ensure(`
 	exists new_l new_dl new_hl.
+		data_at(&"__hyp_vmemmap", Tptr, vmemmap) **
 		hfact (pool == pool_pre) **
 		hfact (pg == pg_pre) **
-		hfact(order = order_pre) **
-		hfact(order_v = num_of_int order) **
+		hfact(order_v = num_of_int order_pre) **
 		hfact (new_l = modified l pi (0, order_v)) **
 		hfact (pure_const) **
 		hfact (LENGTH l = len) **
@@ -1716,14 +1772,14 @@ void page_add_to_list_pool(struct hyp_pool *pool, struct hyp_page *pg, u8 order)
 		hfact (LENGTH new_l = len) **
 		hfact (LENGTH new_dl = len) **
 		hfact (LENGTH new_hl = max_order) **
-		hfact (pg = vmemmap + &(pi * 4)) **
+		hfact (pg_pre = vmemmap + &(pi * 4)) **
 		hfact (pi < len) **
 		hfact (ORD (nth l pi) = NO_ORDER) **
 		hfact (REF (nth l pi) = 0) **
 		hfact (order_v < max_order) **
-		hfact (dlist_node pool (ifilter new_l) new_l new_dl new_hl start end new_dl) **
-		hfact (dlist_head pool new_l new_dl 0 max_order new_hl) **
-		(dlist_head_repr pool 0 max_order new_hl) **
+		hfact (dlist_node pool_pre (ifilter new_l) new_l new_dl new_hl start end new_dl) **
+		hfact (dlist_head pool_pre new_l new_dl 0 max_order new_hl) **
+		(dlist_head_repr pool_pre 0 max_order new_hl) **
 		(free_area_head_repr (ifilter new_l) start end new_dl)
 	`)]]
 {}
