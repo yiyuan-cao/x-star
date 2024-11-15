@@ -16,7 +16,7 @@ void swap(int *a, int *b)
     data_at(a_pre, Tint, b_v) **
     data_at(b_pre, Tint, b_v) **
     data_at(&"a", Tptr, a_pre) **
-    data_at(&"b", Tptr, b_pre)
+    data_at(&"b", Tptr, b_pre) **
     data_at(&"tmp", Tint, a_v)
   `)]];
 
@@ -28,7 +28,7 @@ void swap(int *a, int *b)
     data_at(a_pre, Tint, b_v) **
     data_at(b_pre, Tint, a_v) **
     data_at(&"a", Tptr, a_pre) **
-    data_at(&"b", Tptr, b_pre)
+    data_at(&"b", Tptr, b_pre) **
     data_at(&"tmp", Tint, a_v)
   `)]];
 }
