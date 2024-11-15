@@ -205,7 +205,7 @@ int sum10_while_break()
       thm result = sep_normalize_rule(mp(mp(get_theorem("hsep_monotone"), hfact_thm), data_at_rewr));
       set_symbolic_state(which_implies(get_symbolic_state(), result));
     }
-  )]]
+  )]];
 
   [[cstar::assert(`
     fact(&0 <= &0) ** fact(&0 < &10) **

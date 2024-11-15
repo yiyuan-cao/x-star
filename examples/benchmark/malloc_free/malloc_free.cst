@@ -1,3 +1,6 @@
+typedef const struct Gc_Term *term;
+typedef const struct Gc_Theorem *thm;
+
 [[cstar::require(`size % &4 == &0`)]]
 [[cstar::ensure(`malloc_at(__result, size_pre) ** undef_array_at(__result, Tint, size / sizeof(Tint))`)]]
 void *malloc(unsigned size);
@@ -18,14 +21,35 @@ void foo()
   [[cstar::assert(`
     exists (arr_v:int).
       data_at(&"arr", Tptr, arr_v) **
-      malloc_at(arr_v, 2 * sizeof(Tint)) ** 
-      undef_array_at(arr_v, Tint, 2 * sizeof(Tint) / sizeof(Tint))
+      malloc_at(arr_v, &2 * sizeof(Tint)) ** 
+      undef_array_at(arr_v, Tint, &2 * sizeof(Tint) / sizeof(Tint))
+  `)]];
+
+  [[cstar::proof(
+    {
+      term pre_state = get_symbolic_state();
+      thm malloc_inv = spec(`&2 * sizeof(Tint)`, spec(`arr_v:int`, get_theorem("malloc_at_inv")));
+      thm rewr = add_assum(`&2 * sizeof(Tint) > &0`, 
+        spec(`fact(arr_v > &0) ** malloc_at(arr_v, &2 * sizeof(Tint))`, get_theorem("hentail_refl")));
+      rewr = mp(get_theorem("hfact_elim"), disch(rewr, hypth(rewr)));
+      thm result = hentail_trans_auto_list((thm[]){malloc_inv, rewr, NULL});
+      set_symbolic_state(which_implies(pre_state, result));
+    }
+  )]];
+
+  [[cstar::assert(`
+    exists (arr_v:int).
+      fact(arr_v > &0) ** 
+      data_at(&"arr", Tptr, arr_v) **
+      malloc_at(arr_v, &2 * sizeof(Tint)) ** 
+      undef_array_at(arr_v, Tint, &2 * sizeof(Tint) / sizeof(Tint))
   `)]];
 
   [[cstar::argument(`size = &2 * sizeof(Tint)`)]] free((void *)arr);
 
   [[cstar::assert(`
     exists (arr_v:int).
+      fact(arr_v > &0) ** 
       data_at(&"arr", Tptr, arr_v)
   `)]];
 }
