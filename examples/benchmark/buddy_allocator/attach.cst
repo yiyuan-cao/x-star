@@ -38,7 +38,7 @@ struct hyp_page
 
 [[cstar::require(`emp`)]]
 [[cstar::ensure(`hfact (__result = min a_pre b_pre)`)]]
-int min(int a, int b);
+struct hyp_page *min(struct hyp_page *a, struct hyp_page *b);
 
 [[cstar::parameter(`i : num`)]]
 [[cstar::parameter(`order_v : num`)]]
@@ -984,7 +984,7 @@ static void attach_page(struct hyp_pool *pool, struct hyp_page *pg)
 			(store_pageinfo_array vmemmap (SUC (i2id bi)) end (rest inv_l (SUC bi))) **
 			(store_zero_array (i2vi i) 0 (PAGE_SIZE * (2 EXP ord)) (PAGE_SIZE * (2 EXP ord)))
 		`)]];
-		buddy -> order = HYP_NO_ORDER;
+		buddy -> order = (u8)HYP_NO_ORDER;
 		[[cstar::assert(`
 		exists new_l new_dl new_hl buddy_v bi inv_l (inv_dl : (addr#addr)list) (inv_hl : (addr#addr)list) i ord pg_v.
 			hfact (new_l = modified inv_l bi (0, NO_ORDER)) **
