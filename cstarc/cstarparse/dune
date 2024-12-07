@@ -1,0 +1,13 @@
+(library
+ (name cstarparse)
+ (modules context ast lexer parser declarator options)
+ (libraries core menhirLib)
+ (preprocess
+  (pps ppx_deriving.show)))
+
+(ocamllex
+ (modules lexer))
+
+(menhir
+ (modules parser)
+ (flags --unused-token IMAGINARY --table -lg 1 -la 1 -v))

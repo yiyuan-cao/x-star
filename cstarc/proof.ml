@@ -1,5 +1,5 @@
 open Core
-open Ast
+open Cstarparse.Ast
 
 let escape_for_c_string s =
   let buffer = Buffer.create (String.length s) in

@@ -32,3 +32,45 @@ How CStar changes the workflow:
     The extracted output can be directly used by the proof developers; they can complete the proof in a C programmable proof development environment (thanks to the LCF-style proof support).
 
 ## Getting Started
+```
+docker build -t cstar .
+docker run -it --rm -v $(pwd):/x-star cstar:latest
+cd /x-star
+cd cstarc && dune build
+cd lcf_server && make && make test
+
+## cstar?
+cd cstarc
+dune build
+-- only build exe
+dune exec --profile=release ./main.exe ../examples/clear/clear.cst
+./_build/default/main.exe ../examples/clear/clear.cst -output t.c
+cd ../lcf-server
+make test
+./test
+
+## vst
+cd ./sac_c_parser/test
+mkdir build
+cd build
+cmake ..
+make
+cd ..
+gcc main.c -o main -L./build/ -lsac -Wl,-rpath ./build
+./main
+
+## lsp
+-- only build exe : cstarc
+dune build
+-- use exe by log : x-star
+./cstarc/_build/default/main.exe ./examples/clear/clear.cst -output ./cstar_output/t.output.c
+clang -o cstar_output/t_log cstar_output/t.output.c -I./lcf_server/includes -O3 -L./lcf_server/proof-user -L./lcf_server/target/release -lgc -lpthread -ldl -lproof_conv -lproof_user -lproof_kernel -lm -std=c2x
+./cstar_output/t_log
+
+-- symbolic exec : x-star
+// fix the path of strategies
+gcc ./cstar_output/t.c -o ./cstar_output/t_sym -L./sac_c_parser/test/build -lsac -Wl,-rpath ./sac_c_parser/test/build
+./cstar_output/t_sym
+
+gcc ./cstar_output/t.c -o ./cstar_output/t_sym -I./sac_c_parser/include -I./sac_c_parser/SymExec/CStarInterface -L./sac_c_parser/test/build -lsac -Wl,-rpath ./sac_c_parser/test/build
+```

@@ -1,11 +1,11 @@
-#include "cstar.h"
-#include "def.h"
-#include "lemma.h"
+// #include "cstar.h"
+// #include "def.h"
+// #include "lemma.h"
 
-#define HYP_MAX_ORDER 11
-#define HYP_NO_ORDER 255
-#define HYP_PAGE_SHIFT 12
-#define HYP_PAGE_SIZE 4096
+// #define HYP_MAX_ORDER 11
+// #define HYP_NO_ORDER 255
+// #define HYP_PAGE_SHIFT 12
+// #define HYP_PAGE_SIZE 4096
 
 typedef unsigned char u8;
 typedef unsigned short u16;

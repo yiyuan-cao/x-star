@@ -31,7 +31,7 @@
 (* Modified by Yiyuan Cao *)
 
 open Core
-open Lexer
+open Cstarparse.Lexer
 
 let open_file filename =
   let ic =
@@ -47,9 +47,9 @@ let print_position outx lexbuf =
     fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
       (pos.pos_cnum - pos.pos_bol + 1) )
 
-module I = Parser.MenhirInterpreter
+module I = Cstarparse.Parser.MenhirInterpreter
 
-let rec parse lexbuf (checkpoint : Ast.program I.checkpoint) =
+let rec parse lexbuf (checkpoint : Cstarparse.Ast.program I.checkpoint) =
   match checkpoint with
   | I.InputNeeded _env ->
       let token = lexer lexbuf in
@@ -65,6 +65,10 @@ let rec parse lexbuf (checkpoint : Ast.program I.checkpoint) =
   | I.Accepted v -> v
   | I.Rejected -> failwith "invalid syntax (parser rejected the input)"
 
+let get_output output = match output with
+  | Some s -> s
+  | None -> "../lcf_server/test.output.c"
+
 let command =
   Command.basic ~summary:"C* compiler"
     ~readme:(fun () ->
@@ -72,15 +76,18 @@ let command =
        for constructing C* ASTs. It reads a preprocessed C file in standard \
        input and raises an exception if it contains invalid syntax." )
     Command.Let_syntax.(
-      let%map_open input_file = anon ("input_file" %: string) in
+      let%map_open input_file = anon ("input_file" %: string)
+      and output =
+        flag "-output" (optional string) ~doc:"FILENAME Output proof to file"
+      in
       fun () ->
         let lexbuf = open_file input_file in
         let ast =
           try
             parse lexbuf
-              (Parser.Incremental.translation_unit_file lexbuf.lex_curr_p)
+              (Cstarparse.Parser.Incremental.translation_unit_file lexbuf.lex_curr_p)
           with
-          | Parser.Error ->
+          | Cstarparse.Parser.Error ->
               fprintf stderr "%a: syntax error\n" print_position lexbuf ;
               exit 1
           | Failure s ->
@@ -89,6 +96,6 @@ let command =
         in
         let proof = Proof.make_proof ast in
         Printer.Render.render_to_string (Printer.program_to_doc proof)
-        |> Printer.Ansi.fprint (Out_channel.create "../lcf_server/test.c") )
+        |> Printer.Ansi.fprint (Out_channel.create (get_output output)) )
 
 let () = Command_unix.run command

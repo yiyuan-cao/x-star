@@ -875,4 +875,4 @@ const struct Gc_Theorem *modulo_rule(const struct Gc_Term *tm);
  */
 const char *cst_last_error(void);
 
-#endif  /* PROOF_KERNEL_H */
+#endif /* PROOF_KERNEL_H */

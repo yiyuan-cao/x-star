@@ -63,7 +63,8 @@ fn compile(out_dir: PathBuf, ocaml_files: &[&str], ocaml_packages: &[&str]) -> s
     let libgmp = std::path::PathBuf::from(libgmp);
 
     // Compile OCaml files
-    let libgmp = format!("-L{}", libgmp.display());
+    // let libgmp = format!("-L{}", libgmp.display());
+    let libgmp = format!("-L{}", libgmp.parent().unwrap().display());
     let mut args = vec![
         "ocamlc",
         "-o",

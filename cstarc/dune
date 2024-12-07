@@ -1,14 +1,7 @@
-(ocamllex
- (modules lexer))
-
-(menhir
- (modules parser)
- (flags --unused-token IMAGINARY --table -lg 1 -la 1 -v))
-
 (executable
  (name main)
  (public_name cstarc)
- (modules main ast declarator context options lexer parser printer proof env extractor)
- (libraries menhirLib core core_unix.command_unix re pprint)
+ (modules main printer proof env extractor)
+ (libraries core core_unix.command_unix re pprint cstarparse)
  (preprocess
   (pps ppx_deriving.show ppx_let)))

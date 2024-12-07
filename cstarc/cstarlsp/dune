@@ -1,0 +1,13 @@
+(executable
+ (name cstarlsp)
+ (modules cstarlsp)
+ (libraries core async core_unix.command_unix core_unix.filename_unix cstarlsplib)
+ (preprocess
+  (pps ppx_jane)))
+
+(library
+ (name cstarlsplib)
+ (modules :standard \ cstarlsp)
+ (libraries core async cstarparse lsp yojson csv)
+ (preprocess
+  (staged_pps ppx_let ppx_import ppx_yojson_conv)))

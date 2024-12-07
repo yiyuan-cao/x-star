@@ -269,27 +269,42 @@ module Render = struct
 end
 
 open Core
-open Ast
+open Cstarparse.Ast
 open Pretty
 
-let default_header = str "#include <cstar.h>" ^^ hardline
-let default_main func = str "int main() { cst_init(); " ^^ str func ^^ str " return 0; }"
+let default_header = str "#include <cstar.h>" ^^ hardline ^^ str "#include <stdlib.h>\n#include <string.h>\nFILE* fp = NULL;\nchar buf[10000];\n" ^^ hardline
+let default_main func = str "int main() { cst_init(); " 
+  (*flie operation: open*)
+  ^^ str "char path[100]=\"./\";\nchar filename[30];\nsscanf(__BASE_FILE__, \"%[^.]\", filename);\nfp = fopen(strcat(strcat(path, filename),\"_log.csv\"), \"w\");\n"
+  ^^ str func 
+  (*flie operation: close*)
+  ^^ str "\nfclose(fp);\n"
+  ^^ str " return 0; }"
 
 let rec program_to_doc program =
   default_header ^^
   (program |> List.map ~f:declaration_to_doc |> seperate (hardlines 2))
   ^^ hardline ^^
-  (default_main "reverse();") (* modify proof function name here. *)
+  (default_main "clear();") (* modify proof function name here. *)
 
 and declaration_to_doc = function
   | Ddeffun _ as d -> declaration_to_doc_inner d
   | d -> declaration_to_doc_inner d ^^ semi
 
+and fput_to_doc typ ident range = 
+  match (typ_term_thm_to_doc typ) with
+  | (doc, 1) ->
+      semi ^^ space ^^ str "\nfputs(" ^^ str ("strcat(strcat(" ^ "strcpy(buf," ^"\"" ^ string_of_int(range.start_p.line_no - 1) ^ "@" ^ string_of_int(range.start_p.col_no + 1 + 5) ^ "@\")" ^ ", string_of_")^^ doc ^^ str "(" 
+    ^^ id ident ^^ str ")), \"\\n\"), fp)"
+  | _ -> empty
+
 and declaration_to_doc_inner = function
-  | Ddeclvar (typ, ident, init, _) ->
+  | Ddeclvar (typ, ident, init, range) ->
       parameter_to_doc (typ, ident)
       ^^ optional init ~f:(fun init ->
              space ^^ op "=" ^^ break ^^ init_to_doc init )
+      ^^ fput_to_doc typ ident range
+
       |> nest |> group
   | Ddecltype (typ, _) -> typ_to_doc typ
   | Ddecltypedef (ident, typ, _) ->
@@ -521,6 +536,11 @@ and declarator_to_doc t i =
         kwd "union " ^^ optional name ~f:(fun i -> space ^^ id i) ^^ space
       in
       (surround_braces spec fields_doc, i)
+
+and typ_term_thm_to_doc t =
+  match t with
+  | Tnamed name -> (id name, 1)
+  | _ -> (id "", 0)
 
 and typ_to_doc t =
   let spec, decl = declarator_to_doc t (id "") in
