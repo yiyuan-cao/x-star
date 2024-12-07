@@ -28,6 +28,9 @@ See [README.md](../README.md)
 - [vscode extension repo](https://github.com/microsoft/vscode-extension-samples/tree/main)
 - [visualstudio](https://code.visualstudio.com/api/ux-guidelines/overview)
 
+# Run
+npm run compile
+
 # Publish
 - version
 - vsce package

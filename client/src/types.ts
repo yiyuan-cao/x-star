@@ -1,12 +1,12 @@
 import { integer, TextDocumentIdentifier, VersionedTextDocumentIdentifier } from "vscode-languageclient";
 import { Position, Range, Uri } from "vscode";
 
-export interface PostResult {
+export interface SymResult {
 	linenum: integer;
     ghostlines: string[];
 }
 
-export interface PostfileResult {
+export interface SymfileResult {
 	filepath: string;
 }
 

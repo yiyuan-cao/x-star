@@ -6,9 +6,9 @@
 
 This CStar IDE works for */.cst file. It has the following language features:
 - [Hover](#hover)
-- [Show Post File](#show-post-file)
-- [Show Post](#show-post)
-- [Hide Post](#hide-post)
+- [Show Sym File](#show-sym-file)
+- [Show Sym](#show-sym)
+- [Hide Sym](#hide-sym)
 - [Start Hol-Lite Server](#start-hol-lite-server)
 - [Stop Hol-Lite Server](#stop-hol-lite-server)
 
@@ -79,20 +79,20 @@ Hover `Theorem Value` :
 
   ![hover](./assets/hover.png "hover")
 
-### Show Post File
-- Press `right-hand button` to see `CStar Show PostFile Here`, or
+### Show Sym File
+- Press `right-hand button` to see `CStar Show SymFile Here`, or
 - Press `Ctrl + Alt + Right`
 
 ![showtext](./assets/showtext.png "showtext")
 
-### Show Post
-- Press `right-hand button` to see `CStar Show Post Here`, or
+### Show Sym
+- Press `right-hand button` to see `CStar Show Sym Here`, or
 - Press `Alt + Right`
 
 ![ghostlines](./assets/ghostlines.png "ghostlines")
 
-### Hide Post
-- Press `right-hand button` to see `CStar Hide Post Once`, or
+### Hide Sym
+- Press `right-hand button` to see `CStar Hide Sym Once`, or
 - Press `Alt + Left`
 
 Please delete the left blank lines by yourself.

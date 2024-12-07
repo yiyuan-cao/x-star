@@ -6,7 +6,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { workspace, ExtensionContext, Position } from 'vscode';
-import {PostResult, PostfileResult, HoverfileResult, HoverfileResult_} from './types';
+import {SymResult, SymfileResult, HoverfileResult, HoverfileResult_} from './types';
 import * as fs from 'fs';
 
 import {
@@ -67,7 +67,7 @@ export function activate(context: ExtensionContext) {
 	const backgroundColor = new vscode.ThemeColor('cstar.inlineGhostBackgroundColor');
 	const color = new vscode.ThemeColor('cstar.inlineGhostForegroundColor');
 	const ghostlines = ["Hello CStar!", "Hello VST-A!"];
-	let decorations: vscode.DecorationOptions[] = []; // post lines, recreate everytime
+	let decorations: vscode.DecorationOptions[] = []; // sym lines, recreate everytime
 	const decorationType_stack: vscode.TextEditorDecorationType[] = []; // stack
 
 	// .csv file changetime
@@ -75,22 +75,22 @@ export function activate(context: ExtensionContext) {
 
 	/************************* command and communication ******************************/
 
-	// registerCommand showpost
-	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpost', function () {
+	// registerCommand showsym
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.showsym', function () {
 		if(!editor) return;
-		client.sendNotification("cstar/showpost", {filepath: editor.document.uri.path, line: editor.selection.end.line});
-		// client.sendRequest("cstar/showpost", {document: editor.document.getText(), uri: editor.document.uri.path, line: editor.selection.end.line + 1 });
+		client.sendNotification("cstar/showsym", {filepath: editor.document.uri.path, line: editor.selection.end.line});
+		// client.sendRequest("cstar/showsym", {document: editor.document.getText(), uri: editor.document.uri.path, line: editor.selection.end.line + 1 });
 		// render(ghostlines);
 	}));
 
-	// onNotification postResult
-	client.onNotification("cstar/postResult", (postresult: PostResult) => {
+	// onNotification symResult
+	client.onNotification("cstar/symResult", (symresult: SymResult) => {
 		// create decoration
-		render(postresult.ghostlines);
+		render(symresult.ghostlines);
 	});
 
-	// registerCommand hidepost
-	context.subscriptions.push(vscode.commands.registerCommand('cstar.hidepost', () => {
+	// registerCommand hidesym
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.hidesym', () => {
 		const decorationType_top = decorationType_stack.pop();
 		if (decorationType_top) {
 			decorationType_top.dispose(); 
@@ -98,14 +98,14 @@ export function activate(context: ExtensionContext) {
 		}
 	}));
 
-	// registerCommand showpostfile
-	context.subscriptions.push(vscode.commands.registerCommand('cstar.showpostfile', () => {
-		client.sendNotification("cstar/showpostfile", {filepath: editor.document.uri.path});
+	// registerCommand showsymfile
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.showsymfile', () => {
+		client.sendNotification("cstar/showsymfile", {filepath: editor.document.uri.path});
 	}));
 
-	// onNotification postfileResult
-	client.onNotification("cstar/postfileResult", async (postresult: PostfileResult) => {
-		const filepath = postresult.filepath;
+	// onNotification symfileResult
+	client.onNotification("cstar/symfileResult", async (symresult: SymfileResult) => {
+		const filepath = symresult.filepath;
 		const uri = vscode.Uri.file(filepath);
 		vscode.window.showInformationMessage('[CStar IDE] Symbolic Executing...');
 		const fileExists = await vscode.workspace.fs.stat(uri).then(() => true, () => false);
@@ -135,15 +135,15 @@ export function activate(context: ExtensionContext) {
 	});
 
 
-	// registerCommand starthollite
-	context.subscriptions.push(vscode.commands.registerCommand('cstar.starthollite', () => {
-		exec("docker run --rm -v " + lsppath + ":/hol-lite --name cstar kevinshing/cstar-ide /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1");
+	// registerCommand startlcfserver
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.startlcfserver', () => {
+		exec("docker run --rm -v " + lsppath + ":/x-star --name cstar cstar:lastest /bin/bash -c 'cd /x-star && make run' tail -f /dev/null > /dev/null 2>&1");
 	}));
 	// docker run --rm -v /mnt/d/ZGC_Lab/hol-lite/:/hol-lite --name cstar wybxc/hol-lite /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1
 	// docker logs cstar
 
-	// registerCommand stophollite
-	context.subscriptions.push(vscode.commands.registerCommand('cstar.stophollite', () => {
+	// registerCommand stoplcfserver
+	context.subscriptions.push(vscode.commands.registerCommand('cstar.stoplcfserver', () => {
 		const output = exec("docker stop cstar");
 	}));
 
