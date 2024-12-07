@@ -3,7 +3,7 @@
 	"description": "CStar IDE",
 	"author": "CStar Teamworkers",
 	"license": "MIT",
-	"version": "1.2.1",
+	"version": "1.3.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Wybxc/hol-lite"
@@ -84,8 +84,8 @@
 				},
 				"cstaride.hollitepath": {
 					"type": "string",
-					"default": "/mnt/d/ZGC_Lab/hol-lite/",
-					"description": "Path to hol-lite (branch: lsp)."
+					"default": "/home/xwk/cstar/x-star/",
+					"description": "Path to x-star (branch: lsp)."
 				},
 				"cstaride.bdwgcflag": {
 					"type": "string",
@@ -96,41 +96,41 @@
 		},
 		"commands": [
 			{
-				"command": "cstar.showpost",
-				"title": "CStar Show Post Here"
+				"command": "cstar.showsym",
+				"title": "CStar Show Sym Here"
 			},
 			{
-				"command": "cstar.hidepost",
-				"title": "CStar Hide Post Once"
+				"command": "cstar.hidesym",
+				"title": "CStar Hide Sym Once"
 			},
 			{
-				"command": "cstar.starthollite",
-				"title": "start hol-lite server in docker"
+				"command": "cstar.startlcfserver",
+				"title": "start lcf-server in docker"
 			},
 			{
-				"command": "cstar.stophollite",
-				"title": "stop hol-lite server"
+				"command": "cstar.stoplcfserver",
+				"title": "stop lcf-server"
 			},
 			{
-				"command": "cstar.showpostfile",
-				"title": "CStar Show Post File"
+				"command": "cstar.showsymfile",
+				"title": "CStar Show Sym File"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "cstar.showpost",
+				"command": "cstar.showsym",
 				"key": "alt+right",
 				"mac": "alt+right",
 				"when": "editorTextFocus && editorLangId == cstar"
 			},
 			{
-				"command": "cstar.hidepost",
+				"command": "cstar.hidesym",
 				"key": "alt+left",
 				"mac": "alt+left",
 				"when": "editorTextFocus && editorLangId == cstar"
 			},
 			{
-				"command": "cstar.showpostfile",
+				"command": "cstar.showsymfile",
 				"key": "ctrl+alt+right",
 				"mac": "ctrl+alt+right",
 				"when": "editorTextFocus && editorLangId == cstar"
@@ -140,27 +140,27 @@
 			"editor/context": [
 				{
 					"when": "editorFocus && editorLangId == cstar",
-					"command": "cstar.showpost",
+					"command": "cstar.showsym",
 					"group": "navigation"
 				},
 				{
 					"when": "editorFocus && editorLangId == cstar",
-					"command": "cstar.hidepost",
+					"command": "cstar.hidesym",
 					"group": "navigation"
 				},
 				{
 					"when": "editorFocus && editorLangId == cstar",
-					"command": "cstar.showpostfile",
+					"command": "cstar.showsymfile",
 					"group": "navigation"
 				},
 				{
                     "when": "editorFocus && editorLangId == cstar",
-                    "command": "cstar.starthollite",
+                    "command": "cstar.startlcfserver",
                     "group": "hollite"
                 },
 				{
                     "when": "editorFocus && editorLangId == cstar",
-                    "command": "cstar.stophollite",
+                    "command": "cstar.stoplcfserver",
                     "group": "hollite"
                 }
 			]
