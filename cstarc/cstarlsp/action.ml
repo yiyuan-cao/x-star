@@ -100,45 +100,70 @@ let file_exists filename =
   | `Yes -> return true
   | _ -> return false
 
-let parse_csv_data data =
-  let csv = Csv.of_string ~separator:'@' data in
-  Csv.input_all csv
-  
-let handle_hover (params : HoverParams.t) :
-    (Hover.t option, string) result Deferred.t =
-  match params.textDocument.uri |> LexCache.get with
-  | None ->
-      return @@ Error "cannot find the thm for hovering, try save the file!"
-  | Some ranges -> (
-      let range = params.position |> LexCache.lookup ranges in
-      eprintf "[CStar LSP] Hovering (%d, %d)..(%d, %d)\n" range.start.line
-        range.start.character range.end_.line range.end_.character ;
-      match%bind (file_exists (get_log_file (DocumentUri.to_path params.textDocument.uri))) with
-      | false -> return @@ Ok None
-      | true -> (
-        let%bind log_content = Reader.file_contents (get_log_file (DocumentUri.to_path params.textDocument.uri)) in
-        let log = parse_csv_data log_content in
-        let rec find_log log =
-          match log with
-          | [] -> Ok None
-          | (line :: col :: thm :: _) :: rest ->
-              let line = int_of_string line in
-              let col = int_of_string col in
-              eprintf "[CStar LSP] Hovering (%d, %d)!!!\n" line col;
-              if in_range ~line ~col ~range then Ok (Some thm)
-              else find_log rest
-          | _ -> Error "malformed log file"
-        in
-        match find_log log with
-        | Ok (Some thm) ->
-            let contents =
-              `MarkupContent
-                (MarkupContent.create ~kind:MarkupKind.PlainText ~value:thm)
+let split_last lst =
+  match List.rev lst with
+  | [] -> failwith "Empty list"
+  | last :: rest -> (List.rev rest, last)
+
+let parse_custom_csv_data data =
+  let lines = String.split_lines data in
+  let rec parse_lines acc current_fields = function
+    | [] -> if List.is_empty current_fields then List.rev acc else List.rev (current_fields :: acc)
+    | line :: rest ->
+        let parts = String.split ~on:'@' line in
+        match parts with
+        | [single_part] ->
+            let new_fields =
+              match current_fields with
+              | [] -> [single_part]
+              | _ ->
+                  let (init, last) = split_last current_fields in
+                  init @ [last ^ "\n" ^ single_part]
             in
-            let hover = Hover.create ~contents ~range () in
-            return @@ Ok (Some hover)
-        | Ok None -> return @@ Ok None
-        | Error e -> return @@ Error e ))
+            parse_lines acc new_fields rest
+        | multiple_parts ->
+            let new_acc = if List.is_empty current_fields then acc else (current_fields :: acc) in
+            parse_lines new_acc multiple_parts rest
+  in
+  let result = parse_lines [] [] lines in
+  result
+
+let handle_hover (params : HoverParams.t) :
+  (Hover.t option, string) result Deferred.t =
+match params.textDocument.uri |> LexCache.get with
+| None ->
+    return @@ Error "cannot find the thm for hovering, try save the file!"
+| Some ranges -> (
+    let range = params.position |> LexCache.lookup ranges in
+    eprintf "[CStar LSP] Hovering (%d, %d)..(%d, %d)\n" range.start.line
+      range.start.character range.end_.line range.end_.character ;
+    match%bind (file_exists (get_log_file (DocumentUri.to_path params.textDocument.uri))) with
+    | false -> return @@ Ok None
+    | true -> (
+      let%bind log_content = Reader.file_contents (get_log_file (DocumentUri.to_path params.textDocument.uri)) in
+      let log = parse_custom_csv_data log_content in
+      let rec find_log log =
+        match log with
+        | [] -> Ok None
+        | line :: rest ->
+            match line with
+            | line_str :: col_str :: thm :: _ ->
+                let line = int_of_string line_str in
+                let col = int_of_string col_str in
+                if in_range ~line ~col ~range then Ok (Some thm)
+                else find_log rest
+            | _ -> Error "malformed log file"
+      in
+      match find_log log with
+      | Ok (Some thm) ->
+          let contents =
+            `MarkupContent
+              (MarkupContent.create ~kind:MarkupKind.PlainText ~value:thm)
+          in
+          let hover = Hover.create ~contents ~range () in
+          return @@ Ok (Some hover)
+      | Ok None -> return @@ Ok None
+      | Error e -> return @@ Error e ))
 
 (* let handle_hover (params : HoverParams.t) :
     (Hover.t option, string) result Deferred.t =

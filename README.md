@@ -37,7 +37,7 @@ docker build -t cstar .
 docker run -it --rm -v $(pwd):/x-star cstar:latest
 cd /x-star
 cd cstarc && dune build
-cd lcf_server && make && make test
+cd lcf_server && make && make test && make run
 
 ## cstar?
 cd cstarc
