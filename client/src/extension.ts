@@ -26,6 +26,9 @@ function convertStringToUTCDate(dateString: string): Date {
 	return utcDate;
 }
 
+// Variables to store inserted lines
+const insertedLinesStack: { start: number; count: number }[] = [];
+
 export function activate(context: ExtensionContext) {
 	/************************* CStar Client ******************************/
 
@@ -96,6 +99,15 @@ export function activate(context: ExtensionContext) {
 			decorationType_top.dispose(); 
 			editor.setDecorations(decorationType_top, decorations);
 		}
+		// Remove the inserted blank lines
+		const insertedLines = insertedLinesStack.pop();
+		if (insertedLines) {
+			const endLine = insertedLines.start + insertedLines.count;
+			editor.edit((editBuilder) => {
+				editBuilder.delete(new vscode.Range(insertedLines.start, 0, endLine, 0));
+			});
+			editor.document.save();
+		}
 	}));
 
 	// registerCommand showsymfile
@@ -139,7 +151,7 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('cstar.startlcfserver', () => {
 		exec("docker run --rm -v " + lsppath + ":/x-star --name cstar cstar:lastest /bin/bash -c 'cd /x-star && make run' tail -f /dev/null > /dev/null 2>&1");
 	}));
-	// docker run --rm -v /mnt/d/ZGC_Lab/hol-lite/:/hol-lite --name cstar wybxc/hol-lite /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null > /dev/null 2>&1
+	// docker run --rm -v /mnt/d/ZGC_Lab/hol-lite/:/hol-lite --name cstar wybxc/hol-lite /bin/bash -c 'cd /hol-lite && make run' tail -f /dev/null 2>&1
 	// docker logs cstar
 
 	// registerCommand stoplcfserver
@@ -181,7 +193,13 @@ export function activate(context: ExtensionContext) {
 		editor.edit((editBuilder) => {
 			editBuilder.replace(new vscode.Range(0, 0, cstarlines.length, 0), newText);
 		});
-		// editor.document.save();
+
+		// Store the range of inserted lines
+		insertedLinesStack.push({
+			start: startline,
+			count: ghostlines.length
+		});
+		editor.document.save();
 
 		// insert ghostlines
 		for (const line of ghostlines) {
@@ -197,7 +215,7 @@ export function activate(context: ExtensionContext) {
 			curlineofghost += 1;
 		}
 		editor.setDecorations(decorationType, decorations);
-	}
+	}	
 
 	function checkFileUpdate(filePath: string): boolean {
 		try {
@@ -232,12 +250,24 @@ export function activate(context: ExtensionContext) {
 	vscode.workspace.onDidSaveTextDocument(document => {
 
 		if (document.languageId === 'cstar') {
-			vscode.window.showInformationMessage('[CStar IDE] Generating Theorem Logs For Hover');
-
+			const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+			context.subscriptions.push(statusBarItem);
+		
+			statusBarItem.text = '[CStar IDE] Generating Theorem Logs For Hover';
+			statusBarItem.show();
+		
 			const checkIsFinished = () => {
 				return new Promise<void>((resolve, reject) => {
 					if (checkFileUpdate(hoverfile.filepath)) {
 						console.log("[CStar Client] Hover Files Generated!");
+		
+						statusBarItem.text = '[CStar IDE] Theorem Logs Generated';
+		
+						// 可选：一段时间后隐藏状态栏信息
+						setTimeout(() => {
+							statusBarItem.hide();
+						}, 5000);
+		
 						resolve();
 					} else {
 						console.log("[CStar Client] Hover Files Generating...");
@@ -247,14 +277,9 @@ export function activate(context: ExtensionContext) {
 					}
 				});
 			};
-	
-			checkIsFinished().then(() => {
-				console.log("[CStar IDE] Generated!");
-				vscode.window.showInformationMessage('[CStar IDE] Generated!');
-			}).catch((error) => {
-				console.error("[CStar IDE] Generating Error: ", error);
-				vscode.window.showErrorMessage('[CStar IDE] Generating Error');
-			});
+		
+			// 开始检查
+			checkIsFinished();
 		}
 
 	}, null, context.subscriptions);
